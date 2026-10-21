@@ -164,7 +164,31 @@ python -m scripts.index_docs --stats                         # 컬렉션 현황
 
 ---
 
-## 9. 테스트
+## 9. 질문하기 (RAG 전체 흐름)
+
+```bash
+python -m scripts.ask --item "보이저 1호" --question "보이저 1호는 태양계를 벗어났나?"
+python -m scripts.ask --item "보이저 1호" --question "…" --no-collect        # 수집 없이 기존 색인만
+python -m scripts.ask --item "보이저 1호" --question "…" --search-type mmr   # 검색 방식 지정
+python -m scripts.ask --item "제임스 웹" --question "…" --compare           # 유사도 vs MMR 근거 비교
+python -m scripts.ask --graph                                               # LangGraph 구조 출력
+```
+
+| 단계 | 내용 |
+|---|---|
+| 수집 · 색인 | 질문이 들어온 항목의 문서만 (캐시 재사용) |
+| retrieve | 항목 메타데이터 청크(항상 근거 1) + 항목 범위 외부 문서 Top-k, 병합 · 중복 제거 |
+| generate | 근거만으로 답변, 주장마다 `[근거 N]` — 인용된 근거만 원문 링크와 함께 표시 |
+| 확인 불가 | 근거에 없으면 "제공된 문서에서는 확인되지 않습니다"로 답함 |
+| 답변 검증 | 목록에 없는 근거 번호 · 인용 없는 사실 답변은 1회 재생성, 그래도 어기면 답변 대신 안내 문구 |
+| 장애 | 임베딩 API 일시 장애 시 기존 색인 근거로 답변 (경고 표시), 임베딩 모델 불일치 시 중단 |
+
+답변 상태의 '인용 번호 검증 통과'는 번호가 근거 목록에 있다는 형식 검증이다.
+주장과 근거 내용이 실제로 맞는지까지 보장하지는 않는다.
+
+---
+
+## 10. 테스트
 
 외부 API를 호출하지 않는 회귀 테스트다.
 
@@ -174,7 +198,7 @@ python -m unittest discover -s tests -t .
 
 ---
 
-## 10. 설정 파일
+## 11. 설정 파일
 
 검색 품질에 영향을 주는 값은 `config.toml`에서 바꾼다.
 

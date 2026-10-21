@@ -5,6 +5,21 @@ from __future__ import annotations
 import hashlib
 
 from langchain_core.embeddings import Embeddings
+from langchain_core.messages import AIMessage
+
+
+class FakeChat:
+    """응답을 차례로 돌려주고 받은 메시지를 기록하는 가짜 채팅 모델."""
+
+    def __init__(self, *replies: str):
+        self.replies = list(replies)
+        self.received: list[list] = []
+
+    def invoke(self, messages):
+        self.received.append(messages)
+        if not self.replies:
+            raise AssertionError("예상하지 못한 LLM 호출")
+        return AIMessage(self.replies.pop(0))
 
 
 class FakeEmbedding(Embeddings):

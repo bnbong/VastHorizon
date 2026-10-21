@@ -5,9 +5,33 @@
 
 from __future__ import annotations
 
+import openai
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from vasthorizon.config import get_gms_key, get_settings
+
+# 잠시 뒤 다시 하면 될 수 있는 API 장애 — 이미 있는 색인 · 근거로 답변을 이어 간다.
+# 인증 실패 · 잘못된 요청처럼 계속하면 안 되는 오류는 여기에 넣지 않는다.
+TRANSIENT_API_ERRORS = (
+    openai.APIConnectionError,        # 연결 실패 (APITimeoutError 포함)
+    openai.RateLimitError,
+    openai.InternalServerError,
+)
+
+_ERROR_LABELS = {
+    openai.APITimeoutError: "응답 시간 초과",
+    openai.APIConnectionError: "연결 오류",
+    openai.RateLimitError: "호출 한도 초과",
+    openai.InternalServerError: "서버 오류",
+}
+
+
+def describe_api_error(error: Exception) -> str:
+    """사용자에게 보여줄 장애 종류. 키 · URL · 요청 본문 같은 내부 정보는 넣지 않는다. (NF2004)"""
+    for cls, label in _ERROR_LABELS.items():
+        if isinstance(error, cls):
+            return label
+    return "일시적 오류"
 
 
 class MissingApiKeyError(RuntimeError):

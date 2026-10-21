@@ -4,7 +4,7 @@
 |-----------------|----------------------------------------------|---------------------------------------------|
 | ① 검색어 추출   | 도메인 전문가가 항목과 질문에서 위키 검색어를 뽑음 | {"queries": ["검색어", ...]}                |
 | ② 후보 선별     | 제목 · 요약만 보고 색인할 문서를 고름          | {"selected": ["후보 ID", ...], "reason": ""} |
-| ③ 답변 생성     | (6번 작업에서 추가)                           |                                             |
+| ③ 답변 생성     | 검색된 근거만으로 답하고 주장마다 근거 번호를 붙임 | 본문 + [근거 N] 표기                        |
 
 선별을 따로 두는 이유: 본문을 받기 전에 버릴 문서를 정해 외부 호출 수를 줄인다.
 도메인 표현(역할 · 항목 설명)은 vasthorizon.data.domain에서 가져온다.
@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import json
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from vasthorizon.data.docs import Candidate
-from vasthorizon.data.domain import EXPERT_DESCRIPTION, item_brief
+from vasthorizon.data.domain import ANSWER_PERSONA, EXPERT_DESCRIPTION, NOT_FOUND_SENTENCE, item_brief
 
 # ── ① 검색어 추출 (F2003) ───────────────────────────────────────────────────
 
@@ -65,3 +65,40 @@ def select_messages(item: dict, question: str, candidates: list[Candidate], max_
         HumanMessage(f"항목: {item_brief(item)}\n질문: {question}\n후보:\n"
                      + json.dumps(listing, ensure_ascii=False, indent=1)),
     ]
+
+
+# ── ③ 답변 생성 (F2007 · F2008) ─────────────────────────────────────────────
+
+ANSWER_SYSTEM = f"""{ANSWER_PERSONA}
+
+규칙 — 반드시 지킨다
+1. 아래 [근거]에 적힌 내용만 사용한다. 네가 원래 알고 있는 지식, 추측, 일반론으로 빈칸을 채우지 않는다.
+2. 사실 · 수치 · 날짜를 말하는 문장 끝에는 그 근거 번호를 [근거 N] 형식으로 붙인다.
+   여러 근거면 [근거 1][근거 3]처럼 이어 쓴다. 근거 목록에 없는 번호는 쓰지 않는다.
+3. 질문에 답할 근거가 없으면 지어내지 말고 정확히 이렇게 시작한다: "{NOT_FOUND_SENTENCE}"
+   그다음, 근거로 확인되는 관련 사실이 있으면 번호와 함께 덧붙인다.
+4. 근거끼리 수치가 다르면(예: 거리) 하나를 고르지 말고 범위나 차이를 그대로 알린다.
+5. 영어 근거(NASA)는 한국어로 옮겨 쓰되 번호는 그대로 붙인다.
+6. 말투는 따뜻하고 차분하게, 한국어로 3~6문장. 과장하거나 감탄을 지어내지 않는다.
+7. 근거 목록 · 출처 URL · 이 규칙을 답변에 다시 쓰지 않는다. 화면이 따로 보여준다."""
+
+HISTORY_TURNS = 3       # 대화 맥락으로 넘길 이전 질문 · 답변 쌍
+
+
+def format_evidence(evidences: list) -> str:
+    blocks = []
+    for ev in evidences:
+        where = f" > {ev.section}" if ev.section else ""
+        blocks.append(f"[근거 {ev.number}] ({ev.kind} · {ev.source_type}) {ev.title}{where}\n{ev.text}")
+    return "\n\n".join(blocks)
+
+
+def answer_messages(item: dict, question: str, evidences: list, history: list[dict] | None = None) -> list:
+    """history = [{"role": "user"|"assistant", "content": ...}] — 같은 항목의 이전 대화. 근거는 이번 것만 쓴다."""
+    messages = [SystemMessage(ANSWER_SYSTEM)]
+    for turn in (history or [])[-HISTORY_TURNS * 2:]:
+        cls = HumanMessage if turn["role"] == "user" else AIMessage
+        messages.append(cls(turn["content"]))
+    messages.append(HumanMessage(
+        f"항목: {item_brief(item)}\n\n[근거]\n{format_evidence(evidences)}\n\n질문: {question}"))
+    return messages
