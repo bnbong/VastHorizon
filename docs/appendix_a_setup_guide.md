@@ -85,7 +85,26 @@ python -m scripts.collect_items --epoch 2026-10-21  # Horizons 위치 기준일 
 
 ---
 
-## 6. 테스트
+## 6. 항목 메타데이터 색인 (RAG 1)
+
+```bash
+python -m scripts.index_items --dry-run          # 임베딩 없이 색인 텍스트 확인 (토큰 사용 없음)
+python -m scripts.index_items --show 플레이아데스  # 특정 항목의 색인 텍스트 출력
+python -m scripts.index_items                    # 바뀐 항목만 임베딩해 cosmos_items에 색인
+python -m scripts.index_items --rebuild          # 컬렉션을 지우고 처음부터 다시 색인
+```
+
+| 동작 | 설명 |
+|---|---|
+| 청크 | 항목당 1개, 청크 ID = Wikidata QID |
+| 재실행 | 같은 ID로 덮어쓰기 — 중복 저장 없음 |
+| 증분 | 텍스트가 바뀐 항목만 다시 임베딩 (`text_hash` 비교) |
+| 정리 | 카탈로그에서 빠진 항목은 컬렉션에서도 삭제 |
+| 확인 | 마지막 줄 `[ OK ] 로드 N건 = 색인 N건` |
+
+---
+
+## 7. 테스트
 
 외부 API를 호출하지 않는 회귀 테스트다.
 
@@ -95,7 +114,7 @@ python -m unittest discover -s tests -t .
 
 ---
 
-## 7. 설정 파일
+## 8. 설정 파일
 
 검색 품질에 영향을 주는 값은 `config.toml`에서 바꾼다.
 

@@ -144,7 +144,24 @@ class LocateTest(unittest.TestCase):
         self.assertIsNone(place.position_proxy)
         self.assertFalse(place.distance.approximate)
         self.assertEqual(place.distance.basis, "horizons")
-        self.assertEqual(place.location, "달 궤도 (Horizons 직접 계산)")
+        self.assertEqual(place.location, "심우주 (태양 궤도) (Horizons 직접 계산)")
+
+    def test_direct_position_named_by_nearest_body_not_stale_satcat_center(self):
+        """SATCAT이 태양 궤도(SU)로 남아 있어도 실제 위치가 달 곁이면 '달 부근'."""
+        near_moon = [MOON_POS[0] + 0.0001, MOON_POS[1], MOON_POS[2]]
+        place = human_made.locate(satcat_row(ORBIT_CENTER="SU"), near_moon, EARTH_POS, bodies(), EPOCH, EPOCH)
+        self.assertEqual(place.location, "달 부근 (Horizons 직접 계산)")
+
+    def test_planet_preferred_over_far_moon(self):
+        """목성 영향권 안이지만 위성 영향권 밖이면 '목성 부근' (주노 사례)."""
+        jupiter = Item(id="Q319", group="solar_system", name="목성", wiki_title="목성",
+                       position_au=[5.0, 0.0, 0.0], position_basis="horizons")
+        ganymede = Item(id="Q3169", group="solar_system", name="가니메데", wiki_title="가니메데",
+                        position_au=[5.007, 0.0, 0.0], position_basis="horizons")
+        world = {**bodies(), "Jupiter": jupiter, "Ganymede (moon)": ganymede}
+        juno = [5.0, 0.01, 0.0]          # 목성에서 약 150만 km, 가니메데에서는 그보다 멀다
+        place = human_made.locate(satcat_row(ORBIT_CENTER="JU"), juno, EARTH_POS, world, EPOCH, EPOCH)
+        self.assertEqual(place.location, "목성 부근 (Horizons 직접 계산)")
 
     def test_lagrange_point_is_approximate(self):
         place = human_made.locate(satcat_row(ORBIT_CENTER="EL2"), None, EARTH_POS, bodies(), EPOCH, EPOCH)

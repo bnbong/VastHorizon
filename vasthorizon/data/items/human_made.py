@@ -168,6 +168,44 @@ def is_launched(launch: str | None, epoch: str) -> bool:
 
 # ── 현재 위치 결정 ──────────────────────────────────────────────────────────
 
+# 중력 영향권 반지름 근사값(km). 행성은 SOI(라플라스 구), 위성 · 소천체는 힐 구 기준.
+# 이 안에 있으면 "그 천체 부근"으로 본다.
+SOI_KM = {
+    "Mercury (planet)": 112_000, "Venus": 616_000, "Earth": 925_000, "Mars": 577_000,
+    "Jupiter": 48_200_000, "Saturn": 54_800_000, "Uranus": 51_800_000, "Neptune": 86_800_000,
+    "Moon": 66_000, "Phobos (moon)": 17, "Deimos (moon)": 25,
+    "Io (moon)": 10_500, "Europa (moon)": 13_400, "Ganymede (moon)": 32_000, "Callisto (moon)": 49_700,
+    "Titan (moon)": 52_000, "Enceladus": 950, "Triton (moon)": 45_000,
+    "Pluto": 3_100_000, "Charon (moon)": 9_000, "Ceres (dwarf planet)": 77_000,
+}
+DEFAULT_SOI_KM = 1_000      # 목록에 없는 소행성 · 혜성 · 왜행성 — 근접 탐사 거리 수준
+
+
+def _describe_direct_position(pos: list[float], sc: dict | None, bodies: dict[str, Item]) -> str:
+    """Horizons로 계산한 위치를 설명한다.
+
+    SATCAT 궤도 중심은 발사 · 순항 단계 값이 남아 있기도 하다 (예: 화성 정찰위성 → SU).
+    그래서 실제 위치가 어느 천체의 중력 영향권 안인지 먼저 본다. 여러 영향권이 겹치면
+    가장 작은(구체적인) 쪽을 고른다 — 달 궤도선은 지구가 아닌 달, 목성 궤도선은 목성.
+    라그랑주점 · 탈출 궤도는 SATCAT을 따른다.
+    """
+    center = (sc or {}).get("ORBIT_CENTER")
+    if center in ("EL1", "EL2"):
+        return ORBIT_CENTER[center][0]
+    inside = []
+    for title, body in bodies.items():
+        if title == "Sun" or not body.position_au:
+            continue
+        soi = SOI_KM.get(title, DEFAULT_SOI_KM)
+        if vector_norm(vector_sub(pos, body.position_au)) * AU_KM < soi:
+            inside.append((soi, body))
+    if inside:
+        return f"{min(inside, key=lambda t: t[0])[1].name} 부근"
+    if center == "SS":
+        return ORBIT_CENTER["SS"][0]
+    return "심우주 (태양 궤도)"
+
+
 @dataclass
 class Placement:
     location: str                               # 사람이 읽는 위치 설명
@@ -188,10 +226,7 @@ def locate(sc: dict | None, horizons_pos: list[float] | None, earth: list[float]
     """
     if horizons_pos:
         km = vector_norm(vector_sub(horizons_pos, earth)) * AU_KM
-        where = "심우주"
-        if sc and sc.get("ORBIT_CENTER") in ORBIT_CENTER and not sc.get("DECAY_DATE"):
-            label, body_title = ORBIT_CENTER[sc["ORBIT_CENTER"]]
-            where = f"{label} {ORBIT_TYPE.get(sc.get('ORBIT_TYPE'), '궤도')}" if body_title else label
+        where = _describe_direct_position(horizons_pos, sc, bodies)
         return Placement(
             location=f"{where} (Horizons 직접 계산)",
             distance=Distance(km=km, basis="horizons", reference=REF_GEOCENTER),
