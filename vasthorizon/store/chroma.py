@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import threading
 from functools import lru_cache
 
 import chromadb
@@ -27,6 +28,12 @@ from langchain_core.embeddings import Embeddings
 from vasthorizon.config import get_settings
 
 COLLECTION_CONFIG = {"hnsw": {"space": "cosine"}}
+
+# 프로세스 안에서 Chroma 읽기 · 쓰기 구간을 직렬화한다.
+# 로컬 Chroma는 방금 쓴 컬렉션을 검색하기 직전에 다른 컬렉션을 읽으면 내부 오류가 날 수 있어서
+# (vasthorizon/rag/retrieval.py 설명 참고), 동시 요청이 색인 · 검색을 섞지 않게 한다.
+# LLM 호출처럼 오래 걸리는 작업은 이 잠금 밖에서 한다.
+LOCK = threading.RLock()
 STAGING_SUFFIX = "__staging"
 BACKUP_SUFFIX = "__backup"
 

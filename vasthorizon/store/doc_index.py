@@ -182,8 +182,11 @@ class DocIndex:
 
     def ensure(self, item: dict, docs: list[Document], links: dict[str, dict],
                missing: Iterable[str] = ()) -> DocIndexReport:
-        return sync_item_docs(item, docs, links, self.collection, self.embedding,
-                              self.chunking.chunk_size, self.chunking.chunk_overlap, missing)
+        with chroma.LOCK:
+            # 재구축으로 컬렉션이 교체됐을 수 있으므로 이름으로 다시 연다
+            self.collection = chroma.open_collection(self.name, self.embedding, self.db)
+            return sync_item_docs(item, docs, links, self.collection, self.embedding,
+                                  self.chunking.chunk_size, self.chunking.chunk_overlap, missing)
 
     def indexed_items(self) -> Counter:
         """항목 ID → 청크 수."""

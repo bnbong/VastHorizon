@@ -188,7 +188,48 @@ python -m scripts.ask --graph                                               # La
 
 ---
 
-## 10. 테스트
+## 10. API 서버
+
+```bash
+uvicorn vasthorizon.api.app:app --port 8000
+```
+
+- API 문서(요청 · 응답 형식): http://localhost:8000/docs
+
+| 메서드 · 경로 | 역할 |
+|---|---|
+| `GET /api/health` | 키 · 색인 상태와 화면 안내 (키 값은 노출하지 않음) |
+| `GET /api/items` · `GET /api/items/{id}` | 항목 목록 (`group` · `q` 필터) · 상세 |
+| `POST /api/ask` | 질문 → 근거 기반 답변 |
+| `POST /api/ask/stream` | 같은 질문을 진행 상태와 함께 (Server-Sent Events) |
+| `GET` · `DELETE /api/history/{id}?session_id=` | 항목별 대화 기록 조회 · 삭제 |
+
+```bash
+curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: application/json" \
+  -d '{"session_id": "demo-session-01", "item_id": "Q48469", "question": "보이저 1호는 태양계를 벗어났나?"}'
+```
+
+| 오류 코드 | 상황 |
+|---|---|
+| `missing_key` (503) | GMS 키 없음 |
+| `index_missing` (503) | 항목 색인 없음 |
+| `index_incompatible` (503) | 색인과 임베딩 설정 불일치 — 재구축 필요 |
+| `item_not_found` (404) · `invalid_request` (422) | 잘못된 항목 · 요청 |
+| `internal` (500) | 그 밖의 오류 — 자세한 내용은 서버 로그에만 |
+
+대화 기록은 서버 메모리에 (세션, 항목)별로 둔다. 서버를 다시 시작하면 지워진다.
+
+| 동시성 정책 | 동작 |
+|---|---|
+| 서비스 초기화 | 첫 요청에서 한 번만 생성 — 동시에 들어온 첫 요청들도 같은 서비스 · 대화 기록을 쓴다 |
+| 같은 대화(세션 + 항목) | 한 번에 한 질문 — 처리 중이면 `409 conversation_busy` (일반 · SSE 동일, SSE는 스트림 열기 전) |
+| 다른 대화 | 서로 기다리지 않고 독립 처리 |
+| 실패한 질문 | 처리 중 표시를 풀어 다음 질문이 바로 가능 |
+| 처리 중 기록 삭제 | 그 질문의 답변은 돌려주되 `recorded: false` — 지운 기록에 다시 섞이지 않음. 삭제 직후 새 질문 가능 |
+
+---
+
+## 11. 테스트
 
 외부 API를 호출하지 않는 회귀 테스트다.
 
@@ -198,7 +239,7 @@ python -m unittest discover -s tests -t .
 
 ---
 
-## 11. 설정 파일
+## 12. 설정 파일
 
 검색 품질에 영향을 주는 값은 `config.toml`에서 바꾼다.
 

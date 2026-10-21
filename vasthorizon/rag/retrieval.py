@@ -136,15 +136,16 @@ def retrieve_evidence(item: dict, question: str, embedding: Embeddings | None = 
     embedding = embedding or chroma.default_embedding()
     warnings: list[str] = []
 
-    # 1. 외부 문서 검색을 먼저 한다 (모듈 설명의 '검색 순서' 참고)
-    try:
-        doc_evs = search_docs(item["id"], question, embedding, db, settings.collections.docs, cfg, search_type)
-        status = "ok" if doc_evs else "empty"
-    except SEARCH_OUTAGE_ERRORS as e:
-        doc_evs, status = [], "failed"
-        reason = "검색 저장소 내부 오류" if isinstance(e, chromadb.errors.InternalError) else describe_api_error(e)
-        warnings.append(f"문서 검색 실패({reason}) — 항목 정보만으로 답합니다.")
+    with chroma.LOCK:                     # 동시 요청의 색인 · 검색이 섞이지 않게 (chroma.LOCK 설명)
+        # 1. 외부 문서 검색을 먼저 한다 (모듈 설명의 '검색 순서' 참고)
+        try:
+            doc_evs = search_docs(item["id"], question, embedding, db, settings.collections.docs, cfg, search_type)
+            status = "ok" if doc_evs else "empty"
+        except SEARCH_OUTAGE_ERRORS as e:
+            doc_evs, status = [], "failed"
+            reason = "검색 저장소 내부 오류" if isinstance(e, chromadb.errors.InternalError) else describe_api_error(e)
+            warnings.append(f"문서 검색 실패({reason}) — 항목 정보만으로 답합니다.")
 
-    # 2. 항목 메타데이터 청크 — 항상 근거 1
-    item_ev = item_evidence(item["id"], db, settings.collections.items)
+        # 2. 항목 메타데이터 청크 — 항상 근거 1
+        item_ev = item_evidence(item["id"], db, settings.collections.items)
     return Retrieval(evidences=merge(item_ev, doc_evs), doc_search=status, warnings=warnings)
