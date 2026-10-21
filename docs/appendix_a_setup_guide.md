@@ -68,7 +68,34 @@ python -m scripts.check_env --llm    # GMS 채팅 · 임베딩까지 1회 호출
 
 ---
 
-## 5. 설정 파일
+## 5. 항목 메타데이터 수집
+
+```bash
+python -m scripts.collect_items                     # data/raw 캐시가 있으면 재사용
+python -m scripts.collect_items --refresh           # 외부 출처에서 다시 받기
+python -m scripts.collect_items --epoch 2026-10-21  # Horizons 위치 기준일 지정
+```
+
+| 동작 | 설명 |
+|---|---|
+| 결과 | `data/items.json` (커밋 대상) |
+| 원본 캐시 | `data/raw/` — 파일마다 `*.meta.json`에 수집 시각 기록 (커밋 제외) |
+| 저장 조건 | 최소 100건 · 5개 그룹 · QID 중복 없음 · 좌표 · 거리 · 출처 검증 통과 |
+| 실패 시 | 종료 코드 1, 기존 `data/items.json`은 그대로 유지 |
+
+---
+
+## 6. 테스트
+
+외부 API를 호출하지 않는 회귀 테스트다.
+
+```bash
+python -m unittest discover -s tests -t .
+```
+
+---
+
+## 7. 설정 파일
 
 검색 품질에 영향을 주는 값은 `config.toml`에서 바꾼다.
 
