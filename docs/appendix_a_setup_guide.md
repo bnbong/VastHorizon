@@ -104,7 +104,36 @@ python -m scripts.index_items --rebuild          # 컬렉션을 지우고 처음
 
 ---
 
-## 7. 테스트
+## 7. 외부 문서 수집
+
+```bash
+# 질문 하나로 수집 흐름 확인 — 검색어 · 후보별 색인/제외 사유 · 연결 문서 출력
+python -m scripts.collect_docs --item "보이저 1호" --question "보이저 1호는 태양계를 벗어났나?"
+
+# 모든 항목의 자체 문서(위키 문서 · NASA 미션 설명)를 미리 받기 — LLM 호출 없음
+python -m scripts.collect_docs --own
+```
+
+| 동작 | 설명 |
+|---|---|
+| 검색어 | 프롬프트 1이 추출, 항목 이름은 항상 포함 |
+| 선별 | 프롬프트 2가 제목 · 요약만 보고 고름 — 본문은 선별된 문서만 받음 |
+| 항목 자체 문서 | 선별 · 길이 규칙과 상관없이 항상 연결 |
+| 검색 결과 캐시 | 검색어별, **정상 응답만** 저장 — 같은 검색어는 검색 API를 다시 부르지 않음 |
+| 선별 판정 | (항목, 질문)별, **프롬프트 성공 시에만** 저장 — 같은 질문은 LLM 호출 없음, 새 질문은 같은 후보도 다시 판정 |
+| 본문 캐시 | 문서별, **본문이 있을 때만** 저장 |
+| 실패 | 검색 · 선별 · 본문 실패는 완료로 기록하지 않음 — 다시 실행하면 실패한 단계부터 이어서 처리 |
+| 위치 | `data/cache/` (커밋 제외) |
+
+예전 형식 캐시가 남아 있거나 수집이 꼬였다고 의심되면 한 번 정리한다.
+
+```bash
+python -m scripts.collect_docs --repair-cache   # 예전 기록 변환 · 빈 본문 · 확인 안 된 빈 검색 결과 삭제
+```
+
+---
+
+## 8. 테스트
 
 외부 API를 호출하지 않는 회귀 테스트다.
 
@@ -114,7 +143,7 @@ python -m unittest discover -s tests -t .
 
 ---
 
-## 8. 설정 파일
+## 9. 설정 파일
 
 검색 품질에 영향을 주는 값은 `config.toml`에서 바꾼다.
 
@@ -126,6 +155,9 @@ python -m unittest discover -s tests -t .
 | `retrieval` | `search_type` | `similarity` | `similarity` 또는 `mmr` |
 | `retrieval` | `top_k_docs` | 6 | 외부 문서 근거 수 |
 | `retrieval` | `mmr_fetch_k` / `mmr_lambda` | 30 / 0.5 | MMR 후보 수 · 다양성 가중치 |
+| `collect` | `max_queries` / `max_selected` | 4 / 4 | 검색어 수 · 한 번에 고를 문서 수 |
+| `collect` | `min_summary_chars` / `min_doc_chars` | 40 / 200 | 선별 전 요약 · 본문 최소 길이 (항목 자체 문서는 예외) |
+| `collect` | `max_doc_chars` | 20000 | 문서 본문 최대 길이 |
 | `http` | `min_interval_sec` | 0.5 | 같은 호스트 호출 간격 |
 
 비교 실험은 설정 파일을 복사해 값만 바꾸고 지정한다.

@@ -54,6 +54,16 @@ class RetrievalConfig:
 
 
 @dataclass(frozen=True)
+class CollectConfig:
+    max_queries: int
+    candidates_per_query: int
+    max_selected: int
+    min_summary_chars: int
+    min_doc_chars: int
+    max_doc_chars: int
+
+
+@dataclass(frozen=True)
 class HttpConfig:
     app_name: str
     min_interval_sec: float
@@ -68,6 +78,7 @@ class Settings:
     collections: CollectionConfig
     chunking: ChunkingConfig
     retrieval: RetrievalConfig
+    collect: CollectConfig
     http: HttpConfig
     config_path: Path
 
@@ -98,6 +109,7 @@ def get_settings() -> Settings:
         collections=CollectionConfig(**raw["collections"]),
         chunking=chunking,
         retrieval=retrieval,
+        collect=CollectConfig(**raw["collect"]),
         http=HttpConfig(**raw["http"]),
         config_path=config_path,
     )

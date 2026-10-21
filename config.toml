@@ -30,6 +30,14 @@ mmr_fetch_k = 30             # MMR 후보 수
 mmr_lambda = 0.5             # 1에 가까울수록 관련성, 0에 가까울수록 다양성
 item_candidates = 20         # 조건 탐색에서 LLM에 넘길 항목 후보 수
 
+[collect]
+max_queries = 4              # 프롬프트 1이 뽑을 검색어 수 (항목 이름은 별도로 항상 포함)
+candidates_per_query = 5     # 검색어마다 가져올 후보 수
+max_selected = 4             # 프롬프트 2가 한 번에 고를 문서 수
+min_summary_chars = 40       # 요약이 이보다 짧은 후보는 선별 전에 뺀다 (항목 자체 문서는 예외)
+min_doc_chars = 200          # 본문이 이보다 짧으면 색인하지 않는다 (항목 자체 문서는 예외)
+max_doc_chars = 20000        # 문서 본문 최대 길이 — 넘으면 자른다 (임베딩 토큰 절약)
+
 [http]
 app_name = "VastHorizon/0.1"
 min_interval_sec = 0.5   # 같은 호스트에 대한 최소 호출 간격
