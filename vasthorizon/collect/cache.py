@@ -15,6 +15,8 @@
   선별 판정은 없으므로 다음 실행에서 다시 선별한다.
 - 정상 응답 표시(status=ok)가 없는 빈 검색 결과는 오류로 생겼을 수 있어 캐시 미스로 본다.
 - 본문이 빈 문서 캐시는 지우고 다시 받는다.
+- 본문 캐시가 없는 연결 문서는 연결을 유지한다 — 캐시 유실은 연결 해제가 아니다.
+  (연결 해제는 Collector.unlink로만 한다)
 """
 
 from __future__ import annotations
@@ -139,7 +141,7 @@ class CollectCache:
     def repair(self) -> dict:
         """예전 형식 · 실패 흔적을 한 번에 정리한다. 정리한 건수를 돌려준다."""
         report = {"migrated_manifests": 0, "removed_empty_docs": 0,
-                  "removed_unverified_searches": 0, "unlinked_missing_docs": 0}
+                  "removed_unverified_searches": 0, "missing_linked_docs": 0}
         for path in (self.root / "docs").rglob("*.json"):
             data = self._read(path)
             if not data or not str(data.get("text", "")).strip():
@@ -155,9 +157,7 @@ class CollectCache:
             manifest = migrate_manifest(raw)
             if manifest is not raw:
                 report["migrated_manifests"] += 1
-            for doc_id in list(manifest["docs"]):
-                if self.get_doc(doc_id) is None:
-                    del manifest["docs"][doc_id]
-                    report["unlinked_missing_docs"] += 1
+            # 캐시가 없는 연결 문서는 세기만 한다 — 연결 정보는 지우지 않고, 다음 수집 · 색인 때 다시 받는다
+            report["missing_linked_docs"] += sum(1 for doc_id in manifest["docs"] if self.get_doc(doc_id) is None)
             self.put_manifest(manifest)
         return report

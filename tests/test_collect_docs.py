@@ -408,16 +408,17 @@ class RepairTest(CollectorTestBase):
 
         report = self.cache.repair()
         self.assertEqual(report, {"migrated_manifests": 1, "removed_empty_docs": 1,
-                                  "removed_unverified_searches": 1, "unlinked_missing_docs": 1})
+                                  "removed_unverified_searches": 1, "missing_linked_docs": 1})
         manifest = self.cache.get_manifest("Q48469")
         self.assertNotIn("queries", manifest)
         self.assertEqual(manifest["questions"][Q1]["queries"], ["태양권계면"])
         self.assertEqual(manifest["questions"][Q1]["judged"], {})
-        self.assertEqual(list(manifest["docs"]), ["wiki:1"])
+        self.assertEqual(sorted(manifest["docs"]), ["wiki:1", "wiki:404"])   # 캐시 누락은 연결 해제가 아니다
 
         result, llm = self.collect(Q1, {"selected": []})                   # 변환 후: 검색어 재사용, 선별은 다시
         self.assertEqual(len(llm.received), 1)
-        self.assertTrue(result.complete)
+        self.assertEqual(result.missing, ["wiki:404"])                     # 복구 시도 실패 — 누락으로 알림
+        self.assertIn("본문 복구", [f.step for f in result.failures])
 
 
 class ParsingTest(unittest.TestCase):

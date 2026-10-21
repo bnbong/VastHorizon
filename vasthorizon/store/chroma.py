@@ -30,6 +30,15 @@ COLLECTION_CONFIG = {"hnsw": {"space": "cosine"}}
 STAGING_SUFFIX = "__staging"
 BACKUP_SUFFIX = "__backup"
 
+ITEMS_REBUILD = "python -m scripts.index_items --rebuild"
+DOCS_REBUILD = "python -m scripts.index_docs --rebuild"
+
+
+def rebuild_hint(name: str) -> str:
+    """컬렉션별 재구축 명령. 임시 · 백업 이름이면 원래 이름 기준으로 찾는다."""
+    base = name.removesuffix(STAGING_SUFFIX).removesuffix(BACKUP_SUFFIX)
+    return DOCS_REBUILD if base == get_settings().collections.docs else ITEMS_REBUILD
+
 
 class EmbeddingMismatchError(RuntimeError):
     """컬렉션 벡터와 현재 임베딩 설정이 호환되지 않을 때."""
@@ -67,7 +76,7 @@ def check_identity(collection, identity: dict) -> None:
     stored = stored_identity(collection)
     if collection.count() == 0:
         return
-    hint = "python -m scripts.index_items --rebuild 로 전체 재구축하세요."
+    hint = f"{rebuild_hint(collection.name)} 로 전체 재구축하세요."
     if not stored["embedding_model"]:
         raise EmbeddingMismatchError(f"컬렉션 {collection.name}에 임베딩 식별 정보가 없습니다 (예전 색인). {hint}")
     if stored["embedding_model"] != identity["embedding_model"]:
@@ -119,6 +128,14 @@ def vector_store(name: str, embedding: Embeddings | None = None,
         check_identity(db.get_collection(name), embedding_identity(embedding))
     return Chroma(client=db, collection_name=name, embedding_function=embedding,
                   collection_configuration=COLLECTION_CONFIG, create_collection_if_not_exists=False)
+
+
+def raw_metadatas(name: str, db: chromadb.ClientAPI | None = None) -> list[dict]:
+    """임베딩 호환성 검사 없이 메타데이터만 읽는다 — 모델이 바뀐 컬렉션의 재구축 대상을 찾을 때 쓴다."""
+    db = db or client()
+    if not _exists(name, db):
+        return []
+    return db.get_collection(name).get(include=["metadatas"])["metadatas"]
 
 
 def collection_count(name: str, db: chromadb.ClientAPI | None = None) -> int:

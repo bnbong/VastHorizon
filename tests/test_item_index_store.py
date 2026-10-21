@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import io
 import json
 import tempfile
@@ -19,9 +18,9 @@ from pathlib import Path
 from unittest import mock
 
 import chromadb
-from langchain_core.embeddings import Embeddings
 
 from scripts import index_items as index_cli
+from tests.fakes import FakeEmbedding
 from vasthorizon.data import catalog
 from vasthorizon.data.items.common import LY_KM
 from vasthorizon.llm import MissingApiKeyError
@@ -29,30 +28,6 @@ from vasthorizon.store import chroma, item_index
 from vasthorizon.store.item_index import IndexingError, rebuild_items, sync_items
 
 REF_YEAR = 2026
-
-
-class FakeEmbedding(Embeddings):
-    """결정적 가짜 임베딩. 호출 횟수를 세고, fail_on_call번째 호출에서 실패할 수 있다."""
-
-    def __init__(self, size: int | None = 16, model: str = "fake-a", vector_len: int | None = None,
-                 fail_on_call: int | None = None):
-        self.size, self.model = size, model
-        self.vector_len = vector_len or size
-        self.fail_on_call = fail_on_call
-        self.calls = 0
-
-    def _vec(self, text: str) -> list[float]:
-        digest = hashlib.sha256(f"{self.model}:{text}".encode()).digest()
-        return [b / 255 for b in (digest * 4)[:self.vector_len]]
-
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        self.calls += 1
-        if self.fail_on_call == self.calls:
-            raise RuntimeError("임베딩 API 장애 (모의)")
-        return [self._vec(t) for t in texts]
-
-    def embed_query(self, text: str) -> list[float]:
-        return self._vec(text)
 
 
 def dist(km: float) -> dict:

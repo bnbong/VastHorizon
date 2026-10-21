@@ -76,6 +76,8 @@ class CollectResult:
     decisions: list[Decision] = field(default_factory=list)
     new_docs: list[Document] = field(default_factory=list)      # 이번에 새로 연결한 문서
     docs: list[Document] = field(default_factory=list)          # 이 항목에 연결된 전체 문서 (색인 대상)
+    links: dict[str, dict] = field(default_factory=dict)        # 문서 ID → 역할 · 검색어 · 연결 시각
+    missing: list[str] = field(default_factory=list)            # 연결됐지만 본문을 얻지 못한 문서 (색인 시 보존)
     llm_calls: int = 0
     question_cached: bool = False                               # 같은 질문의 검색어를 재사용함
     failures: list[StepFailure] = field(default_factory=list)
@@ -87,6 +89,20 @@ class CollectResult:
     @property
     def warnings(self) -> list[str]:
         return [f.message() for f in self.failures]
+
+
+@dataclass
+class LinkedDocs:
+    """항목에 연결된 문서. missing은 연결은 그대로지만 본문을 얻지 못한 문서 ID다."""
+
+    docs: list[Document] = field(default_factory=list)
+    links: dict[str, dict] = field(default_factory=dict)
+    missing: list[str] = field(default_factory=list)
+    failures: list[StepFailure] = field(default_factory=list)
+
+    @property
+    def complete(self) -> bool:
+        return not self.missing
 
 
 class Collector:
@@ -201,22 +217,58 @@ class Collector:
             record["at"] = now()
         self.cache.put_manifest(manifest)
 
-        result.docs = self.linked_documents(manifest)
+        linked = self._resolve_links(manifest, result.failures)
+        result.docs, result.links, result.missing = linked.docs, linked.links, linked.missing
         result.new_docs = [d for d in result.docs if d.doc_id not in before]
         state = "수집 완료" if result.complete else f"일부 실패 {len(result.failures)}건"
         progress(f"{state} — 새 문서 {len(result.new_docs)}건, 연결 문서 {len(result.docs)}건")
         return result
 
-    def linked_documents(self, manifest: dict) -> list[Document]:
-        """연결된 문서 중 본문이 있는 것만. 캐시가 사라진 문서는 연결도 푼다."""
-        docs = []
-        for doc_id in list(manifest["docs"]):
-            doc = self.cache.get_doc(doc_id)
-            if doc:
-                docs.append(doc)
-            else:
-                del manifest["docs"][doc_id]
-        return docs
+    # ── 연결 문서 ─────────────────────────────────────────────────────────
+
+    def linked(self, item_id: str) -> "LinkedDocs":
+        """이미 연결된 문서 — 수집 없이 색인만 다시 할 때 쓴다. 캐시가 없는 문서는 다시 받아 복구한다."""
+        manifest = self.cache.get_manifest(item_id)
+        failures: list[StepFailure] = []
+        linked = self._resolve_links(manifest, failures)
+        linked.failures = failures
+        return linked
+
+    def unlink(self, item_id: str, doc_id: str) -> bool:
+        """문서 연결을 명시적으로 푼다. 다음 색인 동기화에서 이 문서의 청크가 지워진다."""
+        manifest = self.cache.get_manifest(item_id)
+        if manifest["docs"].pop(doc_id, None) is None:
+            return False
+        self.cache.put_manifest(manifest)
+        return True
+
+    def _resolve_links(self, manifest: dict, failures: list[StepFailure]) -> "LinkedDocs":
+        """연결된 문서의 본문을 캐시에서 읽는다. 캐시가 없으면 연결 정보로 다시 받는다.
+
+        끝내 본문을 얻지 못한 문서는 missing으로 돌려준다. 연결 정보는 지우지 않는다 —
+        캐시 유실을 '연결 해제'로 오인해 색인에서 청크가 삭제되는 일을 막기 위해서다.
+        """
+        result = LinkedDocs()
+        for doc_id, link in manifest["docs"].items():
+            doc = self.cache.get_doc(doc_id) or self._restore(doc_id, link, failures)
+            if doc is None:
+                result.missing.append(doc_id)
+                continue
+            result.docs.append(doc)
+            result.links[doc_id] = link
+        return result
+
+    def _restore(self, doc_id: str, link: dict, failures: list[StepFailure]) -> Document | None:
+        source, _, key = doc_id.partition(":")
+        if source == "nssdca":
+            doc = self._nasa(key, failures)
+        else:
+            doc = self._wiki_by_title(link.get("title", ""), "본문 복구", failures)
+        if doc is None or doc.doc_id != doc_id:
+            if doc is not None:     # 제목이 다른 문서로 바뀐 경우 — 다른 ID로 연결하지 않는다
+                failures.append(StepFailure("본문 복구", link.get("title", doc_id), "문서 ID가 바뀌었습니다"))
+            return None
+        return doc
 
     # ── 단계별 도우미 ─────────────────────────────────────────────────────
 

@@ -133,7 +133,38 @@ python -m scripts.collect_docs --repair-cache   # 예전 기록 변환 · 빈 �
 
 ---
 
-## 8. 테스트
+## 8. 외부 문서 색인 (RAG 2)
+
+서비스에서는 **질문이 들어온 항목의 문서만** 그때 청킹 · 색인한다 (토큰 할당량 절약).
+아래 명령은 확인 · 사전 색인용이다.
+
+```bash
+python -m scripts.index_docs --item "보이저 1호" --dry-run   # 임베딩 없이 청크 수 · 글자 수 확인
+python -m scripts.index_docs --item "보이저 1호"             # 이미 수집한 문서를 청킹 · 색인
+python -m scripts.index_docs --demo                          # 시연용 대표 12개 항목의 자체 문서 수집 · 색인 (LLM 없음)
+python -m scripts.index_docs --reindex                       # 색인된 항목을 현재 청크 설정으로 다시 맞춤
+python -m scripts.index_docs --rebuild                       # 임베딩 모델 변경 시 — 임시 컬렉션에서 재구축 후 교체
+python -m scripts.index_docs --stats                         # 컬렉션 현황
+```
+
+임베딩 모델 · 차원이 바뀌면 일반 실행은 불일치 오류로 멈춘다. 컬렉션별 복구 명령은 다음과 같다.
+
+| 컬렉션 | 재구축 명령 | 실패 시 |
+|---|---|---|
+| `cosmos_items` | `python -m scripts.index_items --rebuild` | 기존 색인 보존 |
+| `cosmos_docs` | `python -m scripts.index_docs --rebuild` | 기존 색인 보존 · `cosmos_items`는 건드리지 않음 |
+
+| 동작 | 설명 |
+|---|---|
+| 청크 ID | `항목ID:문서ID:순번` — 여러 항목이 같은 문서를 수집해도 덮어쓰지 않음 |
+| 청킹 | 위키는 절 제목 경계 우선 + 절 경로 머리말, NASA는 문단 · 문장 경계 |
+| 증분 | 항목 단위로 비교해 바뀐 청크만 재임베딩, 연결이 풀린 문서의 청크만 삭제 |
+| 보존 | 본문이 비었거나 캐시가 없는 문서는 기존 청크를 지우지 않음 (캐시는 연결 정보로 다시 받아 복구) |
+| 청크 설정 변경 | `config.toml [chunking]` 수정 후 `--reindex` — 비교 실험은 `[collections] docs`도 바꿔 별도 컬렉션에 |
+
+---
+
+## 9. 테스트
 
 외부 API를 호출하지 않는 회귀 테스트다.
 
@@ -143,7 +174,7 @@ python -m unittest discover -s tests -t .
 
 ---
 
-## 9. 설정 파일
+## 10. 설정 파일
 
 검색 품질에 영향을 주는 값은 `config.toml`에서 바꾼다.
 

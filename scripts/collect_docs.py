@@ -64,7 +64,7 @@ def run_repair() -> int:
     print(f"  예전 형식 수집 기록 변환     {report['migrated_manifests']}건")
     print(f"  빈 본문 문서 캐시 삭제       {report['removed_empty_docs']}건")
     print(f"  확인 안 된 빈 검색 결과 삭제 {report['removed_unverified_searches']}건")
-    print(f"  사라진 문서 연결 해제        {report['unlinked_missing_docs']}건")
+    print(f"  본문 캐시가 없는 연결 문서   {report['missing_linked_docs']}건 (연결 유지 — 다음 수집 · 색인 때 다시 받음)")
     return 0
 
 
