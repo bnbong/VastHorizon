@@ -1,0 +1,23 @@
+# 비밀 값 (NF2003)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# 실행 중 생성되는 데이터 — 스크립트로 다시 만들 수 있다
+data/chroma/
+data/cache/
+data/raw/
+
+# 사용하지 않는 컨셉아트
+docs/concept-art/
+
+# 편집기 · OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

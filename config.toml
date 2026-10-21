@@ -1,0 +1,37 @@
+# VastHorizon 실행 설정
+#
+# 검색 품질에 영향을 주는 값은 코드가 아니라 이 파일에서 바꾼다. (F2005 · F2006 · F2014)
+# 비교 실험은 이 파일을 복사해 값을 바꾸고 VH_CONFIG 환경변수로 지정한다.
+
+[llm]
+# SSAFY GMS — OpenAI 호환 엔드포인트. GPT 모델만 사용한다.
+base_url = "https://gms.ssafy.io/gmsapi/api.openai.com/v1/"
+chat_model = "gpt-5.4-nano"
+embedding_model = "text-embedding-3-small"
+timeout_sec = 60
+
+[paths]
+data_dir = "data"
+chroma_dir = "data/chroma"
+cache_dir = "data/cache"
+
+[collections]
+items = "cosmos_items"   # 항목 메타데이터 — 항목당 1청크
+docs = "cosmos_docs"     # 외부 문서 청크
+
+[chunking]
+chunk_size = 1000
+chunk_overlap = 200
+
+[retrieval]
+search_type = "similarity"   # "similarity" | "mmr"
+top_k_docs = 6               # 외부 문서 청크 근거 수 (항목 청크 1건은 항상 별도 포함)
+mmr_fetch_k = 30             # MMR 후보 수
+mmr_lambda = 0.5             # 1에 가까울수록 관련성, 0에 가까울수록 다양성
+item_candidates = 20         # 조건 탐색에서 LLM에 넘길 항목 후보 수
+
+[http]
+app_name = "VastHorizon/0.1"
+min_interval_sec = 0.5   # 같은 호스트에 대한 최소 호출 간격
+max_retries = 4
+timeout_sec = 30
