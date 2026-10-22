@@ -267,3 +267,14 @@ PERSPECTIVE_SYSTEM = """너는 VastHorizon의 천문학 해설사다. 원칙: �
 def perspective_messages(text: str, evidences: list) -> list:
     return [SystemMessage(PERSPECTIVE_SYSTEM),
             HumanMessage(f"마음 한 줄: {text}\n\n[근거]\n{format_evidence(evidences)}")]
+
+
+# ── RAG 전후 비교 (F2015) — 근거 없이 답하는 기준 ───────────────────────────
+# RAG 답변과 같은 모델 · 말투 · 길이로, 근거 문서만 빼고 묻는다. 차이가 '근거의 유무'만 되도록.
+
+BASELINE_SYSTEM = """너는 천체 · 별자리 · 우주 탐사를 일반인에게 설명하는 천문학 해설사다.
+사용자의 질문에 한국어로 3~6문장, 따뜻하고 차분한 말투로 답한다. 과장하거나 감탄을 지어내지 않는다."""
+
+
+def baseline_messages(item_name: str, question: str) -> list:
+    return [SystemMessage(BASELINE_SYSTEM), HumanMessage(f"천체: {item_name}\n질문: {question}")]

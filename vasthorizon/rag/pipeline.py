@@ -46,6 +46,7 @@ class AnswerResult:
     evidences: list[Evidence]                   # 검색된 근거 전체 (검증 · 비교용)
     attempts: int = 1
     issues: list[str] = field(default_factory=list)
+    raw_answer: str = ""                        # 모델 원본 응답 — answer는 제어 표식을 지운 표시용
     collect: CollectResult | None = None
     index: DocIndexReport | None = None
     stages: dict[str, Stage] = field(default_factory=dict)
@@ -101,20 +102,21 @@ def ask(item: dict, question: str, history: list[dict] | None = None, progress: 
     t = time.perf_counter()
     progress("근거를 모아 답변을 쓰는 중")
     if graph is None:
-        from vasthorizon.features.live_position import live_evidence     # 질문한 날의 실시간 위치 근거
-        graph = build_graph(live=live_evidence)
+        from vasthorizon.features.extra_evidence import extra_evidence   # 실시간 위치 · 별자리 거리표 근거
+        graph = build_graph(live=extra_evidence)
     state = graph.invoke({
         "item": item, "question": question, "history": history or [], "search_type": search_type,
         "warnings": [],
     })
     stages["retrieve"] = Stage({"ok": "ok", "empty": "ok", "failed": "failed"}[state["doc_search"]])
     stages["answer"] = Stage("ok" if state["status"] != "rejected" else "failed", time.perf_counter() - t)
-    warnings += state.get("warnings", [])
+    warnings += state.get("warnings", []) + state.get("notes", [])
     if state["status"] == "rejected":
         warnings.append("답변이 인용 규칙을 두 번 어겨 내보내지 않았습니다.")
 
     return AnswerResult(
         question=question, answer=state["answer"], status=state["status"], cited=state["cited"],
         evidences=state["evidences"], attempts=state.get("attempts", 1), issues=state.get("issues", []),
+        raw_answer=state.get("raw_answer", state["answer"]),
         collect=collect_result, index=index_report, stages=stages, warnings=warnings,
     )

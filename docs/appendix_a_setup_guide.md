@@ -369,6 +369,21 @@ streamlit run app/streamlit_app.py      # http://localhost:8501
 
 같은 비교를 터미널에서: `python -m scripts.ask --item "보이저 1호" --question "…" --compare` (같은 함수 `features/compare.py`).
 
+### 검증 페이지 — RAG 전후 비교 (F2015)
+
+```bash
+python -m scripts.compare_rag              # 기획안 7장 질문 8개 — 근거 없이 · RAG로 답하게 하고 저장
+python -m scripts.compare_rag --only 3 7   # 일부만 다시 — 같은 (번호, 버전)만 바꾸고 나머지는 실행 정보째 둠
+```
+
+| 항목 | 내용 |
+|---|---|
+| 결과 | `data/eval/rag_comparison.json` (커밋 대상) — 검증 페이지 'RAG 전후 비교' 탭이 읽는다 |
+| 실행 정보 | 문항마다 실행 ID · 시각 · 모델 · 검색 · 청킹 설정 · 프롬프트 지문 · 코드 버전. 조건이 섞이면 탭에 경고 |
+| 이전 결과 | 전체 실행 시 `data/eval/archive/`에 보관 (지우지 않음) |
+| 비용 | 문항당 GMS 호출 약 4~5회 (근거 없이 1회 + RAG 질의응답) |
+| 판정 · 해설 | `docs/05_rag_comparison.md` |
+
 ---
 
 ## 11. 테스트

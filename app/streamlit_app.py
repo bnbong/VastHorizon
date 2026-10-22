@@ -1,9 +1,11 @@
-"""VastHorizon 검증 페이지 (Streamlit) — 검색 방식 비교 (F2014).
+"""VastHorizon 검증 페이지 (Streamlit) — 검색 방식 비교 (F2014) · RAG 전후 비교 (F2015).
 
     streamlit run app/streamlit_app.py
 
-같은 항목 · 질문 · 색인으로 유사도 검색과 MMR을 나란히 실행해 근거 청크를 비교한다.
-답변은 만들지 않는다 (LLM 호출 없음, 질문 임베딩 1회).
+| 탭               | 내용                                                                   |
+|------------------|------------------------------------------------------------------------|
+| 검색 방식 비교   | 같은 항목 · 질문 · 색인으로 유사도 검색과 MMR 근거를 나란히 (LLM 호출 없음) |
+| RAG 전후 비교    | 기획안 7장 질문을 근거 없이 · 근거와 함께 답한 결과를 나란히 (저장된 결과) |
 """
 
 from __future__ import annotations
@@ -122,10 +124,92 @@ def show_compare() -> None:
                 hit_card(hit, hit.chunk_id in overlap)
 
 
+def rag_result_path() -> Path:
+    return get_settings().paths.data_dir / "eval" / "rag_comparison.json"
+
+
+def load_rag_results() -> dict | None:
+    import json
+    path = rag_result_path()
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def answer_column(title: str, side: dict, evidence: bool) -> None:
+    st.markdown(f"#### {title}")
+    st.write(side["answer"])
+    m = side["metrics"]
+    st.caption(f"근거 인용 {m['citations']}회 · 수치 {m['numbers']}개 · {side['seconds']}초"
+               + (" · '확인되지 않음' 표현" if m["not_found"] else ""))
+    if evidence:
+        if not side.get("cited"):
+            st.warning("인용된 근거가 없습니다.")
+        for ev in side.get("cited", []):
+            where = f" › {ev['section']}" if ev.get("section") else ""
+            with st.expander(f"[근거 {ev['number']}] {ev['title']}{where} · {ev['source_type']}"):
+                st.caption(ev["kind"])
+                st.write(ev["excerpt"])
+                if ev.get("url"):
+                    st.markdown(f"[원문]({ev['url']})")
+        for w in side.get("warnings", []):
+            st.caption(f"⚠ {w}")
+
+
+def run_label(run: dict | None) -> str:
+    if not run:
+        return "실행 정보 없음 (이전 형식)"
+    return f"{run['run_id']} · {run['started_at'][:16].replace('T', ' ')} · {run['chat_model']}"
+
+
+def show_conditions(rows: list[dict]) -> None:
+    """결과에 섞인 실행 조건 — 다른 모델 · 설정의 결과를 한 번에 실행한 것처럼 보이지 않게."""
+    from vasthorizon.features.rag_compare import conditions_summary
+    summary = conditions_summary(rows)
+    if summary["mixed"]:
+        st.warning("서로 다른 조건(모델 · 검색 · 청킹 설정 · 프롬프트)으로 실행한 결과, 또는 실행 정보가 없는 결과가 섞여 있습니다. "
+                   "문항별 실행 정보를 함께 보세요.")
+    for g in summary["groups"]:
+        r = g["run"]
+        st.caption(f"조건 {r['conditions_id']} — 문항 {', '.join(map(str, g['numbers']))} · 모델 {r['chat_model']} · "
+                   f"임베딩 {r['embedding_model']} · 검색 {r['retrieval']['search_type']} (top-k {r['retrieval']['top_k']}, "
+                   f"fetch-k {r['retrieval']['fetch_k']}, λ {r['retrieval']['lambda']}) · 청크 {r['chunking']['size']}/{r['chunking']['overlap']} · "
+                   f"프롬프트 {r['prompts']} · 실행 {', '.join(sorted(g['run_ids']))}")
+    if summary["unknown"]:
+        st.caption(f"실행 정보 없음 — 문항 {', '.join(map(str, summary['unknown']))}")
+
+
+def show_rag_compare() -> None:
+    st.subheader("RAG 전후 비교 (F2015)")
+    st.caption("기획안 7장 '근거가 필요한 질문'을 같은 모델 · 말투 · 길이로, 근거 없이 / 근거와 함께 답하게 한 결과입니다. "
+               "판정과 해설은 docs/05_rag_comparison.md에 있습니다.")
+    data = load_rag_results()
+    if not data:
+        st.warning("저장된 비교 결과가 없습니다. `python -m scripts.compare_rag` 로 먼저 실행하세요.")
+        return
+    rows = data["rows"]
+    show_conditions(rows)
+    st.dataframe([{"#": r["number"], "버전": f"v{r.get('question_version', 1)}", "질문": r["question"],
+                   "RAG 없이 인용": r["baseline"]["metrics"]["citations"], "RAG 인용": r["rag"]["metrics"]["citations"],
+                   "RAG 상태": r["rag"]["status"], "실행": run_label(r.get("run")),
+                   "근거 문서": ", ".join(dict.fromkeys(ev["title"] for ev in r["rag"]["cited"]))} for r in rows],
+                 hide_index=True, use_container_width=True)
+    pick = st.selectbox("질문", rows, format_func=lambda r: f"{r['number']} (v{r.get('question_version', 1)}). {r['question']}  "
+                                                       f"(기준 항목: {r['item_name']})")
+    st.caption(f"이 문항의 실행: {run_label(pick.get('run'))}")
+    left, right = st.columns(2)
+    with left:
+        answer_column("RAG 없이 — 근거 없이 답함", pick["baseline"], evidence=False)
+    with right:
+        answer_column("RAG — 수집 문서를 근거로", pick["rag"], evidence=True)
+
+
 def main() -> None:
     st.set_page_config(page_title="VastHorizon 검증", page_icon="🔭", layout="wide")
     st.title("VastHorizon 검증 페이지")
-    show_compare()
+    retrieval_tab, rag_tab = st.tabs(["검색 방식 비교 (F2014)", "RAG 전후 비교 (F2015)"])
+    with retrieval_tab:
+        show_compare()
+    with rag_tab:
+        show_rag_compare()
 
 
 main()

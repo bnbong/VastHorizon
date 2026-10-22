@@ -230,6 +230,7 @@ def perspective(text: str | None = None, theme: str | None = None, items: list[d
     # ⑤ 근거 사실만으로 관점 넓히기 — 질의응답과 같은 인용 검증 · 재생성
     result = generate_validated(default_chat_model(llm), perspective_messages(text or THEMES[theme].label, evidences),
                                 evidences)
+    warnings += result["notes"]                  # 언어 혼입 등 — 답은 내보내되 알린다
     if result["status"] == "rejected":
         warnings.append("답변이 인용 규칙을 두 번 어겨 내보내지 않았습니다.")
     return PerspectiveResult(text=text, status=result["status"], answer=result["answer"], themes=themes,

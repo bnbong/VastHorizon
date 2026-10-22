@@ -109,7 +109,7 @@ class StreamlitAppTest(unittest.TestCase):
         at.button[0].click().run()
         self.assertFalse(at.exception)
         headers = [m.value for m in at.markdown if m.value.startswith("####")]
-        self.assertEqual(headers, ["#### 유사도 검색", "#### MMR 검색 (정확 비교로 재계산)"])
+        self.assertEqual(headers[:2], ["#### 유사도 검색", "#### MMR 검색 (정확 비교로 재계산)"])   # 뒤는 F2015 탭
         self.assertEqual(at.metric[0].value, "1개")                                     # 공통 근거 1개 (a)
         self.assertTrue(any("두 방식 공통" in m.value for m in at.markdown))
         self.assertTrue(any("top-k 2 · fetch-k 8 · lambda 0.5" in c.value for c in at.caption))

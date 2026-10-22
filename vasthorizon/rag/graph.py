@@ -62,7 +62,9 @@ class RagState(TypedDict, total=False):
     status: str                      # cited · not_found · rejected
     cited: list[Evidence]
     attempts: int
-    issues: list[str]                # 시도별 인용 규칙 위반 내용
+    issues: list[str]                # 시도별 규칙 위반 내용 (인용 · 언어)
+    raw_answer: str                  # 모델 원본 응답 (평가 추적용 — answer는 표시용)
+    notes: list[str]                 # 답은 내보내되 함께 알릴 경고 (예: 언어 혼입이 남음)
 
 
 def retry_message(issue: str) -> HumanMessage:
@@ -72,25 +74,67 @@ def retry_message(issue: str) -> HumanMessage:
         f"근거로 답할 수 없으면 \"{NOT_FOUND_SENTENCE}\"로 시작하라.")
 
 
+# 모델이 가끔 붙이는 제어 표식 — 화면에 그대로 나가지 않게 지운다 (F2015 비교에서 '⟦END⟧' 발견)
+_CONTROL_MARKS = re.compile(r"⟦[^⟧]{0,20}⟧|<\|[a-z_]{1,20}\|>")
+
+
+# 한국어 답에 근거에 없는 다른 문자 조각이 섞이는 경우 (F2015 비교에서 구자라트 문자 'એટલે' 발견).
+# 내용을 지우지 않는다 — 근거 속 원어 이름 · 직접 인용은 정당하다. 근거에 없는 조각일 때만 재생성을 요청하고,
+# 재생성 뒤에도 남으면 답은 그대로 두고 경고를 붙인다. (F2015 리뷰 P2 — 문자권 일괄 삭제 금지)
+_FOREIGN_SCRIPT = re.compile(r"[\u0900-\u0DFF\u0E00-\u0E7F]+")    # 데바나가리 ~ 싱할라 · 태국
+
+
+def clean_reply(text: str) -> str:
+    """명확한 모델 제어 표식만 지운다. 글자 · 언어를 근거로 내용을 지우지 않는다."""
+    return _CONTROL_MARKS.sub("", text or "").strip()
+
+
+def foreign_script_issue(text: str, evidences: list[Evidence]) -> str | None:
+    """근거 어디에도 없는 다른 문자 조각이 답에 있으면 그 내용을, 없으면 None."""
+    sources = " ".join(ev.text for ev in evidences)
+    stray = [run for run in dict.fromkeys(_FOREIGN_SCRIPT.findall(text or "")) if run not in sources]
+    return f"근거에 없는 다른 언어 문자({', '.join(stray)})가 섞였다" if stray else None
+
+
+def language_retry_message(issue: str) -> HumanMessage:
+    return HumanMessage(
+        f"직전 답변의 문제: {issue}. 같은 내용을 한국어로만 다시 써라. "
+        "근거에 적힌 고유 명칭의 원어 표기는 그대로 써도 된다. 근거 번호 규칙은 그대로 지킨다.")
+
+
 def generate_validated(model: BaseChatModel, messages: list, evidences: list[Evidence]) -> dict:
     """답변 생성 + 인용 검증 + 1회 재생성 (모듈 설명의 '답변 검증 정책').
 
     질의응답과 특화 기능(빛의 편지 등)이 같은 정책을 쓴다.
-    돌려주는 값: answer · status · cited · attempts · issues
+    돌려주는 값: answer(표시용) · raw_answer(모델 원본) · status · cited · attempts · issues · notes
+
+    - 인용 규칙 위반: 재생성, 끝내 위반이면 답을 내보내지 않는다 (rejected)
+    - 근거에 없는 다른 문자 혼입: 재생성, 끝내 남으면 답은 그대로 두고 notes에 경고 (내용 삭제 없음)
     """
     issues: list[str] = []
+    raw = ""
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        reply = model.invoke(messages)
-        cited = resolve_citations(reply.content, evidences)
+        raw = model.invoke(messages).content
+        cited = resolve_citations(clean_reply(raw), evidences)
         not_found = is_not_found(cited.text)
         issue = citation_issue(cited, not_found)
-        if issue is None:
-            return {"answer": cited.text, "status": "not_found" if not_found else "cited",
-                    "cited": cited.cited, "attempts": attempt, "issues": issues}
-        issues.append(issue)
-        messages = [*messages, AIMessage(reply.content), retry_message(issue)]
-    # 재생성도 규칙을 어겼다 — 근거 없는 본문을 내보내지 않는다
-    return {"answer": REJECTED_ANSWER, "status": "rejected", "cited": [], "attempts": MAX_ATTEMPTS, "issues": issues}
+        if issue is not None:
+            issues.append(issue)
+            messages = [*messages, AIMessage(raw), retry_message(issue)]
+            continue
+        result = {"answer": cited.text, "raw_answer": raw, "status": "not_found" if not_found else "cited",
+                  "cited": cited.cited, "attempts": attempt, "issues": issues, "notes": []}
+        language = foreign_script_issue(cited.text, evidences)
+        if language is None:
+            return result
+        issues.append(language)
+        if attempt == MAX_ATTEMPTS:
+            result["notes"] = ["답변에 근거에 없는 다른 언어 문자가 섞여 있습니다 — 내용은 지우지 않았습니다."]
+            return result
+        messages = [*messages, AIMessage(raw), language_retry_message(language)]
+    # 재생성도 인용 규칙을 어겼다 — 근거 없는 본문을 내보내지 않는다
+    return {"answer": REJECTED_ANSWER, "raw_answer": raw, "status": "rejected", "cited": [], "attempts": MAX_ATTEMPTS,
+            "issues": issues, "notes": []}
 
 
 def default_chat_model(llm: BaseChatModel | None) -> BaseChatModel:

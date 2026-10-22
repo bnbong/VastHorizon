@@ -96,6 +96,7 @@ def unfold(item: dict, figure: dict, ref_year: int, llm: BaseChatModel | None = 
         warnings.append(f"「{item['wiki_title']}」 문서를 받지 못해 거리 데이터만으로 설명합니다.")
 
     result = generate_validated(default_chat_model(llm), unfold_messages(item, evidences), evidences)
+    warnings += result["notes"]                  # 언어 혼입 등 — 답은 내보내되 알린다
     if result["status"] == "rejected":
         warnings.append("설명이 인용 규칙을 두 번 어겨 내보내지 않았습니다.")
     return UnfoldResult(item=item, figure=figure, stats=stats, explanation=result["answer"],

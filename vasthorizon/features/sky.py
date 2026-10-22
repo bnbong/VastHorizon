@@ -245,6 +245,7 @@ def sky_guide(view: SkyView, items: list[dict], ref_year: int, llm: BaseChatMode
 
     result = generate_validated(default_chat_model(llm), sky_messages(view.place(), evidences), evidences)
     warnings = list(view.notes)
+    warnings += result["notes"]                  # 언어 혼입 등 — 답은 내보내되 알린다
     if result["status"] == "rejected":
         warnings.append("안내가 인용 규칙을 두 번 어겨 내보내지 않았습니다.")
     return SkyGuide(view=view, guide=result["answer"], status=result["status"], cited=result["cited"],
