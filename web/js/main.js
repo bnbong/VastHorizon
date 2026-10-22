@@ -895,12 +895,14 @@ async function showHealth() {
     $("#notices").innerHTML = shown.map((n) =>
       `<div class="notice ${esc(n.level)}">${icon(NOTICE_ICON[n.level] ?? "info", 14)}${esc(NOTICE_COPY[n.code] ?? n.message)}</div>`).join("");
     app.classList.toggle("has-notice", shown.length > 0);
+    app.style.setProperty("--notice-h", `${$("#notices").offsetHeight}px`);   // 안내가 여러 줄이어도 크롬이 가리지 않게
     status.classList.toggle("warn", shown.length > 0);
     status.querySelector(".text").textContent = h.items_indexed
       ? `항목 ${h.items_indexed.toLocaleString("ko-KR")} · 문서 ${h.docs_indexed.toLocaleString("ko-KR")} 청크` : "색인 0건";
   } catch (e) {
     $("#notices").innerHTML = `<div class="notice error">${icon("circle-alert", 14)}${esc(errorText(e))}</div>`;
     app.classList.add("has-notice");
+    app.style.setProperty("--notice-h", `${$("#notices").offsetHeight}px`);
     status.classList.add("warn");
     status.querySelector(".text").textContent = "서버 연결 안 됨";
   }

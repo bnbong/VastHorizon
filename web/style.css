@@ -291,8 +291,10 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
 .notice.error { background: var(--status-error-bg); color: var(--status-error); }
 .notice.warning { background: var(--status-warn-bg); color: var(--status-warn); }
 .notice.info { background: var(--status-info-bg); color: var(--text-secondary); }
-.app.has-notice .chrome-top { top: 38px; }
-.app.has-notice .drawer { top: 54px; }
+/* 안내 띠 높이(줄 수에 따라 다름)만큼 크롬 · 서랍을 내린다 — main.js 가 --notice-h 를 잰다 */
+.app.has-notice .chrome-top { top: var(--notice-h, 38px); }
+.app.has-notice .stage-hint { top: calc(92px + var(--notice-h, 38px)); }
+.app.has-notice .drawer { top: calc(16px + var(--notice-h, 38px)); }
 
 .toast { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 5; display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px;
   border-radius: var(--radius-pill); background: var(--surface-glass-strong); backdrop-filter: var(--blur-glass); -webkit-backdrop-filter: var(--blur-glass);
