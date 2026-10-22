@@ -29,15 +29,19 @@ class Services:
     unfold: Callable | None = None              # (item, figure) → features.constellation.UnfoldResult
     sky_guide: Callable | None = None           # (view) → features.sky.SkyGuide
     perspective: Callable | None = None         # (text, theme) → features.perspective.PerspectiveResult
+    sky_stars: list = field(default_factory=list)  # 맨눈 별 [적경, 적위, 등급, 색지수] (data/sky_stars.json)
+    intro: Callable | None = None               # (item) → features.intro.item_intro 결과
+    stars: Callable | None = None               # (item_id) → 별자리 선의 별 임시 항목 | None (features/star_items.py)
+    map_cache: dict | None = None               # /api/map 응답 — 항목이 바뀌지 않으므로 한 번만 계산
 
     def __post_init__(self) -> None:
         self._by_id = {it["id"]: it for it in self.items}
 
     def item(self, item_id: str) -> dict:
-        try:
-            return self._by_id[item_id]
-        except KeyError:
-            raise ItemNotFoundError(item_id) from None
+        found = self._by_id.get(item_id) or (self.stars(item_id) if self.stars else None)
+        if found is None:
+            raise ItemNotFoundError(item_id)
+        return found
 
 
 def check_health(items: list[dict], ref_year: int) -> HealthResponse:
@@ -94,12 +98,14 @@ def default_services() -> Services:
     from datetime import date
 
     from vasthorizon.data.catalog import load_catalog
-    from vasthorizon.data.constellation_figures import load_figures
+    from vasthorizon.data.constellation_figures import load_figures, load_sky_stars
     from vasthorizon.features.constellation import unfold
     from vasthorizon.features.explore import explore
+    from vasthorizon.features.intro import item_intro
     from vasthorizon.features.light_letter import write_letter
     from vasthorizon.features.perspective import perspective
     from vasthorizon.features.sky import sky_guide
+    from vasthorizon.features.star_items import star_index, star_item
     from vasthorizon.rag.pipeline import ask
 
     try:
@@ -107,8 +113,12 @@ def default_services() -> Services:
         items, ref_year = catalog["items"], int(catalog["meta"]["collected_at"][:4])
     except FileNotFoundError:
         items, ref_year = [], date.today().year
+    figures = load_figures()
+    stars = star_index(figures)
     return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year), explore=explore,
-                    letter=lambda item: write_letter(item, ref_year), ref_year=ref_year, figures=load_figures(),
+                    letter=lambda item: write_letter(item, ref_year), ref_year=ref_year, figures=figures,
+                    stars=lambda item_id: star_item(item_id, stars, ref_year),
+                    sky_stars=load_sky_stars(),
                     unfold=lambda item, figure: unfold(item, figure, ref_year),
                     sky_guide=lambda view: sky_guide(view, items, ref_year),
-                    perspective=lambda text, theme: perspective(text, theme, items))
+                    perspective=lambda text, theme: perspective(text, theme, items), intro=item_intro)

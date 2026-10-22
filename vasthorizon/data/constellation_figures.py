@@ -92,6 +92,30 @@ def _distances(hips: list[int], refresh: bool) -> dict[int, dict]:
     return found
 
 
+def _korean_names(hips: list[int], refresh: bool) -> dict[int, dict]:
+    """히파르코스 번호 → {title: 한국어 위키 문서 제목, label: 한국어 이름}. 없는 값은 빠진다.
+
+    카탈로그 밖의 별자리 별도 그 별 자체로 물어볼 수 있게, 항목 문서(위키)와 한국어 이름을 연결한다.
+    """
+    found: dict[int, dict] = {}
+    for start in range(0, len(hips), BATCH):
+        batch = hips[start:start + BATCH]
+        values = " ".join(f'"HIP {h}"' for h in batch)
+        rows = sources.cached(f"constellation_star_names_{batch[0]}_{len(batch)}", lambda: sources.sparql(f"""
+            SELECT ?code ?title ?label WHERE {{
+              VALUES ?code {{ {values} }}
+              ?item p:P528 [ ps:P528 ?code ; pq:P972 wd:{HIPPARCOS} ] .
+              OPTIONAL {{ ?page schema:about ?item ; schema:isPartOf <https://ko.wikipedia.org/> ; schema:name ?title }}
+              OPTIONAL {{ ?item rdfs:label ?label FILTER(lang(?label) = "ko") }}
+            }}"""), refresh)
+        for r in rows:
+            rec = found.setdefault(int(r["code"].split()[-1]), {})
+            for key in ("title", "label"):
+                if r.get(key) and key not in rec:
+                    rec[key] = r[key]
+    return found
+
+
 def collect_figures(star_items: list[dict], constellation_items: list[dict], refresh: bool = False) -> dict:
     """별자리 약어 → {item_id, name, lines: [[HIP …]], stars: {HIP: {…}}}."""
     lines = sources.d3_file("constellations.lines.json", refresh)["features"]
@@ -136,13 +160,46 @@ def collect_figures(star_items: list[dict], constellation_items: list[dict], ref
 
     all_hips = sorted({int(h) for f in figures.values() for h in f["stars"]})
     distances = _distances(all_hips, refresh)
+    korean = _korean_names(all_hips, refresh)
     for figure in figures.values():
         for hip, star in figure["stars"].items():
             d = distances.get(int(hip))
             star["distance_ly"] = round(d["ly"], 2) if d else None
             star["distance_basis"] = d["basis"] if d else None
+            ko = korean.get(int(hip), {})
+            star["wiki_title"] = ko.get("title")                      # 한국어 위키 문서 (없으면 None)
+            if not star["item_id"] and ko.get("label"):                # 카탈로그 밖의 별은 한국어 이름으로
+                star["name"] = ko["label"]
     return {"figures": figures, "unmatched_vertices": unmatched,
             "licenses": LICENSES}
+
+
+def collect_sky_stars(refresh: bool = False) -> list[list[float]]:
+    """맨눈 별 (6등급까지, 약 5천 개) — 천구 화면의 배경 하늘. [적경, 적위, 등급, 색지수(B−V)].
+
+    출처는 별자리 선과 같은 d3-celestial stars.6 (BSD-3-Clause). 색지수가 없으면 0.6(태양 정도)으로 둔다.
+    """
+    rows = []
+    for f in sources.d3_file("stars.6.json", refresh)["features"]:
+        lon, lat = f["geometry"]["coordinates"]
+        bv = f["properties"].get("bv")
+        try:
+            bv = float(bv)
+        except (TypeError, ValueError):
+            bv = 0.6
+        rows.append([round(ra_from_lon(lon), 3), round(lat, 3), round(f["properties"]["mag"], 2), round(bv, 2)])
+    return rows
+
+
+def sky_stars_path():
+    from vasthorizon.config import get_settings
+    return get_settings().paths.data_dir / "sky_stars.json"
+
+
+def load_sky_stars() -> list[list[float]]:
+    import json
+    path = sky_stars_path()
+    return json.loads(path.read_text(encoding="utf-8"))["stars"] if path.exists() else []
 
 
 def figures_path():

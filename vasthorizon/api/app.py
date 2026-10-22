@@ -8,12 +8,15 @@
 | GET  /api/health                      | 키 · 색인 상태와 화면 안내 (F2012)               |
 | GET  /api/items                       | 항목 목록 (그룹 · 이름 필터)                     |
 | GET  /api/items/{item_id}             | 항목 상세                                        |
+| GET  /api/items/{item_id}/intro       | 천체 소개 — 자체 위키 문서 첫머리 · 역사 절 발췌   |
 | POST /api/ask                         | 질문 → 근거 기반 답변 (F2007 · F2008)            |
 | POST /api/ask/stream                  | 같은 질문을 진행 상태와 함께 SSE로 (F2012)       |
 | GET  /api/history/{item_id}           | 항목별 대화 기록 (F2009)                         |
 | DELETE /api/history/{item_id}         | 항목별 대화 기록 지우기                          |
 | POST /api/explore                     | 자연어 조건으로 항목 찾기 (F2011)                |
 | POST /api/light-letter                | 빛의 편지 — 천체 또는 나이로 (F2010)             |
+| GET  /api/map                         | 3D 우주 지도 — 항목별 방향 · 거리 · 배치 방식    |
+| GET  /api/constellations              | 별자리 88개의 선과 별 (천구 · 펼치기 화면)       |
 | GET  /api/constellations/{id}/figure  | 별자리 선과 별들의 실제 거리 (3D 펼치기용)       |
 | POST /api/constellations/{id}/unfold  | 별자리 펼치기 설명 — 근거 인용 (F2010)           |
 | POST /api/sky                         | 오늘 밤 나의 하늘 — 위치 계산 + 안내 (F2010)     |
@@ -33,6 +36,7 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes
 import queue
 import threading
 from pathlib import Path
@@ -45,6 +49,7 @@ from fastapi.staticfiles import StaticFiles
 from vasthorizon.api.schemas import (
     AnswerResponse, AskRequest, CitedEvidence, DepartureOut, ErrorResponse, ExploreCardOut, ExploreRequest,
     ExploreResponse, FigureResponse, FigureStar, FigureStats, HealthResponse, HistoryResponse, HistoryTurn,
+    IntroResponse, IntroSection,
     ItemDetail, ItemSummary, LetterRequest, LetterResponse, PerspectiveRequest, PerspectiveResponse,
     RelatedItem, SkyObjectOut, SkyRequest, SkyResponse, SourceRef,
     StageInfo, SupportLine, ThemeOut, UnfoldResponse,
@@ -59,12 +64,18 @@ from vasthorizon.data.perspective_library import THEMES
 from vasthorizon.features.light_letter import LetterUnavailableError, star_for_age
 from vasthorizon.features.perspective import PerspectiveInputError
 from vasthorizon.features.sky import SkyInputError, compute_sky
+from vasthorizon.features.space_map import constellation_list, map_points
 from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.rag.retrieval import IndexMissingError
 from vasthorizon.store.chroma import EmbeddingMismatchError
 
 log = logging.getLogger(__name__)
 WEB_DIR = PROJECT_ROOT / "web"
+
+# Windows는 레지스트리 설정에 따라 .js를 text/plain으로 알려 주는데, 브라우저는 그 모듈 스크립트를 거부한다.
+# 정적 파일의 형식을 운영체제 설정과 관계없이 고정한다.
+for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".css", "text/css"), (".json", "application/json")):
+    mimetypes.add_type(_type, _ext)
 EXCERPT_CHARS = 200
 
 NO_CITATION = "답변에 인용된 근거가 없습니다."
@@ -280,6 +291,15 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         svc().item(item_id)
         svc().sessions.clear(session_id, item_id)
 
+    @app.get("/api/items/{item_id}/intro", response_model=IntroResponse, responses=errors,
+             description="천체를 내 세상에 담기 전에 읽는 소개 — 자체 위키 문서에서 발췌 (LLM 호출 없음, 캐시 우선)")
+    def item_intro(item_id: str) -> IntroResponse:
+        services = svc()
+        r = services.intro(services.item(item_id))
+        return IntroResponse(item_id=item_id, status=r["status"], sections=[IntroSection(**x) for x in r["sections"]],
+                             title=r.get("title"), url=r.get("url"), license=r.get("license"),
+                             source_type=r.get("source_type"), notice=r.get("notice"))
+
     @app.post("/api/explore", response_model=ExploreResponse, responses=errors)
     def explore(req: ExploreRequest) -> ExploreResponse:
         result = svc().explore(req.query)
@@ -312,6 +332,19 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
             departure=DepartureOut(light_years=d.light_years, light_time=d.light_time, year=d.year,
                                    year_label=d.year_label, era=d.era,
                                    year_range=list(d.year_range) if d.year_range else None, summary=d.summary()))
+
+    @app.get("/api/map", description="3D 우주 지도 — 방향(적도 좌표 단위 벡터) · 거리(km) · 배치 방식. LLM 호출 없음")
+    def space_map() -> dict:
+        services = svc()
+        if services.map_cache is None:
+            services.map_cache = {**map_points(services.items), "ref_year": services.ref_year}
+        return services.map_cache
+
+    @app.get("/api/constellations", description="별자리 88개의 선과 별 · 맨눈 별 [적경, 적위, 등급, 색지수] — 천구 · 펼치기 화면용")
+    def constellations() -> dict:
+        services = svc()
+        return {"constellations": constellation_list(services.figures), "sky_stars": services.sky_stars,
+                "licenses": LICENSES}
 
     @app.get("/api/constellations/{item_id}/figure", response_model=FigureResponse, responses=errors)
     def constellation_figure(item_id: str) -> FigureResponse:

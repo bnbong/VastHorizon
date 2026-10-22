@@ -303,7 +303,9 @@ def build_item_text(item: dict, ref_year: int) -> str:
 
     dist = item.get("distance")
     if dist:
-        lines.append(f"거리: {distance_text(dist)}")
+        # Horizons로 계산한 거리는 그날의 값이다 — 기준일을 밝혀 '현재'로 오해하지 않게 (9번 작업 피드백)
+        epoch = item.get("attrs", {}).get("Horizons 위치 기준일") if dist.get("basis") == "horizons" else None
+        lines.append(f"거리: {distance_text(dist)}" + (f" ({epoch} 기준, JPL Horizons 계산)" if epoch else ""))
         lines.extend(light_lines(dist, ref_year))
 
     # 화면 표시용 근삿값에만 쓴 출처는 텍스트 내용의 근거가 아니므로 뺀다

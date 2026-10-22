@@ -22,6 +22,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import hashlib
 import re
 from dataclasses import asdict, dataclass, field
@@ -83,6 +85,14 @@ def item_evidence(item_id: str, db: chromadb.ClientAPI | None, name: str) -> Evi
                     title=meta["name"], section="", url=meta.get("source_url", ""), text=got["documents"][0])
 
 
+def adhoc_evidence(item: dict) -> Evidence:
+    """임시 항목(별자리 선의 별)의 근거 1 — 색인이 아니라 항목 데이터로 만든다 (features/star_items.py)."""
+    from vasthorizon.data.item_text import build_item_text
+    return Evidence(number=0, chunk_id=item["id"], kind=KIND_ITEM, source_type=ITEM_SOURCE, title=item["name"],
+                    section="", url=item["sources"][0]["url"] if item.get("sources") else "",
+                    text=build_item_text(item, item.get("ref_year", 2026)))
+
+
 def search_docs(item_id: str, question: str, embedding: Embeddings, db: chromadb.ClientAPI, name: str,
                 cfg: RetrievalConfig, search_type: str | None = None) -> list[Evidence]:
     """항목 범위의 외부 문서 청크 검색. 문서 색인이 아직 없으면 빈 목록.
@@ -123,7 +133,9 @@ class Retrieval:
 
 def retrieve_evidence(item: dict, question: str, embedding: Embeddings | None = None,
                       db: chromadb.ClientAPI | None = None, search_type: str | None = None,
-                      cfg: RetrievalConfig | None = None) -> Retrieval:
+                      cfg: RetrievalConfig | None = None, live: Callable | None = None) -> Retrieval:
+    """live = (항목) → (근거 | None, 경고 | None). 질문한 날의 실시간 위치처럼 색인 밖에서 계산한 근거.
+    항목 근거 바로 뒤에 둔다 — 수집일 값과 오늘 값을 나란히 보고 답하게 한다."""
     settings = get_settings()
     cfg = cfg or settings.retrieval
     embedding = embedding or chroma.default_embedding()
@@ -140,5 +152,13 @@ def retrieve_evidence(item: dict, question: str, embedding: Embeddings | None = 
             warnings.append(f"문서 검색 실패({reason}) — 항목 정보만으로 답합니다.")
 
         # 2. 항목 메타데이터 청크 — 항상 근거 1
-        item_ev = item_evidence(item["id"], db, settings.collections.items)
-    return Retrieval(evidences=merge(item_ev, doc_evs), doc_search=status, warnings=warnings)
+        item_ev = adhoc_evidence(item) if item.get("adhoc") else item_evidence(item["id"], db, settings.collections.items)
+
+    # 3. 실시간 근거 — 외부 계산이라 저장소 잠금 밖에서
+    extra = []
+    if live is not None:
+        live_ev, warning = live(item)
+        extra = [live_ev] if live_ev else []
+        if warning:
+            warnings.append(warning)
+    return Retrieval(evidences=merge(item_ev, [*extra, *doc_evs]), doc_search=status, warnings=warnings)

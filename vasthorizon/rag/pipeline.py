@@ -100,7 +100,10 @@ def ask(item: dict, question: str, history: list[dict] | None = None, progress: 
 
     t = time.perf_counter()
     progress("근거를 모아 답변을 쓰는 중")
-    state = (graph or build_graph()).invoke({
+    if graph is None:
+        from vasthorizon.features.live_position import live_evidence     # 질문한 날의 실시간 위치 근거
+        graph = build_graph(live=live_evidence)
+    state = graph.invoke({
         "item": item, "question": question, "history": history or [], "search_type": search_type,
         "warnings": [],
     })

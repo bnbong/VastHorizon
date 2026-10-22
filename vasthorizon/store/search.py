@@ -65,8 +65,9 @@ def _exact(collection, query_vec: np.ndarray, where: dict | None, k: int, search
 
 def search(name: str, query: str, embedding: Embeddings, db: chromadb.ClientAPI | None, k: int,
            where: dict | None = None, search_type: str = "similarity", fetch_k: int = 20,
-           lambda_mult: float = 0.5) -> SearchOutcome:
-    """검증된 검색. 컬렉션이 없거나 비면 path='empty'. 임베딩 불일치는 그대로 올린다."""
+           lambda_mult: float = 0.5, query_vector: list[float] | None = None) -> SearchOutcome:
+    """검증된 검색. 컬렉션이 없거나 비면 path='empty'. 임베딩 불일치는 그대로 올린다.
+    query_vector를 넘기면 질문을 다시 임베딩하지 않는다 (검색 방식 비교 — 같은 질문 벡터로)."""
     if chroma.collection_count(name, db) == 0:
         return SearchOutcome(hits=[], path="empty")
     db = chroma.db_for(name, db)
@@ -77,7 +78,7 @@ def search(name: str, query: str, embedding: Embeddings, db: chromadb.ClientAPI 
     if expected == 0:
         return SearchOutcome(hits=[], path="empty")
 
-    query_vec = embedding.embed_query(query)
+    query_vec = query_vector if query_vector is not None else embedding.embed_query(query)
     try:
         if search_type == "mmr":
             docs = store.max_marginal_relevance_search_by_vector(

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VastHorizon</title>
+  <meta name="description" content="당신의 세상은 생각보다 넓다 — 근거와 함께 세상을 넓혀가는 우주 지식 서비스">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+  </script>
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- 3D 무대 — 화면 전체 -->
+    <section class="stage" id="stage" aria-label="3D 우주">
+      <div class="tooltip" id="tooltip" hidden></div>
+      <div class="loading" id="loading">하늘을 불러오는 중…</div>
+    </section>
+
+    <!-- 색인 · 키 상태 안내 (F2012) -->
+    <div class="notices" id="notices" role="status"></div>
+
+    <!-- 떠 있는 머리 · 발 -->
+    <div class="chrome" id="chrome">
+      <header class="chrome-top">
+        <div class="wordmark">
+          <span class="wordmark-name">VastHorizon</span>
+          <span class="wordmark-tag">당신의 세상은 생각보다 넓다</span>
+        </div>
+        <div class="chrome-top-right">
+          <span class="index-status" id="index-status" title="현재 색인 건수 (F2002)"><span class="dot"></span><span class="text">상태 확인 중…</span></span>
+          <button class="btn btn-secondary btn-sm" id="catalog-btn" type="button"></button>
+        </div>
+      </header>
+      <p class="stage-hint" id="stage-hint"></p>
+
+      <div class="chrome-bottom" id="chrome-bottom">
+        <div class="chrome-row">
+          <div class="meter-group">
+            <button class="world-meter" id="world-meter" type="button" title="눌러서 내 세상 보기"></button>
+            <button class="btn btn-horizon btn-lg" id="journey-btn" type="button"></button>
+          </div>
+          <nav class="launcher" id="launcher" aria-label="기능"></nav>
+        </div>
+        <nav class="horizon-scale" id="horizon-scale" aria-label="거리 — 지평선에서 우주의 끝까지"></nav>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" hidden></div>
+
+    <!-- 서랍 — 천체 · 목록 · 기능 -->
+    <aside class="drawer" id="drawer" aria-hidden="true">
+      <button class="drawer-close" id="drawer-close" type="button" aria-label="닫기"></button>
+      <div class="drawer-body" id="drawer-body" aria-live="polite"></div>
+    </aside>
+
+    <!-- 장면 — 처음 · 떠오르기의 끝 -->
+    <div class="scene" id="scene" hidden></div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

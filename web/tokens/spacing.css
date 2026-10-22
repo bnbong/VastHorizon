@@ -1,0 +1,7 @@
+:root{
+--space-1:2px;--space-2:4px;--space-3:6px;--space-4:8px;--space-5:10px;--space-6:12px;--space-7:14px;--space-8:16px;--space-10:20px;--space-12:24px;--space-16:32px;--space-20:40px;--space-24:48px;--space-32:64px;--space-40:80px;
+/* Radii — exact values from web/style.css */
+--radius-xs:4px;--radius-sm:6px;--radius-md:8px;--radius-lg:10px;--radius-xl:14px;--radius-2xl:20px;--radius-pill:999px;
+/* Layout */
+--panel-width:400px;--topbar-height:56px;--toolbar-height:56px;--measure:34em;
+}

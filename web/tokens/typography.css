@@ -1,0 +1,21 @@
+:root{
+--font-sans:"Pretendard Variable","Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+--font-serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo",serif;
+--font-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+/* Display (serif) — headlines, keywords, measures */
+--fs-display-xl:64px;--fs-display-l:44px;--fs-display-m:32px;--fs-display-s:24px;
+/* UI / body (sans) */
+--fs-title:20px;--fs-body-l:17px;--fs-body:15px;--fs-small:13px;--fs-caption:12px;--fs-micro:11px;
+--fw-light:300;/* @kind font */--fw-regular:400;/* @kind font */--fw-medium:500;/* @kind font */--fw-semibold:600;/* @kind font */--fw-bold:700;/* @kind font */
+--lh-tight:1.2;/* @kind font */--lh-snug:1.4;/* @kind font */--lh-body:1.65;/* @kind font */--lh-loose:1.85;/* @kind font */
+--ls-display:-0.02em;/* @kind font */--ls-title:-0.01em;/* @kind font */--ls-body:0;/* @kind font */--ls-caps:0.18em;/* @kind font */
+/* Semantic */
+--type-hero:var(--fw-light) var(--fs-display-xl)/var(--lh-tight) var(--font-serif);
+--type-h1:var(--fw-regular) var(--fs-display-l)/var(--lh-tight) var(--font-serif);
+--type-h2:var(--fw-regular) var(--fs-display-m)/var(--lh-tight) var(--font-serif);
+--type-h3:var(--fw-medium) var(--fs-display-s)/var(--lh-snug) var(--font-serif);
+--type-title:var(--fw-semibold) var(--fs-title)/var(--lh-snug) var(--font-sans);
+--type-body:var(--fw-regular) var(--fs-body)/var(--lh-body) var(--font-sans);
+--type-small:var(--fw-regular) var(--fs-small)/var(--lh-snug) var(--font-sans);
+--type-caption:var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans);
+}

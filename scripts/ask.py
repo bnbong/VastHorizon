@@ -14,10 +14,11 @@ import sys
 
 from vasthorizon.config import get_settings
 from vasthorizon.data.catalog import load_items
+from vasthorizon.features.compare import compare_search
 from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.rag.graph import build_graph
 from vasthorizon.rag.pipeline import ask
-from vasthorizon.rag.retrieval import IndexMissingError, retrieve_evidence
+from vasthorizon.rag.retrieval import IndexMissingError
 
 
 def find_item(items: list[dict], name: str) -> dict | None:
@@ -33,15 +34,23 @@ def print_evidence_list(title: str, evidences) -> None:
 
 
 def compare(item: dict, question: str) -> None:
-    cfg = get_settings().retrieval
-    print(f"Top-k {cfg.top_k_docs} · MMR fetch_k {cfg.mmr_fetch_k} · lambda {cfg.mmr_lambda}")
-    sim = retrieve_evidence(item, question, search_type="similarity").evidences
-    mmr = retrieve_evidence(item, question, search_type="mmr").evidences
-    print_evidence_list("유사도 검색", sim)
-    print_evidence_list("MMR 검색", mmr)
-    sim_ids, mmr_ids = {e.chunk_id for e in sim}, {e.chunk_id for e in mmr}
-    print(f"\n겹치는 근거 {len(sim_ids & mmr_ids)}개 · MMR에만 {len(mmr_ids - sim_ids)}개")
-    print(f"서로 다른 문서 수 — 유사도 {len({e.title for e in sim})}개, MMR {len({e.title for e in mmr})}개")
+    """유사도 · MMR 근거 비교 — Streamlit 비교 화면과 같은 함수(features/compare.py), 답변 생성 없음."""
+    result = compare_search(item["id"], question)
+    s = result.settings
+    print(f"Top-k {s['top_k']} · MMR fetch_k {s['fetch_k']} · lambda {s['lambda']} · 이 항목의 청크 {result.chunks_in_scope}개")
+    for w in result.warnings:
+        print(f"[WARN] {w}")
+    if result.status != "ok":
+        return
+    for method, title in (("similarity", "유사도 검색"), ("mmr", "MMR 검색")):
+        print(f"\n── {title} ──")
+        for h in result.hits[method]:
+            where = f" > {h.section}" if h.section else ""
+            score = f"{h.score:.3f}" if h.score is not None else "-"
+            print(f"  {h.rank}. {h.title}{where} · {h.source_type} · 유사도 {score}{' · 공통' if h.chunk_id in result.overlap else ''}")
+    sim, mmr = result.hits["similarity"], result.hits["mmr"]
+    print(f"\n겹치는 근거 {len(result.overlap)}개 · MMR에만 {len({h.chunk_id for h in mmr} - {h.chunk_id for h in sim})}개")
+    print(f"서로 다른 문서 수 — 유사도 {len({h.title for h in sim})}개, MMR {len({h.title for h in mmr})}개")
 
 
 def main(argv: list[str] | None = None) -> int:

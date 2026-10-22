@@ -1,0 +1,161 @@
+// 3D 무대 — 렌더러 · 카메라 · 조작 · 이름표 · 선택(피킹). 보기 모드(우주 지도 · 천구 · 펼치기)를 갈아 끼운다.
+//
+// 모드 객체 규약
+//   group                 : THREE.Group — 무대에 붙였다 뗀다
+//   enter(stage)          : 카메라 · 조작 설정
+//   exit()                : (선택) 정리
+//   pickables()           : [{ position: Vector3, data }] — 클릭 · 툴팁 대상
+//   update(dt, stage)     : (선택) 매 프레임
+
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
+import { TweenQueue } from "./tween.js";
+
+export { THREE, CSS2DObject };
+
+export function label(text, className = "label") {
+  const el = document.createElement("div");
+  el.className = className;
+  el.textContent = text;
+  return new CSS2DObject(el);
+}
+
+// 둥근 별 점 — 기본 점은 사각형이라 가운데가 밝은 원형 텍스처를 한 번 만들어 쓴다
+let dotTexture;
+export function dot() {
+  if (dotTexture) return dotTexture;
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(0.35, "rgba(255,255,255,0.9)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  dotTexture = new THREE.CanvasTexture(c);
+  return dotTexture;
+}
+
+export function pointsMaterial(options) {
+  return new THREE.PointsMaterial({ map: dot(), transparent: true, depthWrite: false, sizeAttenuation: false, ...options });
+}
+
+
+export class Stage {
+  constructor(container) {
+    this.container = container;
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(this.renderer.domElement);
+
+    this.labels = new CSS2DRenderer();
+    this.labels.domElement.className = "label-layer";
+    container.appendChild(this.labels.domElement);
+
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x03050c);
+    this.camera = new THREE.PerspectiveCamera(55, 1, 0.001, 5000);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.mode = null;
+    this.tweens = new TweenQueue();
+    this.clock = new THREE.Clock();
+
+    // 천구 · 펼치기 모드는 화각으로 확대한다 (카메라가 중심에 있어 거리로 확대할 수 없다)
+    this.renderer.domElement.addEventListener("wheel", (e) => {
+      if (!this.fovZoom) return;
+      e.preventDefault();
+      this.camera.fov = THREE.MathUtils.clamp(this.camera.fov * (e.deltaY > 0 ? 1.08 : 0.92), 15, 100);
+      this.applyInset(this.container.clientWidth, this.container.clientHeight);
+    }, { passive: false });
+
+    new ResizeObserver(() => this.resize()).observe(container);
+    this.resize();
+    this.renderer.setAnimationLoop(() => this.frame());
+  }
+
+  resize() {
+    const { clientWidth: w, clientHeight: h } = this.container;
+    if (!w || !h) return;
+    this.camera.aspect = w / h;
+    this.applyInset(w, h);
+    this.renderer.setSize(w, h);
+    this.labels.setSize(w, h);
+  }
+
+  // 오른쪽 서랍이 열리면 시야의 중심을 서랍 폭의 절반만큼 왼쪽으로 — 천체가 서랍 뒤로 숨지 않게
+  setInset(px) {
+    this.inset = px;
+    this.applyInset(this.container.clientWidth, this.container.clientHeight);
+  }
+
+  applyInset(w, h) {
+    if (this.inset && w > this.inset) this.camera.setViewOffset(w + this.inset, h, this.inset, 0, w, h);
+    else this.camera.clearViewOffset();
+    this.camera.updateProjectionMatrix();
+  }
+
+  setMode(mode) {
+    if (this.mode) {
+      this.mode.exit?.();
+      this.scene.remove(this.mode.group);
+      // CSS2D 이름표는 그룹에서 빠져도 DOM에 남는다(직접 지운 이름표만 정리됨) — 다른 보기에 펼치기 별 이름이 떠 있던 문제.
+      // 그룹 안의 이름표 요소를 직접 걷어낸다. 다시 이 보기로 오면 렌더러가 다시 붙인다.
+      this.mode.group.traverse((obj) => { if (obj.isCSS2DObject) obj.element.remove(); });
+    }
+    this.tweens.cancelAll();                 // 이전 모드의 연출은 여기서 끝낸다
+    this.mode = mode;
+    this.fovZoom = false;
+    this.camera.fov = 55;
+    this.camera.updateProjectionMatrix();
+    Object.assign(this.controls, { enableZoom: true, enablePan: true, rotateSpeed: 1, minDistance: 0, maxDistance: Infinity });
+    this.scene.add(mode.group);
+    mode.enter(this);
+  }
+
+  // 화면 좌표에서 가장 가까운 대상 (maxPx 안). 카메라 뒤쪽은 제외한다.
+  pick(clientX, clientY, maxPx = 14) {
+    if (!this.mode) return null;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const facing = new THREE.Vector3();
+    this.camera.getWorldDirection(facing);
+    const v = new THREE.Vector3(), rel = new THREE.Vector3();
+    let best = null;
+    for (const p of this.mode.pickables()) {
+      if (rel.copy(p.position).sub(this.camera.position).dot(facing) <= 0) continue;
+      v.copy(p.position).project(this.camera);
+      const x = rect.left + ((v.x + 1) / 2) * rect.width;
+      const y = rect.top + ((1 - v.y) / 2) * rect.height;
+      const d = Math.hypot(x - clientX, y - clientY);
+      if (d <= maxPx && (!best || d < best.d)) best = { d, ...p };
+    }
+    return best;
+  }
+
+  // 카메라 이동 — 위치 · 바라보는 점을 ms 동안 부드럽게
+  flyTo(position, target, ms = 1600, done) {
+    const from = { p: this.camera.position.clone(), t: this.controls.target.clone() };
+    this.animate(ms, (k) => {
+      this.camera.position.lerpVectors(from.p, position, k);
+      this.controls.target.lerpVectors(from.t, target, k);
+    }, done);
+  }
+
+  animate(ms, step, done) {
+    // 움직임 줄이기 설정이면 애니메이션 없이 끝 모습으로
+    const instant = matchMedia("(prefers-reduced-motion: reduce)").matches
+      || new URLSearchParams(location.search).get("motion") === "off";
+    this.tweens.add(ms, step, done, { instant });
+  }
+
+  frame() {
+    const dt = Math.min(this.clock.getDelta(), 0.1);
+    this.tweens.tick(dt * 1000);
+    this.mode?.update?.(dt, this);
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
+    this.labels.render(this.scene, this.camera);
+  }
+}

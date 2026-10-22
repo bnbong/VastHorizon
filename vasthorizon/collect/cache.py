@@ -126,7 +126,8 @@ class CollectCache:
 
     # 항목 수집 기록
     def _manifest_path(self, item_id: str) -> Path:
-        return self.root / "items" / f"{item_id}.json"
+        # 별자리 선의 별(hip:…)처럼 ':'가 든 ID는 Windows 파일 이름에 쓸 수 없다 — Q… ID는 그대로
+        return self.root / "items" / f"{re.sub(r'[^0-9A-Za-z_-]', '_', item_id)}.json"
 
     def get_manifest(self, item_id: str) -> dict:
         data = self._read(self._manifest_path(item_id))

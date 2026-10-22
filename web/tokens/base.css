@@ -1,0 +1,5 @@
+html{color-scheme:dark}
+body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-sans);font-size:var(--fs-body);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--text-link);text-decoration:none;text-underline-offset:3px}
+a:hover{color:var(--text-link-hover);text-decoration:underline}
+::selection{background:rgba(230,191,120,.3);color:var(--star-50)}

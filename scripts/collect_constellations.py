@@ -15,7 +15,9 @@ import sys
 from vasthorizon.config import get_settings
 from vasthorizon.data.atomic import atomic_write_text
 from vasthorizon.data.catalog import load_items
-from vasthorizon.data.constellation_figures import collect_figures, figure_stats
+from vasthorizon.data.constellation_figures import (
+    LICENSES, collect_figures, collect_sky_stars, figure_stats, sky_stars_path,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,6 +34,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     path = get_settings().paths.data_dir / "constellations.json"
     atomic_write_text(path, json.dumps(data, ensure_ascii=False, indent=1))
+    sky = collect_sky_stars(args.refresh)
+    atomic_write_text(sky_stars_path(), json.dumps(
+        {"fields": ["ra_deg", "dec_deg", "mag", "bv"], "license": LICENSES["d3-celestial"], "stars": sky},
+        ensure_ascii=False, separators=(",", ":")))
+    print(f"맨눈 별 {len(sky)}개 → {sky_stars_path()}")
 
     stars = [s for f in figures.values() for s in f["stars"].values()]
     known = sum(1 for s in stars if s["distance_ly"])

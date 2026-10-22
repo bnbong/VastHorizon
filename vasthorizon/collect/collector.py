@@ -125,7 +125,8 @@ class Collector:
                       failures: list[StepFailure]) -> list[Document]:
         """항목 자체 문서. 길이 · 선별 규칙은 적용하지 않지만, 본문이 없는 문서는 연결하지 않는다."""
         docs = []
-        doc = self._wiki_by_title(item["wiki_title"], "항목 문서", failures)
+        # 별자리 선의 별(임시 항목)은 한국어 위키 문서가 없을 수 있다 — 그때는 검색으로만 모은다
+        doc = self._wiki_by_title(item["wiki_title"], "항목 문서", failures) if item.get("wiki_title") else None
         if doc:
             docs.append(doc)
         cospar = item.get("attrs", {}).get("COSPAR ID")

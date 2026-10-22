@@ -101,12 +101,13 @@ def default_chat_model(llm: BaseChatModel | None) -> BaseChatModel:
 
 
 def build_graph(llm: BaseChatModel | None = None, embedding: Embeddings | None = None,
-                db: chromadb.ClientAPI | None = None):
-    """llm · embedding · db를 넘기지 않으면 실행할 때 GMS · 기본 Chroma를 쓴다 (테스트는 가짜를 넣는다)."""
+                db: chromadb.ClientAPI | None = None, live=None):
+    """llm · embedding · db를 넘기지 않으면 실행할 때 GMS · 기본 Chroma를 쓴다 (테스트는 가짜를 넣는다).
+    live는 실시간 근거 함수 (features/live_position.live_evidence) — 없으면 색인 근거만 쓴다."""
 
     def retrieve(state: RagState) -> dict:
         found = retrieve_evidence(state["item"], state["question"], embedding=embedding, db=db,
-                                  search_type=state.get("search_type"))
+                                  search_type=state.get("search_type"), live=live)
         return {"evidences": found.evidences, "doc_search": found.doc_search,
                 "warnings": state.get("warnings", []) + found.warnings}
 

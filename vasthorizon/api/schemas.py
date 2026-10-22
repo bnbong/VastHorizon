@@ -53,7 +53,7 @@ class SourceRef(BaseModel):
 
 
 class ItemDetail(ItemSummary):
-    wiki_title: str
+    wiki_title: str | None = Field(None, description="자체 위키 문서 — 별자리 선의 별은 없을 수 있다")
     attrs: dict
     distance: dict | None = None
     position_au: list[float] | None = None
@@ -66,7 +66,7 @@ class ItemDetail(ItemSummary):
 class AskRequest(BaseModel):
     session_id: str = Field(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$",
                             description="브라우저가 만든 세션 ID — 항목별 대화 기록을 구분한다")
-    item_id: str = Field(pattern=r"^Q\d+$")
+    item_id: str = Field(pattern=r"^(Q\d+|hip:\d+)$", description="카탈로그 항목(Q…) 또는 별자리 선의 별(hip:…)")
     question: str = Field(min_length=1, max_length=500)
     search_type: Literal["similarity", "mmr"] | None = Field(None, description="비우면 설정값")
 
@@ -144,7 +144,7 @@ class ExploreResponse(BaseModel):
 # ── 빛의 편지 (F2010) ─────────────────────────────────────────────────────
 
 class LetterRequest(BaseModel):
-    item_id: str | None = Field(None, pattern=r"^Q\d+$", description="편지를 받을 천체")
+    item_id: str | None = Field(None, pattern=r"^(Q\d+|hip:\d+)$", description="편지를 받을 천체")
     age: int | None = Field(None, ge=1, le=120, description="나이 — 나이만큼 먼 별을 찾는다")
 
 
@@ -282,3 +282,21 @@ class PerspectiveResponse(BaseModel):
     support: list[SupportLine]
     notice: str | None = None
     warnings: list[str] = []
+
+
+# ── 천체 소개 (읽고 나서 내 세상에 담기) ─────────────────────────────────────
+
+class IntroSection(BaseModel):
+    heading: str = Field(description="소개 · 관측 역사 등 — 문서의 절 제목")
+    text: str = Field(description="문서 본문 발췌 (문장 단위로 자름, LLM이 만들지 않음)")
+
+
+class IntroResponse(BaseModel):
+    item_id: str
+    status: Literal["ok", "unavailable"]
+    sections: list[IntroSection] = []
+    title: str | None = Field(None, description="발췌한 문서 제목")
+    url: str | None = None
+    license: str | None = None
+    source_type: str | None = None
+    notice: str | None = None
