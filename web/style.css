@@ -36,6 +36,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .label.compass { color: #a9d3b5; font: 600 13px/1.2 var(--font-sans); transform: none; }
 .label.compass.minor { font-weight: 400; font-size: 11px; opacity: .65; }
 .label.me { color: var(--sky-300); font-weight: 600; }
+.photo { margin: 0; }
+.photo img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-m, 12px); display: block; background: #000; }
+.photo figcaption { margin-top: 6px; }
 .label.selected { color: var(--gold-300); font: 600 13px/1.2 var(--font-sans); }
 .label.visited { color: var(--sky-200); font-weight: 500; }
 .label.landmark { color: var(--star-300); }

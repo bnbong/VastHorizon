@@ -400,6 +400,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
       <h2 class="name">${esc(item.name)}</h2>
       <div class="sub">${esc(item.kind ?? "")}</div></div>
     ${item.distance_km ? `<div class="reveal" style="animation-delay:180ms">${measureHtml(item.distance_km, { label: surface ? "지표면 위 고도" : "지구로부터" })}</div>` : ""}
+    <div class="reveal" id="photo" style="animation-delay:270ms"></div>
     <div class="stack lg reveal intro" id="intro" style="animation-delay:360ms">${statusHtml("이 천체의 이야기를 불러오는 중…")}</div>
     ${departs ? `<div class="card emphasis letter-card reveal" style="animation-delay:540ms">
       <div class="letter-head">${icon("mail", 14)}빛의 편지</div>
@@ -459,10 +460,30 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   $("#clear-chat").addEventListener("click", clear);
   bindCollect($("#collect-slot"), item);
   loadIntro(item, alive);
-  loadHistory(item, alive, historyGate);
+  loadPhoto(item, alive);
+  state.historyLoaded = loadHistory(item, alive, historyGate);   // 넘어온 질문은 기록을 다 그린 뒤에 보낸다
 }
 
 // 천체의 이야기 — 자체 위키 문서 첫머리 · 역사 절 발췌 (LLM 없음). 출처 · 이용 조건을 함께
+// 메시에 천체 사진 — NASA 'Hubble's Messier Catalog'의 대표 사진과 출처 표기 (web/data/messier, 없으면 비워 둔다)
+async function loadPhoto(item, alive) {
+  const code = item.attrs?.["메시에 번호"];
+  if (!code) return;
+  const credits = await messierCredits();
+  const c = credits?.[code];
+  if (!c || !alive()) return;
+  const box = $("#photo");
+  if (!box || state.item?.id !== item.id) return;
+  box.innerHTML = `<figure class="photo"><img src="data/messier/${esc(code)}.jpg" alt="${esc(item.name)} 사진" loading="lazy">
+    <figcaption class="disclaimer">사진 · ${esc(c.credit)} · <a href="${esc(c.page)}" target="_blank" rel="noopener">NASA Hubble's Messier Catalog</a></figcaption></figure>`;
+}
+
+let creditsPromise;
+function messierCredits() {
+  creditsPromise ??= fetch("data/messier/credits.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  return creditsPromise;
+}
+
 async function loadIntro(item, alive) {
   let r;
   try {
@@ -585,11 +606,18 @@ async function showCatalog() {
 }
 
 // 목록 · 탐색 결과에서 고르기 — 하늘에 떠 있으면 그쪽으로 고개를 돌리고, 없으면 내 세상(지도)에서
-function pickItem(id) {
+function pickItem(id, question) {
   const inSky = state.mode === "sky" && state.sky.pickables().some((t) => t.data.id === id);
   if (inSky) state.sky.lookAt(id);
   else if (state.mode !== "map" && state.catalog?.find((o) => o.id === id)?.group !== "constellation") setMode("map");
-  selectItem(id);
+  const opened = selectItem(id);
+  // 조건 탐색에서 넘어온 질문 — 그 천체의 서랍이 열리면 같은 질문을 그대로 보낸다 (질의응답 · 근거)
+  if (question) opened.then(() => state.historyLoaded).then(() => {
+    const form = $("#chat-form");
+    if (!form || state.item?.id !== id || state.drawer !== "item") return;   // 그사이 다른 것을 골랐다
+    form.querySelector("input").value = question;
+    form.requestSubmit();
+  });
 }
 
 // ── 서랍: 기능 ────────────────────────────────────────────────────────────
@@ -619,6 +647,11 @@ function showExplore() {
         ${res.applied.length ? `<p class="sub">적용한 조건: ${res.applied.map(esc).join(" · ")}</p>` : ""}
         ${res.notice ? `<p class="status warn">${esc(res.notice)}</p>` : ""}
         ${res.warnings.map((w) => `<p class="status warn">${esc(w)}</p>`).join("")}
+        ${res.mentioned?.length ? `<div class="stack sm ask-about">
+            <p class="sub">${res.status === "ask" ? "이 천체에게 직접 물으면 문서를 찾아 근거와 함께 답합니다." : "질문에 나온 천체에게 직접 물어볼 수도 있습니다."}</p>
+            ${res.mentioned.map((m) => `<button type="button" class="card explore-card ask" data-ask="${esc(m.item_id)}" data-question="${esc(res.query)}">
+              <div class="top"><span class="nm">${esc(m.name)}에게 이 질문하기</span>${icon("arrow-right", 14)}</div>
+              <p class="sub">"${esc(res.query)}"</p></button>`).join("")}</div>` : ""}
         ${res.cards.map((c) => `<button type="button" class="card explore-card" data-id="${esc(c.item_id)}">
             <div class="top"><span class="nm">${esc(c.name)}</span>${dist(c.item_id) ? `<span class="badge neutral">${esc(distanceText(dist(c.item_id)))}</span>` : ""}</div>
             <p class="sub">${c.kind ? `${esc(c.kind)} · ` : ""}${esc(c.reason)}</p></button>`).join("")}`;
@@ -626,7 +659,12 @@ function showExplore() {
   });
   composer = bindComposer($("#explore-form"), (q) => run(q));
   drawerBody.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { composer.input.value = b.dataset.q; run(b.dataset.q); }));
-  $("#explore-out").addEventListener("click", (e) => { const c = e.target.closest("[data-id]"); if (c) pickItem(c.dataset.id); });
+  $("#explore-out").addEventListener("click", (e) => {
+    const ask = e.target.closest("[data-ask]");
+    if (ask) return pickItem(ask.dataset.ask, ask.dataset.question);
+    const c = e.target.closest("[data-id]");
+    if (c) pickItem(c.dataset.id);
+  });
   if (!state.catalog) api.search("").then((list) => { state.catalog ??= list; }).catch(() => null);   // 결과 카드의 거리 표시용
 }
 
@@ -979,7 +1017,8 @@ async function start() {
     state.refYear = map.ref_year ?? state.refYear;
     stage = new Stage($("#stage"));
     state.map = new MapMode(map);
-    state.sky = new SkyMode(state.constellations, map.points.filter((p) => p.placement === "sky"));
+    state.sky = new SkyMode(state.constellations, map.points.filter((p) => p.placement === "sky"),
+                            map.points.filter((p) => p.group === "solar_system"));
     state.sky.setObserved(world.visited);
     bindStage();
     $("#loading").hidden = true;

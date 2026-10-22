@@ -135,3 +135,15 @@ test("보이지 않는 성운은 고르지 않고, 별이 있으면 별이 먼�
   grid.add(0.02, 0, 0);
   assert.equal(pickSky([{ stars, grid }], dsos, 0, 0, 0.1, 8).type, "star");
 });
+
+// 12-2 리뷰 P2 — 확대된 원반은 안쪽 어디든, 원반 뒤쪽 별 · 이름보다 앞선다 (Stage.pick이 쓰는 점수)
+test("원반 고르기 점수 — 리뷰 재현: 화각 1도 · 달 화면 반지름 252px", async () => {
+  const { pickScore } = await import("../../web/js/skydata.js");
+  assert.ok(pickScore(0, 14, 252) < 0);                      // 중심
+  assert.ok(pickScore(100, 14, 252) < 0);                    // 중심에서 100px — 예전에는 null
+  assert.ok(pickScore(250, 14, 252) < 0);                    // 가장자리 안쪽
+  assert.equal(pickScore(260, 14, 252), null);               // 원반 바깥은 고르지 않는다
+  assert.ok(pickScore(100, 14, 252) < pickScore(3, 14, 0));  // 원반 안의 클릭은 바로 옆의 별(3px)보다 앞선다
+  assert.equal(pickScore(10, 14, 4), 10);                    // 작게 보이면 기존 최소 영역 그대로
+  assert.equal(pickScore(20, 14, 4), null);
+});

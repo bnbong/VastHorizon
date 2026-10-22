@@ -47,7 +47,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from vasthorizon.api.schemas import (
-    AnswerResponse, AskRequest, CitedEvidence, DepartureOut, ErrorResponse, ExploreCardOut, ExploreRequest,
+    AnswerResponse, AskRequest, CitedEvidence, DepartureOut, ErrorResponse, ExploreCardOut, ExploreMention, ExploreRequest,
     ExploreResponse, FigureResponse, FigureStar, FigureStats, HealthResponse, HistoryResponse, HistoryTurn,
     IntroResponse, IntroSection,
     ItemDetail, ItemSummary, LetterRequest, LetterResponse, PerspectiveRequest, PerspectiveResponse,
@@ -76,7 +76,7 @@ WEB_DIR = PROJECT_ROOT / "web"
 # Windows는 레지스트리 설정에 따라 .js를 text/plain으로 알려 주는데, 브라우저는 그 모듈 스크립트를 거부한다.
 # 정적 파일의 형식을 운영체제 설정과 관계없이 고정한다.
 for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".css", "text/css"), (".json", "application/json"),
-                    (".bin", "application/octet-stream")):
+                    (".bin", "application/octet-stream"), (".glb", "model/gltf-binary"), (".wasm", "application/wasm")):
     mimetypes.add_type(_type, _ext)
 EXCERPT_CHARS = 200
 
@@ -308,12 +308,16 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
     def explore(req: ExploreRequest) -> ExploreResponse:
         result = svc().explore(req.query)
         notice = {"no_match": "조건에 맞는 항목을 찾지 못했습니다. 조건을 조금 넓혀 보세요.",
-                  "failed": "조건과 대조하지 못했습니다. 잠시 뒤 다시 시도해 주세요."}.get(result.status)
+                  "failed": "조건과 대조하지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
+                  "ask": "조건으로 찾는 질문이 아니라 특정 천체에 대한 질문입니다. 그 천체에게 물으면 문서 근거와 함께 답합니다.",
+                  }.get(result.status)
         return ExploreResponse(
             query=result.query, applied=result.applied, candidates=result.candidates, status=result.status,
             notice=notice, warnings=result.warnings,
             cards=[ExploreCardOut(item_id=c.item_id, name=c.name, group=c.group, kind=c.kind, reason=c.reason)
-                   for c in result.cards])
+                   for c in result.cards],
+            mentioned=[ExploreMention(item_id=m["id"], name=m["name"], group=m["group"], kind=m.get("kind", ""))
+                       for m in getattr(result, "mentioned", [])])
 
     @app.post("/api/light-letter", response_model=LetterResponse, responses=errors,
               description="item_id 또는 age 중 하나만 보낸다. age면 나이(광년)와 거리가 가장 가까운 별의 편지")

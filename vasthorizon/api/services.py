@@ -118,7 +118,8 @@ def default_services() -> Services:
         items, ref_year = [], date.today().year
     figures = load_figures()
     stars = star_index(figures)
-    return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year), explore=explore,
+    return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year),
+                    explore=lambda query: explore(query, items=items),
                     letter=lambda item: write_letter(item, ref_year), ref_year=ref_year, figures=figures,
                     stars=StarLookup(stars, load_star_index(PROJECT_ROOT / "web" / "data"),
                                      get_settings().paths.cache_dir / "stars", sources.sparql, ref_year),

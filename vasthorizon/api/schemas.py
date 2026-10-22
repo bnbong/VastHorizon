@@ -131,12 +131,20 @@ class ExploreCardOut(BaseModel):
     reason: str = Field(description="조건과 맞는 메타데이터 속성")
 
 
+class ExploreMention(BaseModel):
+    item_id: str
+    name: str
+    group: str
+    kind: str = ""
+
+
 class ExploreResponse(BaseModel):
     query: str
     applied: list[str] = Field(description="조건을 해석해 적용한 필터 — 사용자가 해석 결과를 확인한다")
     cards: list[ExploreCardOut]
     candidates: int
-    status: Literal["ok", "no_match", "failed"]
+    status: Literal["ok", "no_match", "failed", "ask"] = Field(description="ask: 특정 천체에 대한 사실 질문 — mentioned의 천체에게 묻는다")
+    mentioned: list[ExploreMention] = Field([], description="질문에 이름이 나온 카탈로그 천체 — 그 천체에게 직접 물을 수 있다")
     notice: str | None = None
     warnings: list[str] = []
 

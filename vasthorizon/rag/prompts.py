@@ -136,6 +136,9 @@ EXPLORE_FILTER_SYSTEM = """너는 우주 항목 카탈로그의 검색 도우미
 - ecliptic: 황도 별자리인가 (true/false)
 - distance_ly_min · distance_ly_max: 지구로부터 거리(광년). 1광년 = 약 9.46조 km, 1천문단위 = 약 0.0000158광년
 - departure_year_min · departure_year_max: 지금 보는 빛이 출발한 해 (기원전은 음수)
+- asks_fact: 조건으로 천체를 찾는 요청이 아니라, 이름을 댄 특정 천체에 대한 사실 질문이면 true. 아니면 false.
+  예: "안드로메다 은하 가운데에 있는 블랙홀 이름은?" → true, "보이저 1호는 지금 어디 있어?" → true,
+      "안드로메다 은하보다 가까운 은하" → false, "맨눈으로 볼 수 있는 은하" → false
 
 한국사 시대 (빛이 출발한 시대를 물으면 이 범위를 쓴다)
 {eras}

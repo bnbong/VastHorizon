@@ -4,7 +4,7 @@
 //   group                 : THREE.Group — 무대에 붙였다 뗀다
 //   enter(stage)          : 카메라 · 조작 설정
 //   exit()                : (선택) 정리
-//   pickables()           : [{ position: Vector3, data }] — 클릭 · 툴팁 대상
+//   pickables()           : [{ position: Vector3, data, pickRadius? }] — 클릭 · 툴팁 대상 (pickRadius: 화면 반지름 px, 원반)
 //   update(dt, stage)     : (선택) 매 프레임
 //   pickNear(x, y)        : (선택) pickables에 없을 때 그 자리의 대상
 
@@ -12,6 +12,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { TweenQueue } from "./tween.js";
+import { pickScore } from "./skydata.js";
 
 export { THREE, CSS2DObject };
 
@@ -110,7 +111,12 @@ export class Stage {
 
   applyInset(w, h) {
     if (this.inset && w > this.inset) this.camera.setViewOffset(w + this.inset, h, this.inset, 0, w, h);
-    else this.camera.clearViewOffset();
+    else {
+      // setViewOffset은 가로세로 비를 전체 폭(화면 + 서랍) 기준으로 바꾸는데 clearViewOffset은 되돌리지 않는다.
+      // 서랍을 닫은 뒤 하늘이 가로로 눌려 있던 문제 (원반이 타원 · 끌기가 77%만 따라옴) — 화면 폭 기준으로 되돌린다
+      this.camera.clearViewOffset();
+      this.camera.aspect = w / h;
+    }
     this.camera.updateProjectionMatrix();
   }
 
@@ -128,7 +134,7 @@ export class Stage {
     this.fovMin = 15;
     this.camera.fov = 55;
     this.camera.updateProjectionMatrix();
-    Object.assign(this.controls, { enableZoom: true, enablePan: true, rotateSpeed: 1, minDistance: 0, maxDistance: Infinity });
+    Object.assign(this.controls, { enableZoom: true, enablePan: true, enableDamping: true, rotateSpeed: 1, minDistance: 0, maxDistance: Infinity });
     this.scene.add(mode.group);
     mode.enter(this);
   }
@@ -147,7 +153,10 @@ export class Stage {
       const x = rect.left + ((v.x + 1) / 2) * rect.width;
       const y = rect.top + ((1 - v.y) / 2) * rect.height;
       const d = Math.hypot(x - clientX, y - clientY);
-      if (d <= maxPx && (!best || d < best.d)) best = { d, ...p };
+      // 화면에서 크게 보이는 원반(태양 · 달 · 행성)은 원반 안 어디든 — 원반 안이면 점수가 음수라 뒤쪽 별 · 이름보다 앞선다.
+      // 작게 보이면 기존 최소 영역(maxPx) 그대로 (12-2 리뷰 P2)
+      const score = pickScore(d, maxPx, p.pickRadius);
+      if (score !== null && (!best || score < best.score)) best = { d, score, ...p };
     }
     // 이름 있는 대상이 없으면 — 모드가 그 자리의 실제 천체를 찾는다 (하늘의 별 · 성운)
     return best ?? this.mode.pickNear?.(clientX, clientY) ?? null;

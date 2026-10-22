@@ -122,6 +122,22 @@ python -m scripts.build_sky_data --refresh   # 출처에서 다시 받기
 - 성운, 성단, 은하는 등급이 알려진 것만 한계 등급에 맞춰 보입니다. 출처에 기울기(위치각)가 없어서 장축 지름의 원으로 그립니다.
 - 암흑 성운의 숫자(1~6)는 밝기가 아니라 불투명도 등급이라 등급으로 쓰지 않습니다.
 
+### 태양, 달, 행성과 사진, 3D 모델
+
+```bash
+python -m scripts.build_messier_images   # 메시에 천체 사진과 출처 표기 (이미 받은 사진은 건너뜀)
+```
+
+| 내용 | 파일, 방법 | 비고 |
+|---|---|---|
+| 태양, 달, 행성의 위치 | `web/js/ephemeris.js`: JPL 근사 궤도 요소(행성), 천문 연감 저정밀 식(달) | JPL Horizons 값과 대조해 행성 0.2~5분각, 달 약 2분각, 태양 0.02도 안. 좌표는 별 데이터와 같은 J2000 |
+| 달 표면 | `web/data/textures/moon_lroc_1k.jpg` (NASA SVS CGI Moon Kit, 139KB) | 실제 태양 방향의 빛으로 비추므로 위상이 저절로 맞습니다 |
+| 행성 표면 | 셰이더로 그린 색과 띠 (목성 띠, 토성 고리, 화성 극관) | 사진이 아니라 단순화한 그림입니다 |
+| 메시에 사진 | `web/data/messier/M{n}.jpg` 89장 + `credits.json` (4.7MB) | 허블 메시에 목록에 없는 21개(주로 산개 성단)는 사진 없이 둡니다. 사진의 시야와 방향 정보가 없어 하늘에서는 카탈로그 크기에 맞춰 둥글게 띄울 뿐, 방향은 맞추지 않습니다. 대표 사진이 천체의 일부만 담은 경우(M31 등)도 있습니다 |
+| 3D 모델 | `web/data/models/*.glb` 4개 (3.4MB, NASA 3D Resources) | 내 세상 보기에서 그 점에 가까이 갈 때만 내려받습니다. 지도처럼 크기는 실제 비율이 아닙니다 |
+
+출처와 이용 조건은 `web/data/textures/CREDITS.md`, `web/data/models/CREDITS.md`, `web/data/messier/credits.json`에 있습니다.
+
 ---
 
 ## 6. 항목 메타데이터 색인 (RAG 1)
@@ -316,7 +332,7 @@ uvicorn vasthorizon.api.app:app --port 8000
 | `POST /api/ask` | 질문 → 근거 기반 답변 |
 | `POST /api/ask/stream` | 같은 질문을 진행 상태와 함께 (Server-Sent Events) |
 | `GET`, `DELETE /api/history/{id}?session_id=` | 항목별 대화 기록 조회, 삭제 |
-| `POST /api/explore` | 자연어 조건으로 항목 찾기: 적용한 필터와 조건에 맞는 항목 카드 |
+| `POST /api/explore` | 자연어 조건으로 항목 찾기: 적용한 필터와 조건에 맞는 항목 카드. 질문에 이름이 나온 천체(`mentioned`)도 함께 주고, 그 천체에 대한 사실 질문이면 `status: "ask"` |
 | `POST /api/light-letter` | 빛의 편지: `{"item_id": "Q13423"}` 또는 `{"age": 25}` (나이만큼 먼 별) |
 | `GET /api/constellations/{id}/figure` | 별자리 선과 별들의 좌표, 카탈로그 거리 (LLM 호출 없음) |
 | `POST /api/constellations/{id}/unfold` | 별자리 펼치기 설명: 별 거리표를 근거로 인용 |

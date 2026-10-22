@@ -39,7 +39,9 @@ SSAFY AI 코어 프로젝트 2, RAG 기반 도메인 지식 서비스, 2026 -10-
 | 심화 기능 | F2013 ~ F2016 **4개 모두 구현, 통과** |
 | RAG 전후 비교 | 대표 8문항, 실행 1회 수동 판정: RAG 맞음 6, 확인 불가 2, **틀린 답 0**, 인용한 주장은 모두 근거와 일치 |
 | 하늘 | 실제 별 118,216개 (확대하면 12등급대까지), 성운과 성단과 은하 15,809개, 은하수. 아무 별이나 눌러 담기 |
-| 테스트 | Python 359, JavaScript 35, 브라우저 점검 25: **모두 통과** |
+| 태양계 | 그날의 태양, 달, 행성을 실제 시지름으로 (JPL Horizons와 대조해 오차 5분각 안). 달은 NASA 표면 지도와 그날의 위상 |
+| 사진과 모델 | 메시에 천체 사진 89장 (NASA 허블 메시에 목록, 출처 표기), 국제우주정거장과 허블, 제임스 웹, 보이저의 NASA 3D 모델 |
+| 테스트 | Python 369, JavaScript 41, 브라우저 점검 31: **모두 통과** |
 
 ---
 
@@ -156,7 +158,11 @@ flowchart LR
 | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) | 태양계 천체, 탐사선 위치 | 미국 정부 저작물 (공개) |
 | [CelesTrak SATCAT](https://celestrak.org/satcat/) | 위성 궤도, 운용 상태 | 무료 공개, 출처 표기 |
 | [d3-celestial](https://github.com/ofrohn/d3-celestial) | 히파르코스 별, 성운과 성단과 은하, 은하수 윤곽, 별자리 선 | BSD-3-Clause |
-| [three.js](https://threejs.org/) r170, [Lucide](https://lucide.dev/) | 3D 화면, 아이콘 | MIT, ISC |
+| [NASA 과학시각화 스튜디오 CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) | 달 표면 지도 (LRO) | 미국 정부 저작물 (공개), 출처 표기 |
+| [NASA Hubble's Messier Catalog](https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/) | 메시에 천체 사진 89장 | NASA 자료는 공개, ESA 등 함께 표기된 사진은 그 기관 조건(대개 CC BY 4.0). 사진마다 출처 표기 |
+| [NASA 3D Resources](https://github.com/nasa/NASA-3D-Resources) | 위성, 탐사선 3D 모델 4개 | 저작권 없음 (NASA 미디어 이용 지침) |
+| [JPL 행성 근사 궤도 요소](https://ssd.jpl.nasa.gov/planets/approx_pos.html) | 그날의 행성 위치 계산 | 미국 정부 저작물 (공개) |
+| [three.js](https://threejs.org/) r170, [Lucide](https://lucide.dev/), [Draco](https://github.com/google/draco) | 3D 화면, 아이콘, 모델 압축 해제 | MIT, ISC, Apache-2.0 |
 
 근거마다 원문 링크를 달고, 화면 하단에 출처를 표시합니다.
 

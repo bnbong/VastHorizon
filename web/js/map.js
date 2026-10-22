@@ -2,6 +2,7 @@
 
 import { THREE, label, pointsMaterial, ring } from "./scene.js";
 import { pulse } from "./sky.js";
+import { MODELS, ModelShelf } from "./models.js";
 import { distanceText, eqToScene, mapRadius } from "./astro.js";
 import { EQ_TO_MAP } from "./skydata.js";
 import { loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
@@ -106,10 +107,13 @@ export class MapMode {
       pointsMaterial({ map: ring(), size: 30, color: 0x9fd8ff, opacity: 0.95 }));
     this.selectRing.visible = false;
     this.group.add(this.selectRing);
+    // 대표 기체의 실제 형태 (NASA 3D 모델) — 가까이 가면 내려받아 그 점 자리에 띄운다
+    this.models = new ModelShelf(this.group, this.points.filter((p) => MODELS[p.name]));
   }
 
   update(dt, stage) {
     this.backdrop.position.copy(stage.camera.position);
+    this.models.update(dt, stage.camera);
     this.clock = (this.clock ?? 0) + dt;
     pulse(this.selectRing.visible ? this.selectRing : null, this.clock, !matchMedia("(prefers-reduced-motion: reduce)").matches
       && new URLSearchParams(location.search).get("motion") !== "off");

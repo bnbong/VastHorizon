@@ -151,6 +151,13 @@ export function pickSky(parts, dsos, ra, dec, radiusDeg, limit, dsoVisible = () 
   return best;
 }
 
+// 화면 고르기 점수 — 작을수록 우선. maxPx 안의 점 대상은 거리 그대로,
+// 화면에서 크게 보이는 원반(pickRadius > maxPx) 안이면 음수라 원반 뒤쪽 별 · 이름보다 앞선다. 고를 수 없으면 null (12-2 리뷰 P2)
+export function pickScore(d, maxPx, pickRadius = 0) {
+  if (pickRadius > maxPx && d <= pickRadius) return d / pickRadius - 1;
+  return d <= maxPx ? d : null;
+}
+
 // 색지수(B−V) → 별빛 색 (파랑 → 흰색 → 노랑 → 주황)
 export function starColor(bv) {
   const stops = [[-0.4, [0.62, 0.72, 1]], [0, [0.85, 0.9, 1]], [0.6, [1, 0.97, 0.9]], [1.2, [1, 0.82, 0.6]], [2, [1, 0.65, 0.45]]];

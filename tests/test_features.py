@@ -299,6 +299,55 @@ class ExploreReadinessTest(unittest.TestCase):
             explore("맨눈 은하", llm=FakeChat(), embedding=self.emb, db=self.db)
 
 
+class ExploreFactQuestionTest(ExploreTestBase):
+    """조건 탐색에 특정 천체의 사실 질문이 들어온 경우 — '찾지 못함' 대신 그 천체에게 묻게 한다."""
+
+    def run_explore(self, query, *replies):
+        llm = FakeChat(*[json.dumps(r, ensure_ascii=False) for r in replies])
+        return explore(query, llm=llm, embedding=self.emb, db=self.db, items=CATALOG), llm
+
+    def test_names_in_query_found_by_code(self):
+        from vasthorizon.features.explore import mentioned_items
+        cases = {
+            "안드로메다 은하 가운데에 있는 블랙홀 이름은 뭐야?": ["안드로메다 은하"],
+            "안드로메다은하보다 가까운 은하": ["안드로메다 은하"],            # 붙여 써도
+            "베텔게우스와 시리우스 중 더 먼 별은?": ["베텔게우스", "시리우스"],   # 질문에 나온 순서
+            "오리온자리의 가장 밝은 별": ["오리온자리"],
+            "맨눈으로 볼 수 있는 은하": [],
+            "시리우스터미널": [],                                            # 낱말 일부에는 걸리지 않는다
+        }
+        for query, names in cases.items():
+            self.assertEqual([m["name"] for m in mentioned_items(query, CATALOG)], names, query)
+
+    def test_fact_question_returns_ask_without_search(self):
+        result, llm = self.run_explore("안드로메다 은하 가운데에 있는 블랙홀 이름은 뭐야?",
+                                       {"semantic_query": "블랙홀", "asks_fact": True})
+        self.assertEqual((result.status, result.cards, result.candidates), ("ask", [], 0))
+        self.assertEqual([m["id"] for m in result.mentioned], ["Q2469"])
+        self.assertEqual(len(llm.received), 1)                       # 필터 추출 한 번 — 선별 호출 없음
+
+    def test_condition_with_name_still_searches_and_offers_ask(self):
+        result, llm = self.run_explore("안드로메다 은하보다 가까운 은하",
+                                       {"semantic_query": "가까운 은하", "categories": ["은하"], "asks_fact": False},
+                                       {"selected": [{"id": "Q4", "reason": "은하"}]})
+        self.assertEqual(result.status, "ok")
+        self.assertEqual([m["id"] for m in result.mentioned], ["Q2469"])
+        self.assertEqual(len(llm.received), 2)
+
+    def test_fact_flag_without_known_name_is_normal_search(self):
+        result, _ = self.run_explore("블랙홀의 이름은?", {"semantic_query": "블랙홀", "asks_fact": True}, {"selected": []})
+        self.assertEqual((result.status, result.mentioned), ("no_match", []))
+
+    def test_api_returns_mentioned_and_notice(self):
+        from vasthorizon.features.explore import ExploreResult
+        services = Services(items=API_ITEMS, ask=FakeAsk(), health=healthy, explore=lambda q: ExploreResult(
+            query=q, applied=[], cards=[], candidates=0, status="ask",
+            mentioned=[{"id": "Q2469", "name": "안드로메다 은하", "group": "messier", "kind": "나선 은하"}]))
+        body = TestClient(create_app(services, web_dir=None)).post("/api/explore", json={"query": "안드로메다 은하 블랙홀 이름"}).json()
+        self.assertEqual((body["status"], body["mentioned"][0]["item_id"]), ("ask", "Q2469"))
+        self.assertIn("그 천체에게 물으면", body["notice"])
+
+
 class ExploreNoMatchTest(ExploreTestBase):
     def test_candidates_but_none_selected_is_no_match(self):
         result, _ = self.explore({"semantic_query": "은하", "categories": ["은하"]}, {"selected": []})
