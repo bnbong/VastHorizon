@@ -244,3 +244,41 @@ class SkyResponse(BaseModel):
     cited: list[CitedEvidence] = []
     notice: str | None = None
     warnings: list[str] = []
+
+
+# ── 관점 전환 (F2010) ──────────────────────────────────────────────────────
+
+class ThemeOut(BaseModel):
+    key: str
+    label: str = Field(description="감정 버튼 문구")
+    titles: list[str] = Field(description="이 주제의 서가 문서")
+
+
+class SupportLine(BaseModel):
+    name: str
+    number: str
+    hours: str
+
+
+class PerspectiveRequest(BaseModel):
+    text: str | None = Field(None, max_length=300, description="지금 내 마음 한 줄")
+    theme: str | None = Field(None, description="감정 버튼 — GET /api/perspective/themes 의 key")
+
+
+class RelatedItem(BaseModel):
+    id: str
+    name: str
+
+
+class PerspectiveResponse(BaseModel):
+    status: Literal["cited", "not_found", "rejected", "crisis", "unchecked"] = Field(
+        description="crisis: 위기 — 상담 창구 안내 · unchecked: 위기 여부를 확인하지 못해 답변하지 않음")
+    answer: str
+    crisis: bool = Field(description="true면 화면은 상담 창구 안내를 가장 먼저 크게 보여준다")
+    themes: list[str] = []
+    cited: list[CitedEvidence] = []
+    items: list[RelatedItem] = Field([], description="이어서 둘러볼 천체")
+    disclaimer: str
+    support: list[SupportLine]
+    notice: str | None = None
+    warnings: list[str] = []

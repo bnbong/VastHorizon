@@ -46,6 +46,7 @@ BACKUP_SUFFIX = "__backup"
 
 ITEMS_REBUILD = "python -m scripts.index_items --rebuild"
 DOCS_REBUILD = "python -m scripts.index_docs --rebuild"
+PERSPECTIVE_REBUILD = "python -m scripts.index_perspective --rebuild"
 
 
 def base_name(name: str) -> str:
@@ -55,7 +56,8 @@ def base_name(name: str) -> str:
 
 def rebuild_hint(name: str) -> str:
     """컬렉션별 재구축 명령. 임시 · 백업 이름이면 원래 이름 기준으로 찾는다."""
-    return DOCS_REBUILD if base_name(name) == get_settings().collections.docs else ITEMS_REBUILD
+    collections = get_settings().collections
+    return {collections.docs: DOCS_REBUILD, collections.perspective: PERSPECTIVE_REBUILD}.get(base_name(name), ITEMS_REBUILD)
 
 
 class EmbeddingMismatchError(RuntimeError):

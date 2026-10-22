@@ -17,6 +17,8 @@
 | GET  /api/constellations/{id}/figure  | 별자리 선과 별들의 실제 거리 (3D 펼치기용)       |
 | POST /api/constellations/{id}/unfold  | 별자리 펼치기 설명 — 근거 인용 (F2010)           |
 | POST /api/sky                         | 오늘 밤 나의 하늘 — 위치 계산 + 안내 (F2010)     |
+| GET  /api/perspective/themes          | 관점 전환 감정 버튼 (주제 · 서가 문서)           |
+| POST /api/perspective                 | 관점 전환 — 위기 표현이면 상담 창구 안내 먼저    |
 
 오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다. (NF2004)
 
@@ -43,8 +45,9 @@ from fastapi.staticfiles import StaticFiles
 from vasthorizon.api.schemas import (
     AnswerResponse, AskRequest, CitedEvidence, DepartureOut, ErrorResponse, ExploreCardOut, ExploreRequest,
     ExploreResponse, FigureResponse, FigureStar, FigureStats, HealthResponse, HistoryResponse, HistoryTurn,
-    ItemDetail, ItemSummary, LetterRequest, LetterResponse, SkyObjectOut, SkyRequest, SkyResponse, SourceRef,
-    StageInfo, UnfoldResponse,
+    ItemDetail, ItemSummary, LetterRequest, LetterResponse, PerspectiveRequest, PerspectiveResponse,
+    RelatedItem, SkyObjectOut, SkyRequest, SkyResponse, SourceRef,
+    StageInfo, SupportLine, ThemeOut, UnfoldResponse,
 )
 from vasthorizon.api.services import ItemNotFoundError, Services, default_services
 from vasthorizon.api.sessions import ConversationBusyError, Ticket
@@ -52,7 +55,9 @@ from vasthorizon.config import PROJECT_ROOT
 from vasthorizon.data.constellation_figures import LICENSES, figure_stats
 from vasthorizon.data.items.common import GROUPS
 from vasthorizon.features.constellation import FigureUnavailableError, figure_for
+from vasthorizon.data.perspective_library import THEMES
 from vasthorizon.features.light_letter import LetterUnavailableError, star_for_age
+from vasthorizon.features.perspective import PerspectiveInputError
 from vasthorizon.features.sky import SkyInputError, compute_sky
 from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.rag.retrieval import IndexMissingError
@@ -77,6 +82,8 @@ def error_payload(error: Exception) -> tuple[int, ErrorResponse]:
         return 422, ErrorResponse(code="letter_unavailable", message=str(error))
     if isinstance(error, FigureUnavailableError):
         return 422, ErrorResponse(code="figure_unavailable", message=str(error))
+    if isinstance(error, PerspectiveInputError):
+        return 422, ErrorResponse(code="invalid_request", message=str(error))
     if isinstance(error, SkyInputError):
         return 422, ErrorResponse(code="invalid_request", message=str(error))
     if isinstance(error, ConversationBusyError):
@@ -172,7 +179,7 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     # 예상한 오류는 개별 처리기로, 그 밖의 오류는 최상위 처리기로 (500 · 일반 안내 문구)
     for known in (ItemNotFoundError, ConversationBusyError, LetterUnavailableError, FigureUnavailableError,
-                  SkyInputError, MissingApiKeyError, IndexMissingError, EmbeddingMismatchError):
+                  SkyInputError, PerspectiveInputError, MissingApiKeyError, IndexMissingError, EmbeddingMismatchError):
         app.add_exception_handler(known, handle_error)
     app.add_exception_handler(Exception, handle_error)
 
@@ -341,6 +348,23 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         return SkyResponse(**body, guide=result.guide, status=result.status,
                            cited=[cited_evidence(ev) for ev in result.cited], notice=notice,
                            warnings=result.warnings)
+
+    @app.get("/api/perspective/themes", response_model=list[ThemeOut])
+    def perspective_themes() -> list[ThemeOut]:
+        return [ThemeOut(key=t.key, label=t.label, titles=list(t.titles)) for t in THEMES.values()]
+
+    @app.post("/api/perspective", response_model=PerspectiveResponse, responses=errors,
+              description="text(마음 한 줄) · theme(감정 버튼) 중 하나 이상. 위기 표현이면 답변 대신 상담 창구 안내")
+    def perspective(req: PerspectiveRequest) -> PerspectiveResponse:
+        result = svc().perspective(req.text, req.theme)
+        crisis = result.status == "crisis"
+        fixed = crisis or result.status in ("not_found", "unchecked")      # 정해진 안내 문구 — 인용 안내 없음
+        notice = None if fixed else generated_notice(result.status, result.cited)
+        return PerspectiveResponse(
+            status=result.status, answer=result.answer, crisis=crisis, themes=result.themes,
+            cited=[cited_evidence(ev) for ev in result.cited],
+            items=[RelatedItem(**it) for it in result.items], disclaimer=result.disclaimer,
+            support=[SupportLine(**line) for line in result.support], notice=notice, warnings=result.warnings)
 
     if web_dir and web_dir.exists():                    # 3D 프론트엔드 (9번 작업에서 추가)
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")

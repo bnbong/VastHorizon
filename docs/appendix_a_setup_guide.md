@@ -169,6 +169,7 @@ python -m scripts.index_docs --stats                         # 컬렉션 현황
 |---|---|---|
 | `cosmos_items` | `python -m scripts.index_items --rebuild` | 기존 색인 보존 |
 | `cosmos_docs` | `python -m scripts.index_docs --rebuild` | 기존 색인 보존 · `cosmos_items`는 건드리지 않음 |
+| `cosmos_perspective` | `python -m scripts.index_perspective --rebuild` | 기존 서가 보존 |
 
 | 동작 | 설명 |
 |---|---|
@@ -177,6 +178,23 @@ python -m scripts.index_docs --stats                         # 컬렉션 현황
 | 증분 | 항목 단위로 비교해 바뀐 청크만 재임베딩, 연결이 풀린 문서의 청크만 삭제 |
 | 보존 | 본문이 비었거나 캐시가 없는 문서는 기존 청크를 지우지 않음 (캐시는 연결 정보로 다시 받아 복구) |
 | 청크 설정 변경 | `config.toml [chunking]` 수정 후 `--reindex` — 비교 실험은 `[collections] docs`도 바꿔 별도 컬렉션에 |
+
+### 관점 전환 서가 색인
+
+관점 전환이 근거로 쓰는 위키 문서 13개(주제 5개)를 `cosmos_perspective`에 색인한다. 서버를 처음 띄우기 전에 한 번 실행한다.
+
+```bash
+python -m scripts.index_perspective --list      # 주제별 서가 문서 (외부 호출 없음)
+python -m scripts.index_perspective             # 문서를 받아(캐시 우선) 바뀐 청크만 반영
+python -m scripts.index_perspective --rebuild   # 임시 컬렉션에서 재구축 후 교체
+```
+
+| 동작 | 설명 |
+|---|---|
+| 서가 문서 | `vasthorizon/data/perspective_library.py` — 주제 · 문서 · 이어서 볼 천체 |
+| 결과 | 문서 13개 · 청크 123개 (기본 청크 설정 기준) |
+| 보존 | 받지 못한 문서의 기존 청크는 지우지 않음 · `--rebuild`는 하나라도 못 받으면 멈춤 |
+| 분리 | 항목 문서 색인(`cosmos_docs`)과 다른 컬렉션 — 항목 문서 재구축이 서가에 영향 없음 |
 
 ---
 
@@ -224,6 +242,8 @@ uvicorn vasthorizon.api.app:app --port 8000
 | `GET /api/constellations/{id}/figure` | 별자리 선과 별들의 좌표 · 실제 거리 (LLM 호출 없음) |
 | `POST /api/constellations/{id}/unfold` | 별자리 펼치기 설명 — 별 거리표를 근거로 인용 |
 | `POST /api/sky` | 오늘 밤 나의 하늘 — `{"lat": 37.57, "lon": 126.98, "at": "2026-10-22T21:00:00"}` |
+| `GET /api/perspective/themes` | 관점 전환 감정 버튼 목록 |
+| `POST /api/perspective` | 관점 전환 — `{"text": "마음 한 줄"}` · `{"theme": "small"}` · 둘 다 |
 
 `/api/sky` 메모
 
@@ -233,6 +253,17 @@ uvicorn vasthorizon.api.app:app --port 8000
 | `guide: false` | 별자리 · 행성 위치만 계산 (LLM 호출 없음) |
 | 낮 · 박명 | 태양 고도 −6도 이상이면 안내 문장을 만들지 않음 (`status: daytime`) |
 | 행성 | 카탈로그 위치 기준일 ±3일 안에서만 표시 · 달은 표시하지 않음 |
+
+`/api/perspective` 메모
+
+| 항목 | 동작 |
+|---|---|
+| 위기 표현 | 코드 검사(LLM 호출 없음) → LLM 분류 2차 확인. 위기면 답변 없이 `status: crisis` + 상담 창구 (109 · 1577-0199) |
+| 확인 순서 | 위기 확인 ①② → 감정 버튼 값 · 서가 색인 확인 → 검색 · 답변. 잘못된 버튼 값 · 서가 없음도 위기 확인을 막지 않음 |
+| 2차 확인 실패 | 분류 모델 장애 · 키 없음 · `crisis` 값 오류 → `status: unchecked` — 답변 없이 재시도 · 감정 버튼 · 상담 창구 안내 |
+| 모든 응답 | `disclaimer` "VastHorizon은 전문 심리상담을 대신하지 않습니다." · `support` 상담 창구 |
+| 감정 버튼만 | 분류 호출 없이 그 주제의 서가 문서에서 검색 |
+| 답변 규칙 | 서가 문서의 사실만 인용 · 진단 · 조언 · 근거 없는 위로 금지 (질의응답과 같은 인용 검증) |
 
 ```bash
 curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: application/json" \

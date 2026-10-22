@@ -200,7 +200,7 @@ class StreamAndErrorTest(ApiTestBase):
                 mock.patch("vasthorizon.store.chroma.collection_count", return_value=0):
             health = svc_module.check_health(ITEMS, ref_year=2026)
         codes = {n.code for n in health.notices}
-        self.assertEqual(codes, {"missing_key", "index_missing", "docs_index_empty"})
+        self.assertEqual(codes, {"missing_key", "index_missing", "docs_index_empty", "perspective_missing"})
         self.assertFalse(health.ready)
 
     def test_openapi_documents_schemas(self):

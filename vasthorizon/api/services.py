@@ -28,6 +28,7 @@ class Services:
     figures: dict = field(default_factory=dict)  # 항목 ID → 별자리 모양 (data/constellations.json)
     unfold: Callable | None = None              # (item, figure) → features.constellation.UnfoldResult
     sky_guide: Callable | None = None           # (view) → features.sky.SkyGuide
+    perspective: Callable | None = None         # (text, theme) → features.perspective.PerspectiveResult
 
     def __post_init__(self) -> None:
         self._by_id = {it["id"]: it for it in self.items}
@@ -77,6 +78,10 @@ def check_health(items: list[dict], ref_year: int) -> HealthResponse:
         notices.append(Notice(code="figures_missing", level="info",
                               message="별자리 모양 데이터가 없어 별자리 펼치기 · 하늘 안내가 일부 제한됩니다. "
                                       "python -m scripts.collect_constellations 를 실행해 주세요."))
+    if chroma.collection_count(settings.collections.perspective) == 0:
+        notices.append(Notice(code="perspective_missing", level="info",
+                              message="관점 전환 서가 색인이 없어 관점 전환을 쓸 수 없습니다. "
+                                      "python -m scripts.index_perspective 를 실행해 주세요."))
     if docs_indexed == 0:
         notices.append(Notice(code="docs_index_empty", level="info",
                               message="문서 색인이 비어 있습니다. 첫 질문은 문서 수집 · 색인 때문에 오래 걸릴 수 있습니다."))
@@ -93,6 +98,7 @@ def default_services() -> Services:
     from vasthorizon.features.constellation import unfold
     from vasthorizon.features.explore import explore
     from vasthorizon.features.light_letter import write_letter
+    from vasthorizon.features.perspective import perspective
     from vasthorizon.features.sky import sky_guide
     from vasthorizon.rag.pipeline import ask
 
@@ -104,4 +110,5 @@ def default_services() -> Services:
     return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year), explore=explore,
                     letter=lambda item: write_letter(item, ref_year), ref_year=ref_year, figures=load_figures(),
                     unfold=lambda item, figure: unfold(item, figure, ref_year),
-                    sky_guide=lambda view: sky_guide(view, items, ref_year))
+                    sky_guide=lambda view: sky_guide(view, items, ref_year),
+                    perspective=lambda text, theme: perspective(text, theme, items))

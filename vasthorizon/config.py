@@ -36,6 +36,7 @@ class PathConfig:
 class CollectionConfig:
     items: str
     docs: str
+    perspective: str = "cosmos_perspective"
 
 
 @dataclass(frozen=True)

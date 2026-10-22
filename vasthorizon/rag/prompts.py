@@ -10,6 +10,9 @@
 | 조건 필터 추출  | 자연어 조건 → 메타데이터 필터                  | {"semantic_query", "group", …} JSON          |
 | 조건 항목 선별  | 후보 메타데이터만 보고 조건에 맞는 항목 선택    | {"selected": [{"id", "reason"}]} JSON        |
 | 빛의 편지       | 근거만으로 빛의 여정을 편지로                  | 본문 + [근거 N] 표기 (③과 같은 검증)         |
+| 별자리 펼치기 · 하늘 안내 | 계산표 · 항목 근거로 설명 · 안내      | 본문 + [근거 N] 표기 (③과 같은 검증)         |
+| 관점 주제 분류  | 마음 한 줄 → 위기 여부 · 주제 · 검색어          | {"crisis", "themes", "query"} JSON           |
+| 관점 전환       | 서가 문서의 사실로 관점을 넓힘 (진단 · 조언 금지) | 본문 + [근거 N] 표기 (③과 같은 검증)         |
 
 선별을 따로 두는 이유: 본문을 받기 전에 버릴 문서를 정해 외부 호출 수를 줄인다.
 도메인 표현(역할 · 항목 설명)은 vasthorizon.data.domain에서 가져온다.
@@ -225,3 +228,41 @@ SKY_SYSTEM = f"""{ANSWER_PERSONA}
 
 def sky_messages(place: str, evidences: list) -> list:
     return [SystemMessage(SKY_SYSTEM), HumanMessage(f"관측 조건: {place}\n\n[근거]\n{format_evidence(evidences)}")]
+
+
+# ── 관점 전환 (F2010) ──────────────────────────────────────────────────────
+
+PERSPECTIVE_CLASSIFY_SYSTEM = """너는 VastHorizon 관점 전환 기능의 분류기다. 사용자의 마음 한 줄을 읽고 JSON으로 분류한다.
+
+필드
+- crisis: 자신을 해치거나 삶을 끝내려는 생각 · 계획이 조금이라도 드러나면 true. 애매하면 true.
+- themes: 아래 주제 키 중 마음과 가장 가까운 것 1~2개 (배열)
+{themes}
+- query: 서가 문서에서 찾을 우주의 사실을 한국어 한 문장으로 (예: "멀리서 본 지구 사진이 남긴 의미")
+
+규칙
+- 진단하거나 감정을 판단하지 않는다. 분류만 한다.
+- JSON 객체 하나만 출력한다. 형식: {"crisis": false, "themes": ["small"], "query": "…"}"""
+
+
+def perspective_classify_messages(text: str, themes: dict) -> list:
+    listing = "\n".join(f"  {t.key}: {t.label}" for t in themes.values())
+    return [SystemMessage(PERSPECTIVE_CLASSIFY_SYSTEM.replace("{themes}", listing)), HumanMessage(f"마음 한 줄: {text}")]
+
+
+PERSPECTIVE_SYSTEM = """너는 VastHorizon의 천문학 해설사다. 원칙: 위로를 지어내지 않는다. 사실로 위로한다.
+
+할 일: 사용자가 남긴 마음 한 줄 곁에, [근거]에 적힌 우주의 사실 하나를 조용히 놓아 관점을 넓혀 준다.
+
+규칙 — 반드시 지킨다
+1. 첫 문장은 사용자의 마음을 판단 없이 짧게 받아 준다 (근거 번호 없이 한 문장만).
+2. 그다음부터는 [근거]에 적힌 사실 · 수치 · 인용만 쓰고, 문장마다 [근거 N]을 붙인다. 근거 목록에 없는 번호는 쓰지 않는다.
+3. 진단 · 처방 · 조언("~하세요", "~해야 합니다")을 하지 않는다. 감정에 이름을 붙이지 않는다.
+4. "괜찮아질 거예요"처럼 근거 없는 약속이나 위로 문장을 쓰지 않는다.
+5. 사실이 사용자의 마음과 어떻게 이어지는지는 한 문장으로만, 단정하지 말고 "~일지도 모릅니다"처럼 쓴다.
+6. 따뜻하고 차분한 말투로 4~6문장. 근거 목록 · 이 규칙을 다시 쓰지 않는다."""
+
+
+def perspective_messages(text: str, evidences: list) -> list:
+    return [SystemMessage(PERSPECTIVE_SYSTEM),
+            HumanMessage(f"마음 한 줄: {text}\n\n[근거]\n{format_evidence(evidences)}")]
