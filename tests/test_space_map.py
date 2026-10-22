@@ -50,6 +50,13 @@ class MapPointsTest(unittest.TestCase):
         self.unplaced = {u["name"]: u for u in data["unplaced"]}
         self.rings = data["rings"]
 
+    def test_catalog_code_links_sky_data(self):
+        # 하늘 데이터(web/data)의 별 · 성운과 잇는 번호 — 메시에 번호 · 히파르코스 번호 (12번)
+        from vasthorizon.features.space_map import _point
+        self.assertEqual(_point({"id": "Q1", "name": "M", "group": "messier", "attrs": {"메시에 번호": "M31"}}, [1, 0, 0], 1.0, "sky")["code"], "M31")
+        self.assertEqual(_point({"id": "Q2", "name": "S", "group": "star", "attrs": {"히파르코스 번호": "HIP 32349"}}, [1, 0, 0], 1.0, "sky")["code"], "HIP 32349")
+        self.assertIsNone(_point({"id": "Q3", "name": "J", "group": "human_made", "attrs": {}}, None, 1.0, "computed")["code"])
+
     def test_placements(self):
         self.assertEqual({n: p["placement"] for n, p in self.points.items()}, {
             "지구": "origin", "화성": "computed", "시리우스": "sky", "국제우주정거장": "illustrative", "달 궤도선": "proxy"})
@@ -102,7 +109,9 @@ class WebApiTest(unittest.TestCase):
             Path(tmp, "index.html").write_text("<!doctype html>", encoding="utf-8")
             Path(tmp, "app.js").write_text("export {};", encoding="utf-8")
             Path(tmp, "style.css").write_text("body{}", encoding="utf-8")
+            Path(tmp, "stars.bin").write_bytes(b"VHS1" + bytes(4))
             c = self.client(Path(tmp))
+            self.assertEqual(c.get("/stars.bin").headers["content-type"], "application/octet-stream")   # 하늘 데이터 (12번)
             self.assertTrue(c.get("/app.js").headers["content-type"].startswith("text/javascript"))
             self.assertTrue(c.get("/style.css").headers["content-type"].startswith("text/css"))
             self.assertEqual(c.get("/").status_code, 200)

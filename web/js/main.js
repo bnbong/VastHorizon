@@ -11,6 +11,7 @@ import { clearHistoryFlow, requestGate, runLatest } from "./flows.js";
 import { icon } from "./icons.js";
 import { GROUP_COLORS, MapMode } from "./map.js";
 import { Stage } from "./scene.js";
+import { colorWord } from "./skydata.js";
 import { SkyMode } from "./sky.js";
 import { UnfoldMode } from "./unfold.js";
 
@@ -116,6 +117,7 @@ function claimPanel() {
 }
 
 function openDrawer(kind, html) {
+  if (kind !== "item") clearSelection();      // 다른 기능 서랍으로 바뀌면 선택 표시도 지운다
   state.drawer = kind;
   drawerBody.dataset.kind = kind;
   drawerBody.innerHTML = html;
@@ -129,8 +131,19 @@ function openDrawer(kind, html) {
   renderChrome();
 }
 
+// 선택 표시 (하늘 · 내 세상) — 누른 천체 둘레의 맥박 고리
+function showSelection(sel) {
+  state.sky?.select(sel);
+  state.map?.select(sel?.id, { fly: false });
+}
+
+function clearSelection() {
+  showSelection(null);
+}
+
 function closeDrawer() {
   claimPanel();                                // 진행 중인 응답이 닫힌 서랍을 다시 그리지 않게
+  clearSelection();
   state.drawer = null;
   app.classList.remove("drawer-open");
   $("#drawer").setAttribute("aria-hidden", "true");
@@ -161,19 +174,19 @@ const isObserved = (id) => world.visited.some((v) => v.id === id);
 // 천체를 바라볼 때마다 — 가장 먼 곳이 바뀌면 내 세상이 넓어진다
 function expandWorld(item) {
   if (!item?.id || !item.distance_km) return;
-  if (!isObserved(item.id)) world.visited.push({ id: item.id, name: item.name, km: item.distance_km });
+  if (!isObserved(item.id)) world.visited.push({ id: item.id, name: item.name, km: item.distance_km, ra: item.ra_deg, dec: item.dec_deg });
   if (item.distance_km > world.km) {
     world.km = item.distance_km;
     world.name = item.name;
     toast(`당신의 세상이 넓어졌습니다 — <em class="kw plain">${esc(item.name)}</em>까지, ${esc(distanceText(item.distance_km))}`);
   }
   saveWorld();
-  state.sky?.setObserved(world.visited.map((v) => v.id));
+  state.sky?.setObserved(world.visited);
   state.map?.setWorld(world.km, world.visited);
   renderChrome();
 }
 
-// 담기 — 천체의 이야기를 읽고 난 뒤 사람이 직접 누른다. 그때 흐릿한 빛이 한 점으로 모이고 반지름이 넓어진다
+// 담기 — 천체의 이야기를 읽고 난 뒤 사람이 직접 누른다. 그때 하늘에 이름이 생기고 반지름이 넓어진다
 function collectButtonHtml(obj) {
   if (!obj.distance_km) return "";
   if (isObserved(obj.id)) {
@@ -187,8 +200,8 @@ function collectButtonHtml(obj) {
 
 function bindCollect(root, obj) {
   root.querySelectorAll("[data-collect]").forEach((b) => b.addEventListener("click", () => {
+    state.sky?.observe(obj);                     // 하늘에 떠 있으면 옅은 고리가 금빛 고리와 이름으로 (이름이 막 나타나는 연출)
     expandWorld(obj);
-    state.sky?.observe(obj.id);                  // 하늘에 떠 있으면 흐릿한 빛이 한 점으로
     b.closest(".collect").outerHTML = `<div class="collected">${icon("sparkles", 15)}내 세상에 담았습니다 — 이제 ${esc(obj.name)}까지가 당신의 세상입니다</div>`;
   }));
 }
@@ -259,8 +272,8 @@ function renderHint() {
   if (state.mode === "map") hint.textContent = "파란 구가 내 세상 — 바라본 가장 먼 천체까지 · 금빛 선은 오늘의 궤적 · 드래그로 회전, 휠로 넓히기";
   else if (state.mode === "unfold") hint.textContent = `지구에서 본 ${state.unfold?.con.name ?? "별자리"} · '펼치기'를 누르면 별들이 실제 거리로 이동합니다`;
   else if (state.daytime) hint.textContent = "지금은 해가 떠 있어 별이 보이지 않습니다 · 오늘 밤 하늘에서 시각을 바꿔 보세요";
-  else hint.textContent = world.visited.length ? "흐릿한 빛을 눌러 관측해 보세요 · 관측한 천체는 이름과 거리를 갖습니다"
-    : "아직 아무것도 관측하지 않았습니다 · 흐릿한 빛 하나를 눌러 보세요";
+  else hint.textContent = world.visited.length ? "아무 별이나 눌러 알아보세요 · 옅은 고리는 아직 관측 전 · 휠로 확대하면 더 어두운 별까지"
+    : "아직 아무것도 관측하지 않았습니다 · 별 하나를 눌러 보세요 · 휠로 확대하면 더 어두운 별까지";
 }
 
 let toastTimer;
@@ -341,17 +354,33 @@ function journeyEnd() {
 
 const ATTR_LIMIT = 12;
 
-async function selectItem(id, { fly = true } = {}) {
+// 거리를 확인할 수 없는 별 — 지어내지 않는다. 화면 데이터(등급 · 색)만 보여 주고 담기는 막는다
+function unknownStarHtml(id, hint) {
+  const hip = id.slice(4);
+  const facts = hint?.mag != null ? `<p class="muted">겉보기 등급 ${hint.mag.toFixed(1)} · ${colorWord(hint.bv)} 별 (d3-celestial)</p>` : "";
+  return `<div class="head"><div class="eyebrow">별 · <span class="code">HIP ${esc(hip)}</span></div><h2 class="name">HIP ${esc(hip)}</h2></div>
+    ${facts}
+    <p class="status warn">Wikidata에 이 별의 거리가 없어 내 세상에 담을 수 없습니다. 거리를 모르는 별은 지어내지 않습니다.</p>
+    <a class="btn btn-ghost btn-sm" href="https://www.wikidata.org/w/index.php?search=${encodeURIComponent(`HIP ${hip}`)}" target="_blank" rel="noopener">Wikidata에서 찾아보기</a>`;
+}
+
+// hint: 하늘에서 누른 별의 화면 데이터 (hip · 등급 · 색지수) — 거리를 확인할 수 없는 별의 안내에 쓴다
+async function selectItem(id, { fly = true, hint = null } = {}) {
   const alive = claimPanel();
   let item;
+  const star = id.startsWith("hip:");
+  if (star) openDrawer("item", statusHtml("이 별의 정보를 Wikidata에서 찾는 중…"));   // 처음 누른 별은 1~2초
   try {
     item = await api.item(id);
   } catch (e) {
-    if (alive()) openDrawer("item", `<p class="status err">${esc(errorText(e))}</p>`);
+    if (!alive()) return;
+    if (star && e.code === "item_not_found") openDrawer("item", unknownStarHtml(id, hint));
+    else openDrawer("item", `<p class="status err">${esc(errorText(e))}</p>`);
     return;
   }
   if (!alive()) return;              // 그사이 다른 항목 · 기능을 골랐다 — 항목 · 카메라 · 기록 모두 건드리지 않는다
   state.item = item;
+  showSelection({ id: item.id, name: item.name, ra_deg: item.ra_deg, dec_deg: item.dec_deg });
   if (fly && state.mode === "map") state.map?.select(id);
   if (fly && state.mode === "sky") state.sky?.lookAt(id);
 
@@ -856,7 +885,8 @@ function bindStage() {
     if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
     const hit = stage.pick(e.clientX, e.clientY);
     if (!hit?.data?.id) return;
-    if (state.mode === "sky") selectItem(hit.data.id, { fly: false });     // 별자리 선의 별도 그 별 자체(hip:…)로
+    showSelection({ id: hit.data.id, name: hit.data.name, position: hit.position });   // 서랍이 열리기 전에 바로 표시
+    if (state.mode === "sky") selectItem(hit.data.id, { fly: false, hint: hit.data });   // 아무 별이나 그 별 자체(hip:…)로
     else selectItem(hit.data.id, { fly: state.mode === "map" });
   });
   el.addEventListener("pointermove", (e) => {
@@ -949,8 +979,8 @@ async function start() {
     state.refYear = map.ref_year ?? state.refYear;
     stage = new Stage($("#stage"));
     state.map = new MapMode(map);
-    state.sky = new SkyMode(state.constellations, cons.sky_stars ?? [], map.points.filter((p) => p.placement === "sky"));
-    state.sky.setObserved(world.visited.map((v) => v.id));
+    state.sky = new SkyMode(state.constellations, map.points.filter((p) => p.placement === "sky"));
+    state.sky.setObserved(world.visited);
     bindStage();
     $("#loading").hidden = true;
     // 바로 가기 주소 — ?mode=sky · ?mode=unfold&con=Q8860 · ?item=Q48469 · ?mode=map&journey=end · ?panel=catalog|explore|letter|mind|tonight (시연 · 공유용)

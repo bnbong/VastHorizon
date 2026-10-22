@@ -55,6 +55,7 @@ from vasthorizon.api.schemas import (
     StageInfo, SupportLine, ThemeOut, UnfoldResponse,
 )
 from vasthorizon.api.services import ItemNotFoundError, Services, default_services
+from vasthorizon.features.star_items import StarLookupError
 from vasthorizon.api.sessions import ConversationBusyError, Ticket
 from vasthorizon.config import PROJECT_ROOT
 from vasthorizon.data.constellation_figures import LICENSES, figure_stats
@@ -74,7 +75,8 @@ WEB_DIR = PROJECT_ROOT / "web"
 
 # Windows는 레지스트리 설정에 따라 .js를 text/plain으로 알려 주는데, 브라우저는 그 모듈 스크립트를 거부한다.
 # 정적 파일의 형식을 운영체제 설정과 관계없이 고정한다.
-for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".css", "text/css"), (".json", "application/json")):
+for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".css", "text/css"), (".json", "application/json"),
+                    (".bin", "application/octet-stream")):
     mimetypes.add_type(_type, _ext)
 EXCERPT_CHARS = 200
 
@@ -87,6 +89,8 @@ NOT_RECORDED_NOTICE = "답변하는 동안 대화 기록이 지워져, 이 답�
 # ── 오류 → 안내 (F2012 · NF2004) ───────────────────────────────────────────
 
 def error_payload(error: Exception) -> tuple[int, ErrorResponse]:
+    if isinstance(error, StarLookupError):
+        return 503, ErrorResponse(code="star_lookup_failed", message="별 정보를 Wikidata에서 받아 오지 못했습니다. 잠시 뒤 다시 눌러 주세요.")
     if isinstance(error, ItemNotFoundError):
         return 404, ErrorResponse(code="item_not_found", message="선택한 항목을 찾을 수 없습니다.")
     if isinstance(error, LetterUnavailableError):

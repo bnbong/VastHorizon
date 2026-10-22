@@ -1,7 +1,10 @@
-// 🌍 우주 지도 — 지구('나')를 중심으로 모든 항목을 실제 방향 · 로그 스케일 거리에 놓는다.
+// 🌍 우주 지도 — 지구('나')를 중심으로 모든 항목을 실제 방향 · 로그 스케일 거리에 놓는다. 배경은 실제 별과 은하수.
 
-import { THREE, label, pointsMaterial } from "./scene.js";
+import { THREE, label, pointsMaterial, ring } from "./scene.js";
+import { pulse } from "./sky.js";
 import { distanceText, eqToScene, mapRadius } from "./astro.js";
+import { EQ_TO_MAP } from "./skydata.js";
+import { loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
 
 export const GROUP_COLORS = {
   solar_system: 0xffd27a, human_made: 0x7ee0ff, star: 0xf4f6ff, messier: 0xc59bff,
@@ -21,14 +24,21 @@ export class MapMode {
   }
 
   build(rings) {
-    // 배경 별 (장식 — 데이터 아님)
-    const bg = new Float32Array(1800 * 3);
-    for (let i = 0; i < bg.length; i += 3) {
-      const v = new THREE.Vector3().randomDirection().multiplyScalar(600 + Math.random() * 400);
-      bg.set([v.x, v.y, v.z], i);
-    }
-    this.group.add(new THREE.Points(new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(bg, 3)),
-      pointsMaterial({ color: 0x55607a, size: 2 })));
+    // 배경 — 실제 별(6.5등급까지)과 은하수를 실제 방향에. 카메라를 따라다녀 늘 무한히 먼 하늘로 보인다
+    this.backdrop = new THREE.Group();
+    this.group.add(this.backdrop);
+    const stars = new StarLayer({ radius: 2400, horizon: false });
+    stars.setRotation(EQ_TO_MAP);
+    stars.setLimit(6.5);
+    stars.uniforms.uTwinkle.value = 0;
+    stars.uniforms.uDim.value = 0.75;
+    this.backdrop.add(stars.group);
+    Promise.all([loadStars("bright"), loadMilkyway()]).then(([bright, mw]) => {
+      stars.add(bright);
+      const milkyway = new MilkyWayLayer(mw, { radius: 2450, horizon: false, strength: 0.7 });
+      milkyway.setRotation(EQ_TO_MAP);
+      this.backdrop.add(milkyway.mesh);
+    }).catch((e) => console.warn("배경 하늘을 불러오지 못했습니다", e));
 
     // 거리 고리 — 지구 중심, 적도면
     rings.forEach((ring, idx) => {
@@ -91,6 +101,18 @@ export class MapMode {
     this.selectedTag = label("", "label selected");
     this.selectedTag.visible = false;
     this.group.add(this.selectedTag);
+    // 선택 표시 — 누른 천체 둘레에서 맥박 치는 고리 (하늘과 같은 모양)
+    this.selectRing = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3()]),
+      pointsMaterial({ map: ring(), size: 30, color: 0x9fd8ff, opacity: 0.95 }));
+    this.selectRing.visible = false;
+    this.group.add(this.selectRing);
+  }
+
+  update(dt, stage) {
+    this.backdrop.position.copy(stage.camera.position);
+    this.clock = (this.clock ?? 0) + dt;
+    pulse(this.selectRing.visible ? this.selectRing : null, this.clock, !matchMedia("(prefers-reduced-motion: reduce)").matches
+      && new URLSearchParams(location.search).get("motion") !== "off");
   }
 
   enter(stage) {
@@ -164,16 +186,23 @@ export class MapMode {
     return `${p.name} — ${distanceText(p.km)}${note}`;
   }
 
-  select(id) {
-    const p = this.byId.get(id);
+  // 선택 — 이름표와 맥박 고리. fly면 그 천체로 카메라를 옮긴다. id가 없거나 지도에 없는 천체면 표시를 지운다
+  select(id, { fly = true } = {}) {
+    const p = id ? this.byId.get(id) : null;
     for (const [tagId, tag] of this.landmarkTags) tag.visible = tagId !== id;   // 선택 이름표와 겹치지 않게
     if (!p) {
       this.selectedTag.visible = false;
+      this.selectRing.visible = false;
       return false;
     }
     this.selectedTag.element.textContent = `◎ ${p.name}`;
     this.selectedTag.position.copy(p.position);
     this.selectedTag.visible = true;
+    this.selectRing.geometry.attributes.position.setXYZ(0, p.position.x, p.position.y, p.position.z);
+    this.selectRing.geometry.attributes.position.needsUpdate = true;
+    this.selectRing.geometry.computeBoundingSphere();
+    this.selectRing.visible = true;
+    if (!fly || !this.stage) return true;
     const back = p.position.clone().normalize().multiplyScalar(Math.max(8, p.position.length() * 0.25));
     this.stage.flyTo(p.position.clone().add(back).add(new THREE.Vector3(0, 4, 0)), p.position.clone());
     return true;

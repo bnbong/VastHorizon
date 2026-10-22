@@ -1,0 +1,15 @@
+{
+ "license": "d3-celestial (© 2015 Olaf Frohn, BSD-3-Clause) — 히파르코스 · NGC/IC · 은하수 윤곽",
+ "source": "https://github.com/ofrohn/d3-celestial",
+ "stars": {
+  "bright": 41411,
+  "faint": 76805,
+  "bright_limit": 8.0,
+  "faintest": 13.78
+ },
+ "dsos": 15809,
+ "milkyway": {
+  "width": 720,
+  "height": 360
+ }
+}

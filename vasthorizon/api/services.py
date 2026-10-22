@@ -31,7 +31,7 @@ class Services:
     perspective: Callable | None = None         # (text, theme) → features.perspective.PerspectiveResult
     sky_stars: list = field(default_factory=list)  # 맨눈 별 [적경, 적위, 등급, 색지수] (data/sky_stars.json)
     intro: Callable | None = None               # (item) → features.intro.item_intro 결과
-    stars: Callable | None = None               # (item_id) → 별자리 선의 별 임시 항목 | None (features/star_items.py)
+    stars: Callable | None = None               # (item_id) → 별 임시 항목 hip:… | None (features/star_items.StarLookup)
     map_cache: dict | None = None               # /api/map 응답 — 항목이 바뀌지 않으므로 한 번만 계산
 
     def __post_init__(self) -> None:
@@ -105,7 +105,10 @@ def default_services() -> Services:
     from vasthorizon.features.light_letter import write_letter
     from vasthorizon.features.perspective import perspective
     from vasthorizon.features.sky import sky_guide
-    from vasthorizon.features.star_items import star_index, star_item
+    from vasthorizon.config import PROJECT_ROOT, get_settings
+    from vasthorizon.data import sources
+    from vasthorizon.data.sky_catalog import load_star_index
+    from vasthorizon.features.star_items import StarLookup, star_index
     from vasthorizon.rag.pipeline import ask
 
     try:
@@ -117,7 +120,8 @@ def default_services() -> Services:
     stars = star_index(figures)
     return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year), explore=explore,
                     letter=lambda item: write_letter(item, ref_year), ref_year=ref_year, figures=figures,
-                    stars=lambda item_id: star_item(item_id, stars, ref_year),
+                    stars=StarLookup(stars, load_star_index(PROJECT_ROOT / "web" / "data"),
+                                     get_settings().paths.cache_dir / "stars", sources.sparql, ref_year),
                     sky_stars=load_sky_stars(),
                     unfold=lambda item, figure: unfold(item, figure, ref_year),
                     sky_guide=lambda view: sky_guide(view, items, ref_year),

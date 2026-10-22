@@ -23,7 +23,7 @@
 3D 하늘에서 천체를 고르면 **수집한 문서에 근거해서만** 답하는 우주 지식 서비스입니다.
 바라본 천체가 멀수록 '내 세상의 반지름'이 지평선(4.7km)에서 우주 끝으로 넓어집니다.
 
-SSAFY AI 코어 프로젝트 2, RAG 기반 도메인 지식 서비스, 2026-10
+SSAFY AI 코어 프로젝트 2, RAG 기반 도메인 지식 서비스, 2026 -10-21 ~ 2026-10-23
 
 ![오리온자리 펼치기: 별자리 별들이 카탈로그 거리로 펼쳐지고, 설명은 근거와 함께](docs/images/11_unfold.jpg)
 
@@ -38,7 +38,8 @@ SSAFY AI 코어 프로젝트 2, RAG 기반 도메인 지식 서비스, 2026-10
 | 필수 기능 | F2001 ~ F2012 **모두 통과** |
 | 심화 기능 | F2013 ~ F2016 **4개 모두 구현, 통과** |
 | RAG 전후 비교 | 대표 8문항, 실행 1회 수동 판정: RAG 맞음 6, 확인 불가 2, **틀린 답 0**, 인용한 주장은 모두 근거와 일치 |
-| 테스트 | Python 341, JavaScript 25, 브라우저 점검 17: **모두 통과** |
+| 하늘 | 실제 별 118,216개 (확대하면 12등급대까지), 성운과 성단과 은하 15,809개, 은하수. 아무 별이나 눌러 담기 |
+| 테스트 | Python 359, JavaScript 35, 브라우저 점검 25: **모두 통과** |
 
 ---
 
@@ -127,6 +128,7 @@ flowchart LR
 flowchart LR
     A["collect_items<br/>Wikidata, Horizons, CelesTrak"] --> B["index_items<br/>cosmos_items 424"]
     C["collect_constellations<br/>d3-celestial"] --> F["별자리 선, 맨눈 별 5,044"]
+    H["build_sky_data<br/>d3-celestial"] --> W["web/data<br/>별 118,216, 성운 15,809, 은하수"]
     B --> S["서버 실행"]
     S --> Q["질문할 때<br/>문서 수집 → cosmos_docs"]
     P["index_perspective<br/>관점 전환 서가 13문서"] --> S
@@ -153,7 +155,7 @@ flowchart LR
 | [NASA NSSDCA](https://nssdc.gsfc.nasa.gov/) | 탐사선 미션 설명 | 미국 정부 저작물 (공개) |
 | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) | 태양계 천체, 탐사선 위치 | 미국 정부 저작물 (공개) |
 | [CelesTrak SATCAT](https://celestrak.org/satcat/) | 위성 궤도, 운용 상태 | 무료 공개, 출처 표기 |
-| [d3-celestial](https://github.com/ofrohn/d3-celestial) | 별, 별자리 선 | BSD-3-Clause |
+| [d3-celestial](https://github.com/ofrohn/d3-celestial) | 히파르코스 별, 성운과 성단과 은하, 은하수 윤곽, 별자리 선 | BSD-3-Clause |
 | [three.js](https://threejs.org/) r170, [Lucide](https://lucide.dev/) | 3D 화면, 아이콘 | MIT, ISC |
 
 근거마다 원문 링크를 달고, 화면 하단에 출처를 표시합니다.

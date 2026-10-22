@@ -6,6 +6,7 @@
 //   exit()                : (선택) 정리
 //   pickables()           : [{ position: Vector3, data }] — 클릭 · 툴팁 대상
 //   update(dt, stage)     : (선택) 매 프레임
+//   pickNear(x, y)        : (선택) pickables에 없을 때 그 자리의 대상
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -38,6 +39,22 @@ export function dot() {
   return dotTexture;
 }
 
+// 고리 — 하늘에서 '아직 관측 전'(옅게) · '담은 천체'(금빛) 표시
+let ringTexture;
+export function ring() {
+  if (ringTexture) return ringTexture;
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const g = c.getContext("2d");
+  g.strokeStyle = "rgba(255,255,255,1)";
+  g.lineWidth = 4;
+  g.beginPath();
+  g.arc(32, 32, 26, 0, Math.PI * 2);
+  g.stroke();
+  ringTexture = new THREE.CanvasTexture(c);
+  return ringTexture;
+}
+
 export function pointsMaterial(options) {
   return new THREE.PointsMaterial({ map: dot(), transparent: true, depthWrite: false, sizeAttenuation: false, ...options });
 }
@@ -67,7 +84,7 @@ export class Stage {
     this.renderer.domElement.addEventListener("wheel", (e) => {
       if (!this.fovZoom) return;
       e.preventDefault();
-      this.camera.fov = THREE.MathUtils.clamp(this.camera.fov * (e.deltaY > 0 ? 1.08 : 0.92), 15, 100);
+      this.camera.fov = THREE.MathUtils.clamp(this.camera.fov * (e.deltaY > 0 ? 1.08 : 0.92), this.fovMin ?? 15, 100);
       this.applyInset(this.container.clientWidth, this.container.clientHeight);
     }, { passive: false });
 
@@ -108,6 +125,7 @@ export class Stage {
     this.tweens.cancelAll();                 // 이전 모드의 연출은 여기서 끝낸다
     this.mode = mode;
     this.fovZoom = false;
+    this.fovMin = 15;
     this.camera.fov = 55;
     this.camera.updateProjectionMatrix();
     Object.assign(this.controls, { enableZoom: true, enablePan: true, rotateSpeed: 1, minDistance: 0, maxDistance: Infinity });
@@ -131,7 +149,8 @@ export class Stage {
       const d = Math.hypot(x - clientX, y - clientY);
       if (d <= maxPx && (!best || d < best.d)) best = { d, ...p };
     }
-    return best;
+    // 이름 있는 대상이 없으면 — 모드가 그 자리의 실제 천체를 찾는다 (하늘의 별 · 성운)
+    return best ?? this.mode.pickNear?.(clientX, clientY) ?? null;
   }
 
   // 카메라 이동 — 위치 · 바라보는 점을 ms 동안 부드럽게

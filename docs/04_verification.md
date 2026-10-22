@@ -182,9 +182,9 @@ graph TD;
 
 | 종류 | 실행 | 결과 |
 |---|---|---|
-| Python 단위, 통합 | `python -m unittest discover -s tests -t .` | **341개 통과**: Python 3.12.10 (16.2초), Python 3.11.9 (11.9초) |
-| JavaScript 단위 | `node --test "tests/js/*.test.mjs"` | **25개 통과** |
-| 브라우저 점검 (실제 Chrome, 실제 서버) | 헤드리스 Chrome으로 화면 흐름 17가지 | **17/17 통과**, 페이지 예외 0. 2026-10-22 안내 띠를 수정한 뒤 1회 실행했습니다 (Python 3.12.10 서버, Windows 11). 그 뒤 문서만 고친 리뷰 반영 이후에는 다시 실행하지 않았습니다 |
+| Python 단위, 통합 | `python -m unittest discover -s tests -t .` | **359개 통과**: Python 3.12.10 (10.9초), Python 3.11.9 (11.1초) |
+| JavaScript 단위 | `node --test "tests/js/*.test.mjs"` | **35개 통과** |
+| 브라우저 점검 (실제 Chrome, 실제 서버) | 헤드리스 Chrome으로 화면 흐름 25가지 (12번 실제 하늘 6가지, 선택 하이라이트 2가지 포함) | **25/25 통과**, 페이지 예외 0. 2026-10-22 12-1 리뷰 반영 뒤 실행했습니다 (Python 3.12.10 서버, Windows 11, 실제 Wikidata 조회 포함) |
 
 단위 테스트에서는 LLM과 외부 API를 가짜 객체로 바꿉니다. 실제 호출은 2, 3, 6장의 실행 결과로 확인했습니다.
 
@@ -196,7 +196,7 @@ graph TD;
 | 항목 | 값 |
 |---|---|
 | OS | Windows 11 Enterprise |
-| Python | 3.12.10 (개발, 화면 캡처, 브라우저 점검), 3.11.9 (최소 버전 확인: 설정 로드, 테스트 341, 환경 점검, 서버 기동) |
+| Python | 3.12.10 (개발, 화면 캡처, 브라우저 점검), 3.11.9 (최소 버전 확인: 설정 로드, 테스트 359, 환경 점검, 서버 기동) |
 | Node.js | 24.18.0 (JS 단위 테스트, 브라우저 점검 스크립트) |
 | 브라우저 | Chrome (헤드리스, SwiftShader) 1440×900 |
 
@@ -210,11 +210,12 @@ graph TD;
 | `test_rag` | 36 | F2006 ~ F2008 병합, 인용 검증, 그래프, 확인 불가 |
 | `test_api`, `test_api_concurrency` | 14, 9 | F2009, F2012, NF2004 세션, 안내, 오류 형식, 동시 요청 |
 | `test_features` | 28 | F2010, F2011 빛의 편지, 조건 탐색 |
-| `test_sky_constellation`, `test_space_map` | 33, 8 | F2010 하늘 계산, 별자리 펼치기, 공간 지도 |
+| `test_sky_constellation`, `test_space_map` | 33, 9 | F2010 하늘 계산, 별자리 펼치기, 공간 지도, 하늘 데이터 연결 번호 |
 | `test_perspective` | 27 | F2010 관점 전환, 위기 안내 |
-| `test_live_position`, `test_intro`, `test_star_items` | 7, 5, 7 | 오늘 위치, 천체 소개, 별자리 선의 별 |
+| `test_live_position`, `test_intro`, `test_star_items` | 7, 5, 17 | 오늘 위치, 천체 소개, 아무 별이나 그 별 자체로 (Wikidata 조회, 엔티티별 분리, 캐시, 장애) |
+| `test_sky_catalog` | 7 | 실제 하늘 데이터 (별 이진 형식, 메시에 연결, 은하수 안팎 판정) |
 | `test_rag_compare` | 24 | F2015 실행 정보, 병합, 답 정리, 검증 페이지 |
-| `tests/js/` astro, flows, tween | 10, 9, 6 | 화면 천문 계산, 요청 순서, 애니메이션 |
+| `tests/js/` astro, flows, tween, skydata | 10, 9, 6, 10 | 화면 천문 계산, 요청 순서, 애니메이션, 하늘 데이터 해석과 한계 등급, 별과 성운 고르기 (적경 경계, 극 근처) |
 
 ---
 

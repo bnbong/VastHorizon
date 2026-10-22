@@ -14,7 +14,7 @@ from tests.test_api import ITEMS, FakeAsk, healthy
 from vasthorizon.api.app import create_app
 from vasthorizon.api.services import ItemNotFoundError, Services
 from vasthorizon.features.intro import item_intro
-from vasthorizon.features.star_items import star_index, star_item
+from vasthorizon.features.star_items import StarLookup, StarLookupError, star_facts, star_index, star_item
 from vasthorizon.rag.retrieval import adhoc_evidence
 
 FIGURES = {"Q8860": {"item_id": "Q8860", "name": "오리온자리", "lines": [[22449, 27989]], "stars": {
@@ -86,6 +86,118 @@ class StarApiTest(unittest.TestCase):
         self.assertEqual(r.json()["item_name"], "타비트")
         r = self.client().post("/api/ask", json={"session_id": "test-session-01", "item_id": "hip:x", "question": "q"})
         self.assertEqual(r.status_code, 422)
+
+
+# ── 아무 별 — 히파르코스 번호로 Wikidata 조회 (12번) ─────────────────────
+
+POSITIONS = {71683: (219.9, -60.83, -0.01, 0.71), 5: (0.004, -19.5, 9.27, 0.9), 22449: (72.46, 6.96, 3.19, 0.45)}
+ALPHA_CEN = [
+    {"item": "http://www.wikidata.org/entity/Q2090157", "en": "Alpha Centauri A", "ko": "센타우루스자리 알파 A",
+     "distM": "41300000000000000", "plx": "747.1"},
+    {"item": "http://www.wikidata.org/entity/Q2090157", "en": "Alpha Centauri A", "ko": "센타우루스자리 알파 A",
+     "distM": "41340000000000000", "plx": "747.1"},
+]
+
+
+class StarLookupTest(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.calls = []
+        self.rows = {71683: ALPHA_CEN, 5: [{"item": "http://www.wikidata.org/entity/Q1", "en": "HD 224700"}]}
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def lookup(self, fetch=None):
+        def fake(query):
+            self.calls.append(query)
+            hip = int(query.split('"HIP ')[1].split('"')[0])
+            return self.rows.get(hip, [])
+        return StarLookup(INDEX, POSITIONS, Path(self.tmp.name), fetch or fake, 2026)
+
+    def test_figure_star_without_fetch(self):
+        self.assertEqual(self.lookup()("hip:22449")["name"], "타비트")
+        self.assertEqual(self.calls, [])                  # 별자리 선의 별은 외부 호출 없음
+
+    def test_wikidata_star_item_and_cache(self):
+        look = self.lookup()
+        it = look("hip:71683")
+        self.assertEqual((it["id"], it["name"], it["name_en"], it["adhoc"]), ("hip:71683", "센타우루스자리 알파 A", "Alpha Centauri A", True))
+        self.assertAlmostEqual(it["distance"]["ly"], 4.37, places=1)
+        self.assertEqual((it["ra_deg"], it["dec_deg"]), (219.9, -60.83))
+        self.assertEqual(it["attrs"]["겉보기 등급"], -0.01)
+        self.assertIn("Q2090157", it["sources"][0]["url"])
+        look("hip:71683")
+        self.assertEqual(len(self.calls), 1)               # 두 번째는 캐시
+        self.assertIn("센타우루스자리 알파 A", adhoc_evidence(it).text)
+
+    def test_no_distance_or_unknown_star_is_none(self):
+        look = self.lookup()
+        self.assertIsNone(look("hip:5"))                   # Wikidata에 거리 없음 — 지어내지 않는다
+        self.assertIsNone(look("hip:424242"))              # 하늘 데이터에 없는 번호 — 조회도 하지 않는다
+        self.assertEqual(len(self.calls), 1)
+        self.assertIsNone(look("Q1"))
+
+    def test_failure_raises_and_is_not_cached(self):
+        def broken(query):
+            raise ConnectionError("down")
+        with self.assertRaises(StarLookupError):
+            self.lookup(broken)("hip:71683")
+        self.assertEqual(list(Path(self.tmp.name).iterdir()), [])
+        self.assertEqual(self.lookup()("hip:71683")["name"], "센타우루스자리 알파 A")   # 장애가 풀리면 다시 조회
+
+    def test_star_facts_cross_checks_parallax(self):
+        # 단위가 틀린 값(1000배)은 연주시차와 맞지 않아 빠진다 (common.distance_with_parallax)
+        rows = [{"item": "x/Q9", "distM": str(int(4.37 * 9.4607e15))},
+                {"item": "x/Q9", "distM": str(int(4370 * 9.4607e15)), "plx": "747.1"}]
+        self.assertAlmostEqual(star_facts(rows)["distance"]["ly"], 4.37, places=1)
+        self.assertIsNone(star_facts([{"item": "x/Q9", "en": "Nameless"}])["distance"])
+
+    # ── 12-1 리뷰 P1: 엔티티별로 나누기 ──
+
+    def test_entities_are_not_mixed(self):
+        rows = [{"item": "x/Q1", "en": "Alpha", "distM": str(int(10 * 9.4607e15))},
+                {"item": "x/Q2", "en": "Beta", "distM": str(int(100 * 9.4607e15))}]
+        facts = star_facts(rows)
+        self.assertEqual((facts["distance"], facts["qid"], facts["name_en"]), (None, None, None))   # 모호함 — 55광년을 만들지 않는다
+        self.assertEqual(facts["ambiguous"], ["Q1", "Q2"])
+        self.assertEqual(star_facts(list(reversed(rows))), facts)                                  # 행 순서와 무관
+
+    def test_only_entity_with_distance_is_chosen_whole(self):
+        rows = [{"item": "x/Q7", "en": "System", "title": "계"},
+                {"item": "x/Q3", "en": "Star B", "ko": "별 B", "distM": str(int(20 * 9.4607e15))}]
+        for order in (rows, list(reversed(rows))):
+            f = star_facts(order)
+            self.assertEqual((f["qid"], f["name_en"], f["name_ko"], f["wiki_title"]), ("Q3", "Star B", "별 B", None))
+            self.assertAlmostEqual(f["distance"]["ly"], 20, places=3)
+
+    def test_repeated_join_rows_do_not_weight_the_median(self):
+        ly = lambda v: str(int(v * 9.4607e15))
+        rows = [{"item": "x/Q8", "distM": ly(10), "en": f"name {i}"} for i in range(5)]      # 같은 거리 값이 5행에 반복
+        rows += [{"item": "x/Q8", "distM": ly(11)}, {"item": "x/Q8", "distM": ly(12)}]
+        self.assertAlmostEqual(star_facts(rows)["distance"]["ly"], 11, places=3)              # 서로 다른 값 {10, 11, 12}의 중앙값
+        self.assertEqual(star_facts(rows)["name_en"], "name 0")                              # 이름도 정렬해 고른다
+
+    def test_ambiguous_star_is_not_collectable_and_old_cache_is_refetched(self):
+        self.rows[71683] = [{"item": "x/Q1", "en": "Alpha", "distM": "1"}, {"item": "x/Q2", "en": "Beta", "distM": "2"}]
+        self.assertIsNone(self.lookup()("hip:71683"))
+        # 이전 형식(버전 없음)의 캐시 — 다시 조회해 덮어쓴다
+        import json
+        old = Path(self.tmp.name) / "hip_5.json"
+        old.write_text(json.dumps({"qid": "Q1", "name_en": "Mixed", "distance": {"km": 1e14, "ly": 10.6, "basis": "wikidata"}}), encoding="utf-8")
+        self.rows[5] = ALPHA_CEN
+        it = self.lookup()("hip:5")
+        self.assertEqual(it["name"], "센타우루스자리 알파 A")
+        self.assertEqual(json.loads(old.read_text(encoding="utf-8"))["version"], 2)
+
+    def test_api_lookup_failure_is_503(self):
+        def broken(query):
+            raise TimeoutError()
+        services = Services(items=ITEMS, ask=FakeAsk(), health=healthy, stars=self.lookup(broken))
+        r = TestClient(create_app(services, web_dir=None), raise_server_exceptions=False).get("/api/items/hip:71683")
+        self.assertEqual((r.status_code, r.json()["code"]), (503, "star_lookup_failed"))
+        self.assertNotIn("TimeoutError", r.text)
 
 
 if __name__ == "__main__":
