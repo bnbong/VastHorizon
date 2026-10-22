@@ -8,7 +8,7 @@
 </p>
 <p align="center">
 <img src="https://img.shields.io/badge/FastAPI-%23009688?style=flat&logo=fastapi&logoColor=white" alt="FastAPI"/>
-<img src="https://img.shields.io/badge/three.js-%23000000.svg?style=flat&logo=three.js&logoColor=white" alt="ThreeJS/>
+<img src="https://img.shields.io/badge/three.js-%23000000.svg?style=flat&logo=three.js&logoColor=white" alt="ThreeJS"/>
 </p>
 
 ---
