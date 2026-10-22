@@ -1,0 +1,9567 @@
+{
+ "figures": {
+  "And": {
+   "item_id": "Q9256",
+   "name": "안드로메다자리",
+   "lines": [
+    [
+     9640,
+     5447,
+     3092,
+     677
+    ],
+    [
+     4463,
+     3693,
+     3031,
+     3092,
+     2912,
+     116631,
+     113726
+    ],
+    [
+     116631,
+     116805,
+     116584
+    ],
+    [
+     5447,
+     4436,
+     3881,
+     5434,
+     7607
+    ],
+    [
+     116805,
+     117221
+    ]
+   ],
+   "stars": {
+    "9640": {
+     "hip": 9640,
+     "ra_deg": 30.9748,
+     "dec_deg": 42.3297,
+     "mag": 2.1,
+     "name": "알마크",
+     "item_id": "Q66477099",
+     "distance_ly": 348.81,
+     "distance_basis": "wikidata"
+    },
+    "5447": {
+     "hip": 5447,
+     "ra_deg": 17.433,
+     "dec_deg": 35.6206,
+     "mag": 2.07,
+     "name": "미라크",
+     "item_id": "Q13043",
+     "distance_ly": 197.94,
+     "distance_basis": "wikidata"
+    },
+    "3092": {
+     "hip": 3092,
+     "ra_deg": 9.832,
+     "dec_deg": 30.861,
+     "mag": 3.27,
+     "name": "δ 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 103.59,
+     "distance_basis": "wikidata"
+    },
+    "677": {
+     "hip": 677,
+     "ra_deg": 2.0969,
+     "dec_deg": 29.0904,
+     "mag": 2.07,
+     "name": "알페라츠",
+     "item_id": "Q13039",
+     "distance_ly": 97.24,
+     "distance_basis": "wikidata"
+    },
+    "4463": {
+     "hip": 4463,
+     "ra_deg": 14.3017,
+     "dec_deg": 23.4176,
+     "mag": 4.4,
+     "name": "η 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 248.92,
+     "distance_basis": "wikidata"
+    },
+    "3693": {
+     "hip": 3693,
+     "ra_deg": 11.8347,
+     "dec_deg": 24.2672,
+     "mag": 4.08,
+     "name": "ζ 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 180.22,
+     "distance_basis": "wikidata"
+    },
+    "3031": {
+     "hip": 3031,
+     "ra_deg": 9.6389,
+     "dec_deg": 29.3118,
+     "mag": 4.34,
+     "name": "ε 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 168.22,
+     "distance_basis": "wikidata"
+    },
+    "2912": {
+     "hip": 2912,
+     "ra_deg": 9.2202,
+     "dec_deg": 33.7193,
+     "mag": 4.34,
+     "name": "π 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 565.5,
+     "distance_basis": "wikidata"
+    },
+    "116631": {
+     "hip": 116631,
+     "ra_deg": 354.5342,
+     "dec_deg": 43.2681,
+     "mag": 4.29,
+     "name": "ι 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 502.63,
+     "distance_basis": "wikidata"
+    },
+    "113726": {
+     "hip": 113726,
+     "ra_deg": 345.4803,
+     "dec_deg": 42.326,
+     "mag": 3.62,
+     "name": "ο 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 348.81,
+     "distance_basis": "wikidata"
+    },
+    "116805": {
+     "hip": 116805,
+     "ra_deg": 355.1021,
+     "dec_deg": 44.3339,
+     "mag": 4.15,
+     "name": "κ 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 165.42,
+     "distance_basis": "wikidata"
+    },
+    "116584": {
+     "hip": 116584,
+     "ra_deg": 354.391,
+     "dec_deg": 46.4582,
+     "mag": 3.81,
+     "name": "λ 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 81.71,
+     "distance_basis": "wikidata"
+    },
+    "4436": {
+     "hip": 4436,
+     "ra_deg": 14.1884,
+     "dec_deg": 38.4993,
+     "mag": 3.86,
+     "name": "μ 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 128.43,
+     "distance_basis": "wikidata"
+    },
+    "3881": {
+     "hip": 3881,
+     "ra_deg": 12.4535,
+     "dec_deg": 41.0789,
+     "mag": 4.53,
+     "name": "ν 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 517.93,
+     "distance_basis": "wikidata"
+    },
+    "5434": {
+     "hip": 5434,
+     "ra_deg": 17.3755,
+     "dec_deg": 47.2418,
+     "mag": 4.26,
+     "name": "φ 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 717.54,
+     "distance_basis": "wikidata"
+    },
+    "7607": {
+     "hip": 7607,
+     "ra_deg": 24.4982,
+     "dec_deg": 48.6282,
+     "mag": 3.59,
+     "name": "Nembus",
+     "item_id": null,
+     "distance_ly": 175.46,
+     "distance_basis": "wikidata"
+    },
+    "117221": {
+     "hip": 117221,
+     "ra_deg": 356.5085,
+     "dec_deg": 46.4203,
+     "mag": 4.97,
+     "name": "ψ 안드로메다자리",
+     "item_id": null,
+     "distance_ly": 2008.3,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Ant": {
+   "item_id": "Q10481",
+   "name": "공기펌프자리",
+   "lines": [
+    [
+     46515,
+     51172,
+     53502
+    ]
+   ],
+   "stars": {
+    "46515": {
+     "hip": 46515,
+     "ra_deg": 142.3113,
+     "dec_deg": -35.9513,
+     "mag": 4.51,
+     "name": "ε 공기펌프자리",
+     "item_id": null,
+     "distance_ly": 591.92,
+     "distance_basis": "wikidata"
+    },
+    "51172": {
+     "hip": 51172,
+     "ra_deg": 156.7879,
+     "dec_deg": -31.0678,
+     "mag": 4.28,
+     "name": "α 공기펌프자리",
+     "item_id": null,
+     "distance_ly": 346.7,
+     "distance_basis": "wikidata"
+    },
+    "53502": {
+     "hip": 53502,
+     "ra_deg": 164.1794,
+     "dec_deg": -37.1378,
+     "mag": 4.6,
+     "name": "ι 공기펌프자리",
+     "item_id": null,
+     "distance_ly": 204.53,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Aps": {
+   "item_id": "Q10506",
+   "name": "극락조자리",
+   "lines": [
+    [
+     72370,
+     80047,
+     81852,
+     81065
+    ]
+   ],
+   "stars": {
+    "72370": {
+     "hip": 72370,
+     "ra_deg": 221.9655,
+     "dec_deg": -79.0448,
+     "mag": 3.83,
+     "name": "α 극락조자리",
+     "item_id": null,
+     "distance_ly": 433.37,
+     "distance_basis": "wikidata"
+    },
+    "80047": {
+     "hip": 80047,
+     "ra_deg": 245.0867,
+     "dec_deg": -78.6957,
+     "mag": 4.68,
+     "name": "δ1 극락조자리",
+     "item_id": null,
+     "distance_ly": 628.92,
+     "distance_basis": "wikidata"
+    },
+    "81852": {
+     "hip": 81852,
+     "ra_deg": 250.76940000000002,
+     "dec_deg": -77.5174,
+     "mag": 4.23,
+     "name": "β 극락조자리",
+     "item_id": null,
+     "distance_ly": 152.21,
+     "distance_basis": "wikidata"
+    },
+    "81065": {
+     "hip": 81065,
+     "ra_deg": 248.3628,
+     "dec_deg": -78.8971,
+     "mag": 3.86,
+     "name": "γ 극락조자리",
+     "item_id": null,
+     "distance_ly": 151.68,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Aqr": {
+   "item_id": "Q10576",
+   "name": "물병자리",
+   "lines": [
+    [
+     102618,
+     103045,
+     106278,
+     109074,
+     110395,
+     110960,
+     111497,
+     112961,
+     115033,
+     114341
+    ],
+    [
+     106278,
+     109139
+    ],
+    [
+     109074,
+     110003
+    ],
+    [
+     110960,
+     110672
+    ],
+    [
+     115438,
+     115033,
+     116901
+    ]
+   ],
+   "stars": {
+    "102618": {
+     "hip": 102618,
+     "ra_deg": 311.919,
+     "dec_deg": -9.4958,
+     "mag": 3.78,
+     "name": "Albali",
+     "item_id": null,
+     "distance_ly": 229.9,
+     "distance_basis": "wikidata"
+    },
+    "103045": {
+     "hip": 103045,
+     "ra_deg": 313.1635,
+     "dec_deg": -8.9833,
+     "mag": 4.73,
+     "name": "Albulan",
+     "item_id": null,
+     "distance_ly": 150.62,
+     "distance_basis": "wikidata"
+    },
+    "106278": {
+     "hip": 106278,
+     "ra_deg": 322.8897,
+     "dec_deg": -5.5712,
+     "mag": 2.9,
+     "name": "Sadalsuud",
+     "item_id": null,
+     "distance_ly": 465.08,
+     "distance_basis": "wikidata"
+    },
+    "109074": {
+     "hip": 109074,
+     "ra_deg": 331.446,
+     "dec_deg": -0.3199,
+     "mag": 2.95,
+     "name": "Sadalmelik",
+     "item_id": null,
+     "distance_ly": 402.66,
+     "distance_basis": "parallax"
+    },
+    "110395": {
+     "hip": 110395,
+     "ra_deg": 335.4141,
+     "dec_deg": -1.3873,
+     "mag": 3.86,
+     "name": "Sadachbia",
+     "item_id": null,
+     "distance_ly": 124.73,
+     "distance_basis": "wikidata"
+    },
+    "110960": {
+     "hip": 110960,
+     "ra_deg": 337.20799999999997,
+     "dec_deg": -0.02,
+     "mag": 3.65,
+     "name": "Sadaltager",
+     "item_id": null,
+     "distance_ly": 91.88,
+     "distance_basis": "parallax"
+    },
+    "111497": {
+     "hip": 111497,
+     "ra_deg": 338.8391,
+     "dec_deg": -0.1175,
+     "mag": 4.04,
+     "name": "η 물병자리",
+     "item_id": null,
+     "distance_ly": 172.82,
+     "distance_basis": "wikidata"
+    },
+    "112961": {
+     "hip": 112961,
+     "ra_deg": 343.1536,
+     "dec_deg": -7.5796,
+     "mag": 3.73,
+     "name": "Hydor",
+     "item_id": null,
+     "distance_ly": 335.6,
+     "distance_basis": "wikidata"
+    },
+    "115033": {
+     "hip": 115033,
+     "ra_deg": 349.4759,
+     "dec_deg": -9.1825,
+     "mag": 4.41,
+     "name": "ψ2 물병자리",
+     "item_id": null,
+     "distance_ly": 295.96,
+     "distance_basis": "wikidata"
+    },
+    "114341": {
+     "hip": 114341,
+     "ra_deg": 347.3617,
+     "dec_deg": -21.1724,
+     "mag": 3.68,
+     "name": "c2 물병자리",
+     "item_id": null,
+     "distance_ly": 252.62,
+     "distance_basis": "wikidata"
+    },
+    "109139": {
+     "hip": 109139,
+     "ra_deg": 331.6093,
+     "dec_deg": -13.8697,
+     "mag": 4.29,
+     "name": "ι 물병자리",
+     "item_id": null,
+     "distance_ly": 195.02,
+     "distance_basis": "wikidata"
+    },
+    "110003": {
+     "hip": 110003,
+     "ra_deg": 334.2085,
+     "dec_deg": -7.7833,
+     "mag": 4.17,
+     "name": "Ancha",
+     "item_id": null,
+     "distance_ly": 183.92,
+     "distance_basis": "wikidata"
+    },
+    "110672": {
+     "hip": 110672,
+     "ra_deg": 336.3193,
+     "dec_deg": 1.3774,
+     "mag": 4.8,
+     "name": "Seat",
+     "item_id": null,
+     "distance_ly": 932.78,
+     "distance_basis": "parallax"
+    },
+    "115438": {
+     "hip": 115438,
+     "ra_deg": 350.7426,
+     "dec_deg": -20.1006,
+     "mag": 3.96,
+     "name": "b1 물병자리",
+     "item_id": null,
+     "distance_ly": 162.78,
+     "distance_basis": "wikidata"
+    },
+    "116901": {
+     "hip": 116901,
+     "ra_deg": 355.4409,
+     "dec_deg": -17.8165,
+     "mag": 4.82,
+     "name": "A2 물병자리",
+     "item_id": null,
+     "distance_ly": 708.19,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Aql": {
+   "item_id": "Q10586",
+   "name": "독수리자리",
+   "lines": [
+    [
+     97278,
+     97649,
+     98036,
+     99473,
+     97804,
+     95501,
+     93747,
+     97649,
+     95501,
+     93805
+    ]
+   ],
+   "stars": {
+    "97278": {
+     "hip": 97278,
+     "ra_deg": 296.5649,
+     "dec_deg": 10.6133,
+     "mag": 2.72,
+     "name": "Tarazed",
+     "item_id": null,
+     "distance_ly": 581.35,
+     "distance_basis": "wikidata"
+    },
+    "97649": {
+     "hip": 97649,
+     "ra_deg": 297.6958,
+     "dec_deg": 8.8683,
+     "mag": 0.76,
+     "name": "알타이르",
+     "item_id": "Q12975",
+     "distance_ly": 17.0,
+     "distance_basis": "wikidata"
+    },
+    "98036": {
+     "hip": 98036,
+     "ra_deg": 298.8283,
+     "dec_deg": 6.4068,
+     "mag": 3.71,
+     "name": "Alshain",
+     "item_id": null,
+     "distance_ly": 43.65,
+     "distance_basis": "wikidata"
+    },
+    "99473": {
+     "hip": 99473,
+     "ra_deg": 302.8262,
+     "dec_deg": -0.8215,
+     "mag": 3.24,
+     "name": "θ 독수리자리",
+     "item_id": null,
+     "distance_ly": 241.0,
+     "distance_basis": "wikidata"
+    },
+    "97804": {
+     "hip": 97804,
+     "ra_deg": 298.1182,
+     "dec_deg": 1.0057,
+     "mag": 3.87,
+     "name": "Tarazed",
+     "item_id": null,
+     "distance_ly": 861.42,
+     "distance_basis": "wikidata"
+    },
+    "95501": {
+     "hip": 95501,
+     "ra_deg": 291.3746,
+     "dec_deg": 3.1148,
+     "mag": 3.36,
+     "name": "Almizan",
+     "item_id": null,
+     "distance_ly": 50.63,
+     "distance_basis": "wikidata"
+    },
+    "93747": {
+     "hip": 93747,
+     "ra_deg": 286.3525,
+     "dec_deg": 13.8635,
+     "mag": 2.99,
+     "name": "Okab",
+     "item_id": null,
+     "distance_ly": 81.23,
+     "distance_basis": "wikidata"
+    },
+    "93805": {
+     "hip": 93805,
+     "ra_deg": 286.5622,
+     "dec_deg": -4.8826,
+     "mag": 3.43,
+     "name": "Al Thalimain Prior",
+     "item_id": null,
+     "distance_ly": 123.67,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Ara": {
+   "item_id": "Q9253",
+   "name": "제단자리",
+   "lines": [
+    [
+     85267,
+     85727,
+     82363,
+     83081,
+     83153,
+     85792,
+     85258
+    ]
+   ],
+   "stars": {
+    "85267": {
+     "hip": 85267,
+     "ra_deg": 261.34860000000003,
+     "dec_deg": -56.3777,
+     "mag": 3.31,
+     "name": "γ 제단자리",
+     "item_id": null,
+     "distance_ly": 718.76,
+     "distance_basis": "wikidata"
+    },
+    "85727": {
+     "hip": 85727,
+     "ra_deg": 262.7746,
+     "dec_deg": -60.6838,
+     "mag": 3.6,
+     "name": "δ 제단자리",
+     "item_id": null,
+     "distance_ly": 198.19,
+     "distance_basis": "wikidata"
+    },
+    "82363": {
+     "hip": 82363,
+     "ra_deg": 252.44650000000001,
+     "dec_deg": -59.0414,
+     "mag": 3.77,
+     "name": "η 제단자리",
+     "item_id": null,
+     "distance_ly": 337.18,
+     "distance_basis": "wikidata"
+    },
+    "83081": {
+     "hip": 83081,
+     "ra_deg": 254.655,
+     "dec_deg": -55.9901,
+     "mag": 3.12,
+     "name": "ζ 제단자리",
+     "item_id": null,
+     "distance_ly": 465.08,
+     "distance_basis": "wikidata"
+    },
+    "83153": {
+     "hip": 83153,
+     "ra_deg": 254.89600000000002,
+     "dec_deg": -53.1604,
+     "mag": 4.06,
+     "name": "ε1 제단자리",
+     "item_id": null,
+     "distance_ly": 343.0,
+     "distance_basis": "wikidata"
+    },
+    "85792": {
+     "hip": 85792,
+     "ra_deg": 262.9604,
+     "dec_deg": -49.8761,
+     "mag": 2.84,
+     "name": "Choo",
+     "item_id": null,
+     "distance_ly": 264.25,
+     "distance_basis": "wikidata"
+    },
+    "85258": {
+     "hip": 85258,
+     "ra_deg": 261.325,
+     "dec_deg": -55.5299,
+     "mag": 2.84,
+     "name": "β 제단자리",
+     "item_id": null,
+     "distance_ly": 718.76,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Ari": {
+   "item_id": "Q10584",
+   "name": "양자리",
+   "lines": [
+    [
+     13209,
+     9884,
+     8903,
+     8832
+    ]
+   ],
+   "stars": {
+    "13209": {
+     "hip": 13209,
+     "ra_deg": 42.496,
+     "dec_deg": 27.2605,
+     "mag": 3.61,
+     "name": "Bharani",
+     "item_id": null,
+     "distance_ly": 154.32,
+     "distance_basis": "wikidata"
+    },
+    "9884": {
+     "hip": 9884,
+     "ra_deg": 31.7934,
+     "dec_deg": 23.4624,
+     "mag": 2.01,
+     "name": "하말",
+     "item_id": "Q13213",
+     "distance_ly": 65.88,
+     "distance_basis": "wikidata"
+    },
+    "8903": {
+     "hip": 8903,
+     "ra_deg": 28.66,
+     "dec_deg": 20.808,
+     "mag": 2.64,
+     "name": "Sheratan",
+     "item_id": null,
+     "distance_ly": 58.66,
+     "distance_basis": "wikidata"
+    },
+    "8832": {
+     "hip": 8832,
+     "ra_deg": 28.3826,
+     "dec_deg": 19.2939,
+     "mag": 3.88,
+     "name": "Mesarthim",
+     "item_id": null,
+     "distance_ly": 164.06,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Aur": {
+   "item_id": "Q10476",
+   "name": "마차부자리",
+   "lines": [
+    [
+     28360,
+     24608,
+     23767,
+     23015,
+     25428,
+     28380,
+     28360,
+     28358,
+     24608,
+     23416,
+     23453
+    ]
+   ],
+   "stars": {
+    "28360": {
+     "hip": 28360,
+     "ra_deg": 89.8822,
+     "dec_deg": 44.9474,
+     "mag": 1.9,
+     "name": "멘칼리난",
+     "item_id": "Q13219",
+     "distance_ly": 81.11,
+     "distance_basis": "parallax"
+    },
+    "24608": {
+     "hip": 24608,
+     "ra_deg": 79.1723,
+     "dec_deg": 45.998,
+     "mag": 0.08,
+     "name": "카펠라",
+     "item_id": "Q12970",
+     "distance_ly": 42.4,
+     "distance_basis": "wikidata"
+    },
+    "23767": {
+     "hip": 23767,
+     "ra_deg": 76.6287,
+     "dec_deg": 41.2345,
+     "mag": 3.18,
+     "name": "Haedus",
+     "item_id": null,
+     "distance_ly": 219.33,
+     "distance_basis": "wikidata"
+    },
+    "23015": {
+     "hip": 23015,
+     "ra_deg": 74.2484,
+     "dec_deg": 33.1661,
+     "mag": 2.69,
+     "name": "Hassaleh",
+     "item_id": null,
+     "distance_ly": 454.51,
+     "distance_basis": "wikidata"
+    },
+    "25428": {
+     "hip": 25428,
+     "ra_deg": 81.573,
+     "dec_deg": 28.6075,
+     "mag": 1.65,
+     "name": "엘 나스",
+     "item_id": "Q13508",
+     "distance_ly": 134.24,
+     "distance_basis": "wikidata"
+    },
+    "28380": {
+     "hip": 28380,
+     "ra_deg": 89.9303,
+     "dec_deg": 37.2126,
+     "mag": 2.65,
+     "name": "Mahasim",
+     "item_id": null,
+     "distance_ly": 165.56,
+     "distance_basis": "parallax"
+    },
+    "28358": {
+     "hip": 28358,
+     "ra_deg": 89.8818,
+     "dec_deg": 54.2847,
+     "mag": 3.72,
+     "name": "δ 마차부자리",
+     "item_id": null,
+     "distance_ly": 141.64,
+     "distance_basis": "wikidata"
+    },
+    "23416": {
+     "hip": 23416,
+     "ra_deg": 75.4922,
+     "dec_deg": 43.8233,
+     "mag": 3.03,
+     "name": "Almaaz",
+     "item_id": null,
+     "distance_ly": 2000.01,
+     "distance_basis": "wikidata"
+    },
+    "23453": {
+     "hip": 23453,
+     "ra_deg": 75.6195,
+     "dec_deg": 41.0758,
+     "mag": 3.69,
+     "name": "Saclateni",
+     "item_id": null,
+     "distance_ly": 785.92,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Boo": {
+   "item_id": "Q8667",
+   "name": "목동자리",
+   "lines": [
+    [
+     67275,
+     67927,
+     69673,
+     71053,
+     71075,
+     73555,
+     74666,
+     72105,
+     69673,
+     71795
+    ],
+    [
+     71075,
+     69732,
+     69483,
+     70497,
+     69732
+    ]
+   ],
+   "stars": {
+    "67275": {
+     "hip": 67275,
+     "ra_deg": 206.8156,
+     "dec_deg": 17.4569,
+     "mag": 4.5,
+     "name": "τ 목동자리",
+     "item_id": null,
+     "distance_ly": 50.93,
+     "distance_basis": "wikidata"
+    },
+    "67927": {
+     "hip": 67927,
+     "ra_deg": 208.6712,
+     "dec_deg": 18.3977,
+     "mag": 2.68,
+     "name": "Muphrid",
+     "item_id": null,
+     "distance_ly": 37.17,
+     "distance_basis": "parallax"
+    },
+    "69673": {
+     "hip": 69673,
+     "ra_deg": 213.9153,
+     "dec_deg": 19.1824,
+     "mag": -0.05,
+     "name": "아르크투루스",
+     "item_id": "Q12985",
+     "distance_ly": 36.68,
+     "distance_basis": "wikidata"
+    },
+    "71053": {
+     "hip": 71053,
+     "ra_deg": 217.9575,
+     "dec_deg": 30.3714,
+     "mag": 3.57,
+     "name": "ρ 목동자리",
+     "item_id": null,
+     "distance_ly": 156.44,
+     "distance_basis": "wikidata"
+    },
+    "71075": {
+     "hip": 71075,
+     "ra_deg": 218.0195,
+     "dec_deg": 38.3083,
+     "mag": 3.04,
+     "name": "Seginus",
+     "item_id": null,
+     "distance_ly": 86.62,
+     "distance_basis": "wikidata"
+    },
+    "73555": {
+     "hip": 73555,
+     "ra_deg": 225.4865,
+     "dec_deg": 40.3906,
+     "mag": 3.49,
+     "name": "Nekkar",
+     "item_id": null,
+     "distance_ly": 219.86,
+     "distance_basis": "wikidata"
+    },
+    "74666": {
+     "hip": 74666,
+     "ra_deg": 228.8757,
+     "dec_deg": 33.3148,
+     "mag": 3.46,
+     "name": "Thiba",
+     "item_id": null,
+     "distance_ly": 121.03,
+     "distance_basis": "wikidata"
+    },
+    "72105": {
+     "hip": 72105,
+     "ra_deg": 221.2467,
+     "dec_deg": 27.0742,
+     "mag": 2.35,
+     "name": "푸르케리마",
+     "item_id": "Q13255",
+     "distance_ly": 202.94,
+     "distance_basis": "wikidata"
+    },
+    "71795": {
+     "hip": 71795,
+     "ra_deg": 220.2873,
+     "dec_deg": 13.7283,
+     "mag": 3.78,
+     "name": "ζ 목동자리",
+     "item_id": null,
+     "distance_ly": 175.73,
+     "distance_basis": "parallax"
+    },
+    "69732": {
+     "hip": 69732,
+     "ra_deg": 214.0959,
+     "dec_deg": 46.0883,
+     "mag": 4.18,
+     "name": "Xuange",
+     "item_id": null,
+     "distance_ly": 99.52,
+     "distance_basis": "wikidata"
+    },
+    "69483": {
+     "hip": 69483,
+     "ra_deg": 213.3709,
+     "dec_deg": 51.79,
+     "mag": 4.53,
+     "name": "Asellus Tertius",
+     "item_id": null,
+     "distance_ly": 160.66,
+     "distance_basis": "wikidata"
+    },
+    "70497": {
+     "hip": 70497,
+     "ra_deg": 216.2992,
+     "dec_deg": 51.8507,
+     "mag": 4.04,
+     "name": "Asellus Primus",
+     "item_id": null,
+     "distance_ly": 47.25,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cae": {
+   "item_id": "Q10488",
+   "name": "조각칼자리",
+   "lines": [
+    [
+     21060,
+     21770,
+     21861,
+     23595
+    ]
+   ],
+   "stars": {
+    "21060": {
+     "hip": 21060,
+     "ra_deg": 67.7087,
+     "dec_deg": -44.9537,
+     "mag": 5.07,
+     "name": "δ 조각칼자리",
+     "item_id": null,
+     "distance_ly": 665.91,
+     "distance_basis": "wikidata"
+    },
+    "21770": {
+     "hip": 21770,
+     "ra_deg": 70.1405,
+     "dec_deg": -41.8638,
+     "mag": 4.44,
+     "name": "α 조각칼자리",
+     "item_id": null,
+     "distance_ly": 66.43,
+     "distance_basis": "wikidata"
+    },
+    "21861": {
+     "hip": 21861,
+     "ra_deg": 70.5145,
+     "dec_deg": -37.1443,
+     "mag": 5.04,
+     "name": "β 조각칼자리",
+     "item_id": null,
+     "distance_ly": 94.07,
+     "distance_basis": "wikidata"
+    },
+    "23595": {
+     "hip": 23595,
+     "ra_deg": 76.1017,
+     "dec_deg": -35.483,
+     "mag": 4.55,
+     "name": "γ 조각칼자리",
+     "item_id": null,
+     "distance_ly": 185.19,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cam": {
+   "item_id": "Q8832",
+   "name": "기린자리",
+   "lines": [
+    [
+     23040,
+     23522,
+     22783,
+     17959,
+     17884,
+     16228
+    ],
+    [
+     22783,
+     29997,
+     33694
+    ]
+   ],
+   "stars": {
+    "23040": {
+     "hip": 23040,
+     "ra_deg": 74.3217,
+     "dec_deg": 53.7521,
+     "mag": 4.43,
+     "name": "HIP 23040",
+     "item_id": null,
+     "distance_ly": 253.68,
+     "distance_basis": "wikidata"
+    },
+    "23522": {
+     "hip": 23522,
+     "ra_deg": 75.8545,
+     "dec_deg": 60.4422,
+     "mag": 4.03,
+     "name": "β 기린자리",
+     "item_id": null,
+     "distance_ly": 687.05,
+     "distance_basis": "wikidata"
+    },
+    "22783": {
+     "hip": 22783,
+     "ra_deg": 73.5125,
+     "dec_deg": 66.3427,
+     "mag": 4.26,
+     "name": "α 기린자리",
+     "item_id": null,
+     "distance_ly": 5285.0,
+     "distance_basis": "wikidata"
+    },
+    "17959": {
+     "hip": 17959,
+     "ra_deg": 57.5896,
+     "dec_deg": 71.3323,
+     "mag": 4.59,
+     "name": "γ 기린자리",
+     "item_id": null,
+     "distance_ly": 377.88,
+     "distance_basis": "wikidata"
+    },
+    "17884": {
+     "hip": 17884,
+     "ra_deg": 57.3803,
+     "dec_deg": 65.526,
+     "mag": 4.39,
+     "name": "HIP 17884",
+     "item_id": null,
+     "distance_ly": 665.91,
+     "distance_basis": "wikidata"
+    },
+    "16228": {
+     "hip": 16228,
+     "ra_deg": 52.2672,
+     "dec_deg": 59.9403,
+     "mag": 4.21,
+     "name": "HIP 16228",
+     "item_id": null,
+     "distance_ly": 2441.29,
+     "distance_basis": "parallax"
+    },
+    "29997": {
+     "hip": 29997,
+     "ra_deg": 94.7116,
+     "dec_deg": 69.3198,
+     "mag": 4.76,
+     "name": "HIP 29997",
+     "item_id": null,
+     "distance_ly": 177.58,
+     "distance_basis": "wikidata"
+    },
+    "33694": {
+     "hip": 33694,
+     "ra_deg": 105.0168,
+     "dec_deg": 76.9774,
+     "mag": 4.55,
+     "name": "HIP 33694",
+     "item_id": null,
+     "distance_ly": 189.2,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cnc": {
+   "item_id": "Q8849",
+   "name": "게자리",
+   "lines": [
+    [
+     44066,
+     42911,
+     42806,
+     43103
+    ],
+    [
+     42911,
+     40526
+    ]
+   ],
+   "stars": {
+    "44066": {
+     "hip": 44066,
+     "ra_deg": 134.6218,
+     "dec_deg": 11.8577,
+     "mag": 4.26,
+     "name": "Acubens",
+     "item_id": null,
+     "distance_ly": 170.71,
+     "distance_basis": "wikidata"
+    },
+    "42911": {
+     "hip": 42911,
+     "ra_deg": 131.1712,
+     "dec_deg": 18.1543,
+     "mag": 3.94,
+     "name": "Asellus Australis",
+     "item_id": null,
+     "distance_ly": 134.77,
+     "distance_basis": "wikidata"
+    },
+    "42806": {
+     "hip": 42806,
+     "ra_deg": 130.8214,
+     "dec_deg": 21.4685,
+     "mag": 4.66,
+     "name": "Asellus Borealis",
+     "item_id": null,
+     "distance_ly": 170.71,
+     "distance_basis": "wikidata"
+    },
+    "43103": {
+     "hip": 43103,
+     "ra_deg": 131.6743,
+     "dec_deg": 28.7599,
+     "mag": 4.03,
+     "name": "Zubanah",
+     "item_id": null,
+     "distance_ly": 325.56,
+     "distance_basis": "wikidata"
+    },
+    "40526": {
+     "hip": 40526,
+     "ra_deg": 124.1288,
+     "dec_deg": 9.1855,
+     "mag": 3.53,
+     "name": "Tarf",
+     "item_id": null,
+     "distance_ly": 303.36,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "CVn": {
+   "item_id": "Q10452",
+   "name": "사냥개자리",
+   "lines": [
+    [
+     63121,
+     61317
+    ]
+   ],
+   "stars": {
+    "63121": {
+     "hip": 63121,
+     "ra_deg": 194.0019,
+     "dec_deg": 38.3149,
+     "mag": 5.61,
+     "name": "α1 사냥개자리",
+     "item_id": null,
+     "distance_ly": 106.74,
+     "distance_basis": "wikidata"
+    },
+    "61317": {
+     "hip": 61317,
+     "ra_deg": 188.4356,
+     "dec_deg": 41.3575,
+     "mag": 4.24,
+     "name": "Chara",
+     "item_id": null,
+     "distance_ly": 27.5,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "CMa": {
+   "item_id": "Q10538",
+   "name": "큰개자리",
+   "lines": [
+    [
+     30324,
+     32349,
+     33977,
+     34444,
+     33856,
+     33579,
+     30122
+    ],
+    [
+     35904,
+     34444
+    ],
+    [
+     32349,
+     33347,
+     34045,
+     33160,
+     33347
+    ]
+   ],
+   "stars": {
+    "30324": {
+     "hip": 30324,
+     "ra_deg": 95.6749,
+     "dec_deg": -17.9559,
+     "mag": 1.98,
+     "name": "미르잠",
+     "item_id": "Q13415",
+     "distance_ly": 496.79,
+     "distance_basis": "wikidata"
+    },
+    "32349": {
+     "hip": 32349,
+     "ra_deg": 101.2872,
+     "dec_deg": -16.7161,
+     "mag": -1.44,
+     "name": "시리우스",
+     "item_id": "Q3409",
+     "distance_ly": 8.6,
+     "distance_basis": "wikidata"
+    },
+    "33977": {
+     "hip": 33977,
+     "ra_deg": 105.7561,
+     "dec_deg": -23.8333,
+     "mag": 3.02,
+     "name": "Al Zara",
+     "item_id": null,
+     "distance_ly": 2764.04,
+     "distance_basis": "parallax"
+    },
+    "34444": {
+     "hip": 34444,
+     "ra_deg": 107.0979,
+     "dec_deg": -26.3932,
+     "mag": 1.83,
+     "name": "웨젠",
+     "item_id": "Q13411",
+     "distance_ly": 1606.68,
+     "distance_basis": "parallax"
+    },
+    "33856": {
+     "hip": 33856,
+     "ra_deg": 105.4298,
+     "dec_deg": -27.9348,
+     "mag": 3.49,
+     "name": "Unurgunite",
+     "item_id": null,
+     "distance_ly": 1120.81,
+     "distance_basis": "parallax"
+    },
+    "33579": {
+     "hip": 33579,
+     "ra_deg": 104.6565,
+     "dec_deg": -28.9721,
+     "mag": 1.5,
+     "name": "아다라",
+     "item_id": "Q13414",
+     "distance_ly": 433.37,
+     "distance_basis": "wikidata"
+    },
+    "30122": {
+     "hip": 30122,
+     "ra_deg": 95.0783,
+     "dec_deg": -30.0634,
+     "mag": 3.02,
+     "name": "Furud",
+     "item_id": null,
+     "distance_ly": 338.24,
+     "distance_basis": "wikidata"
+    },
+    "35904": {
+     "hip": 35904,
+     "ra_deg": 111.0238,
+     "dec_deg": -29.3031,
+     "mag": 2.45,
+     "name": "알루드라",
+     "item_id": "Q13416",
+     "distance_ly": 1988.76,
+     "distance_basis": "parallax"
+    },
+    "33347": {
+     "hip": 33347,
+     "ra_deg": 104.0343,
+     "dec_deg": -17.0542,
+     "mag": 4.36,
+     "name": "ι 큰개자리",
+     "item_id": null,
+     "distance_ly": 3065.3,
+     "distance_basis": "wikidata"
+    },
+    "34045": {
+     "hip": 34045,
+     "ra_deg": 105.9396,
+     "dec_deg": -15.6333,
+     "mag": 4.11,
+     "name": "Muliphein",
+     "item_id": null,
+     "distance_ly": 317.1,
+     "distance_basis": "wikidata"
+    },
+    "33160": {
+     "hip": 33160,
+     "ra_deg": 103.5475,
+     "dec_deg": -12.0386,
+     "mag": 4.08,
+     "name": "θ 큰개자리",
+     "item_id": null,
+     "distance_ly": 258.44,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "CMi": {
+   "item_id": "Q9305",
+   "name": "작은개자리",
+   "lines": [
+    [
+     37279,
+     36188
+    ]
+   ],
+   "stars": {
+    "37279": {
+     "hip": 37279,
+     "ra_deg": 114.8255,
+     "dec_deg": 5.225,
+     "mag": 0.4,
+     "name": "프로키온",
+     "item_id": "Q13034",
+     "distance_ly": 11.4,
+     "distance_basis": "wikidata"
+    },
+    "36188": {
+     "hip": 36188,
+     "ra_deg": 111.7877,
+     "dec_deg": 8.2893,
+     "mag": 2.89,
+     "name": "Gomeisa",
+     "item_id": null,
+     "distance_ly": 160.66,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cap": {
+   "item_id": "Q10535",
+   "name": "염소자리",
+   "lines": [
+    [
+     100027,
+     100345,
+     101027,
+     102485,
+     102978,
+     105881,
+     107556,
+     106985,
+     105515,
+     104139,
+     100027
+    ]
+   ],
+   "stars": {
+    "100027": {
+     "hip": 100027,
+     "ra_deg": 304.412,
+     "dec_deg": -12.5082,
+     "mag": 4.3,
+     "name": "Prima Giedi",
+     "item_id": null,
+     "distance_ly": 840.32,
+     "distance_basis": "wikidata"
+    },
+    "100345": {
+     "hip": 100345,
+     "ra_deg": 305.2528,
+     "dec_deg": -14.7814,
+     "mag": 3.05,
+     "name": "Dabih",
+     "item_id": null,
+     "distance_ly": 344.05,
+     "distance_basis": "parallax"
+    },
+    "101027": {
+     "hip": 101027,
+     "ra_deg": 307.2151,
+     "dec_deg": -17.8137,
+     "mag": 4.77,
+     "name": "ρ 염소자리",
+     "item_id": null,
+     "distance_ly": 98.72,
+     "distance_basis": "parallax"
+    },
+    "102485": {
+     "hip": 102485,
+     "ra_deg": 311.5239,
+     "dec_deg": -25.2709,
+     "mag": 4.13,
+     "name": "Wei",
+     "item_id": null,
+     "distance_ly": 47.14,
+     "distance_basis": "wikidata"
+    },
+    "102978": {
+     "hip": 102978,
+     "ra_deg": 312.9554,
+     "dec_deg": -26.9191,
+     "mag": 4.12,
+     "name": "ω 염소자리",
+     "item_id": null,
+     "distance_ly": 549.64,
+     "distance_basis": "wikidata"
+    },
+    "105881": {
+     "hip": 105881,
+     "ra_deg": 321.6668,
+     "dec_deg": -22.4113,
+     "mag": 3.77,
+     "name": "Yen",
+     "item_id": null,
+     "distance_ly": 443.94,
+     "distance_basis": "wikidata"
+    },
+    "107556": {
+     "hip": 107556,
+     "ra_deg": 326.7602,
+     "dec_deg": -16.1273,
+     "mag": 2.85,
+     "name": "Deneb Algedi",
+     "item_id": null,
+     "distance_ly": 41.22,
+     "distance_basis": "wikidata"
+    },
+    "106985": {
+     "hip": 106985,
+     "ra_deg": 325.0227,
+     "dec_deg": -16.6623,
+     "mag": 3.69,
+     "name": "Nashira",
+     "item_id": null,
+     "distance_ly": 144.28,
+     "distance_basis": "wikidata"
+    },
+    "105515": {
+     "hip": 105515,
+     "ra_deg": 320.5617,
+     "dec_deg": -16.8345,
+     "mag": 4.28,
+     "name": "ι 염소자리",
+     "item_id": null,
+     "distance_ly": 201.36,
+     "distance_basis": "wikidata"
+    },
+    "104139": {
+     "hip": 104139,
+     "ra_deg": 316.4868,
+     "dec_deg": -17.2329,
+     "mag": 4.08,
+     "name": "θ 염소자리",
+     "item_id": null,
+     "distance_ly": 143.22,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Car": {
+   "item_id": "Q10470",
+   "name": "용골자리",
+   "lines": [
+    [
+     31685,
+     30438,
+     45238,
+     50099,
+     52419,
+     51576,
+     50371,
+     45556,
+     41037,
+     38827,
+     39953,
+     42913,
+     45556
+    ],
+    [
+     52419,
+     54301,
+     54461,
+     54751,
+     54463,
+     53253,
+     51576
+    ]
+   ],
+   "stars": {
+    "31685": {
+     "hip": 31685,
+     "ra_deg": 99.4403,
+     "dec_deg": -43.1959,
+     "mag": 3.17,
+     "name": "ν 고물자리",
+     "item_id": null,
+     "distance_ly": 369.95,
+     "distance_basis": "wikidata"
+    },
+    "30438": {
+     "hip": 30438,
+     "ra_deg": 95.988,
+     "dec_deg": -52.6957,
+     "mag": -0.62,
+     "name": "카노푸스",
+     "item_id": "Q12189",
+     "distance_ly": 306.53,
+     "distance_basis": "wikidata"
+    },
+    "45238": {
+     "hip": 45238,
+     "ra_deg": 138.2999,
+     "dec_deg": -69.7172,
+     "mag": 1.67,
+     "name": "용골자리 베타",
+     "item_id": "Q13174",
+     "distance_ly": 113.2,
+     "distance_basis": "wikidata"
+    },
+    "50099": {
+     "hip": 50099,
+     "ra_deg": 153.4342,
+     "dec_deg": -70.0379,
+     "mag": 3.29,
+     "name": "ω 용골자리",
+     "item_id": null,
+     "distance_ly": 338.24,
+     "distance_basis": "wikidata"
+    },
+    "52419": {
+     "hip": 52419,
+     "ra_deg": 160.7392,
+     "dec_deg": -64.3945,
+     "mag": 2.74,
+     "name": "θ 용골자리",
+     "item_id": null,
+     "distance_ly": 422.8,
+     "distance_basis": "wikidata"
+    },
+    "51576": {
+     "hip": 51576,
+     "ra_deg": 158.0061,
+     "dec_deg": -61.6853,
+     "mag": 3.3,
+     "name": "p 용골자리",
+     "item_id": null,
+     "distance_ly": 380.52,
+     "distance_basis": "wikidata"
+    },
+    "50371": {
+     "hip": 50371,
+     "ra_deg": 154.2707,
+     "dec_deg": -61.3323,
+     "mag": 3.39,
+     "name": "q 용골자리",
+     "item_id": null,
+     "distance_ly": 750.47,
+     "distance_basis": "wikidata"
+    },
+    "45556": {
+     "hip": 45556,
+     "ra_deg": 139.2725,
+     "dec_deg": -59.2752,
+     "mag": 2.21,
+     "name": "아스피디스케",
+     "item_id": "Q14247",
+     "distance_ly": 692.48,
+     "distance_basis": "parallax"
+    },
+    "41037": {
+     "hip": 41037,
+     "ra_deg": 125.6285,
+     "dec_deg": -59.5095,
+     "mag": 1.86,
+     "name": "아비오르",
+     "item_id": "Q14256",
+     "distance_ly": 605.11,
+     "distance_basis": "parallax"
+    },
+    "38827": {
+     "hip": 38827,
+     "ra_deg": 119.1946,
+     "dec_deg": -52.9824,
+     "mag": 3.46,
+     "name": "χ 용골자리",
+     "item_id": null,
+     "distance_ly": 512.65,
+     "distance_basis": "wikidata"
+    },
+    "39953": {
+     "hip": 39953,
+     "ra_deg": 122.3831,
+     "dec_deg": -47.3366,
+     "mag": 1.75,
+     "name": "돛자리 감마",
+     "item_id": "Q14235",
+     "distance_ly": 507.36,
+     "distance_basis": "wikidata"
+    },
+    "42913": {
+     "hip": 42913,
+     "ra_deg": 131.1759,
+     "dec_deg": -54.7088,
+     "mag": 1.93,
+     "name": "돛자리 델타",
+     "item_id": "Q1048396",
+     "distance_ly": 79.74,
+     "distance_basis": "parallax"
+    },
+    "54301": {
+     "hip": 54301,
+     "ra_deg": 166.6351,
+     "dec_deg": -62.4241,
+     "mag": 4.62,
+     "name": "z 용골자리",
+     "item_id": null,
+     "distance_ly": 379.99,
+     "distance_basis": "wikidata"
+    },
+    "54461": {
+     "hip": 54461,
+     "ra_deg": 167.1417,
+     "dec_deg": -61.9472,
+     "mag": 5.11,
+     "name": "z2 용골자리",
+     "item_id": null,
+     "distance_ly": 6988.57,
+     "distance_basis": "parallax"
+    },
+    "54751": {
+     "hip": 54751,
+     "ra_deg": 168.1501,
+     "dec_deg": -60.3176,
+     "mag": 4.59,
+     "name": "y 용골자리",
+     "item_id": null,
+     "distance_ly": 12538.09,
+     "distance_basis": "wikidata"
+    },
+    "54463": {
+     "hip": 54463,
+     "ra_deg": 167.1475,
+     "dec_deg": -58.975,
+     "mag": 3.93,
+     "name": "x 용골자리",
+     "item_id": null,
+     "distance_ly": 8.81,
+     "distance_basis": "wikidata"
+    },
+    "53253": {
+     "hip": 53253,
+     "ra_deg": 163.3736,
+     "dec_deg": -58.8532,
+     "mag": 3.78,
+     "name": "u 용골자리",
+     "item_id": null,
+     "distance_ly": 96.77,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cas": {
+   "item_id": "Q10464",
+   "name": "카시오페이아자리",
+   "lines": [
+    [
+     8886,
+     6686,
+     4427,
+     3179,
+     746
+    ]
+   ],
+   "stars": {
+    "8886": {
+     "hip": 8886,
+     "ra_deg": 28.5989,
+     "dec_deg": 63.6701,
+     "mag": 3.35,
+     "name": "Segin",
+     "item_id": null,
+     "distance_ly": 459.8,
+     "distance_basis": "wikidata"
+    },
+    "6686": {
+     "hip": 6686,
+     "ra_deg": 21.454,
+     "dec_deg": 60.2353,
+     "mag": 2.66,
+     "name": "Ruchbah",
+     "item_id": null,
+     "distance_ly": 98.3,
+     "distance_basis": "wikidata"
+    },
+    "4427": {
+     "hip": 4427,
+     "ra_deg": 14.1772,
+     "dec_deg": 60.7167,
+     "mag": 2.15,
+     "name": "카시오페이아자리 감마",
+     "item_id": "Q13584",
+     "distance_ly": 500.11,
+     "distance_basis": "wikidata"
+    },
+    "3179": {
+     "hip": 3179,
+     "ra_deg": 10.1268,
+     "dec_deg": 56.5373,
+     "mag": 2.24,
+     "name": "쉐다르",
+     "item_id": "Q13108",
+     "distance_ly": 230.43,
+     "distance_basis": "wikidata"
+    },
+    "746": {
+     "hip": 746,
+     "ra_deg": 2.2945,
+     "dec_deg": 59.1498,
+     "mag": 2.28,
+     "name": "카시오페이아자리 베타",
+     "item_id": "Q13594",
+     "distance_ly": 54.4,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cen": {
+   "item_id": "Q8844",
+   "name": "센타우루스자리",
+   "lines": [
+    [
+     55425,
+     59196,
+     60823,
+     61932,
+     66657,
+     68002,
+     67472,
+     67464,
+     68933,
+     71352,
+     73334
+    ],
+    [
+     67464,
+     65109
+    ],
+    [
+     71681,
+     66657,
+     68702
+    ],
+    [
+     60823,
+     59449,
+     56243
+    ]
+   ],
+   "stars": {
+    "55425": {
+     "hip": 55425,
+     "ra_deg": 170.2517,
+     "dec_deg": -54.491,
+     "mag": 3.9,
+     "name": "π 센타우루스자리",
+     "item_id": null,
+     "distance_ly": 221.97,
+     "distance_basis": "wikidata"
+    },
+    "59196": {
+     "hip": 59196,
+     "ra_deg": 182.0896,
+     "dec_deg": -50.7224,
+     "mag": 2.58,
+     "name": "δ 센타우루스자리",
+     "item_id": null,
+     "distance_ly": 528.5,
+     "distance_basis": "wikidata"
+    },
+    "60823": {
+     "hip": 60823,
+     "ra_deg": 187.0099,
+     "dec_deg": -50.2306,
+     "mag": 3.91,
+     "name": "σ 센타우루스자리",
+     "item_id": null,
+     "distance_ly": 391.09,
+     "distance_basis": "wikidata"
+    },
+    "61932": {
+     "hip": 61932,
+     "ra_deg": 190.3793,
+     "dec_deg": -48.9599,
+     "mag": 2.2,
+     "name": "물리파인",
+     "item_id": "Q14226",
+     "distance_ly": 130.01,
+     "distance_basis": "wikidata"
+    },
+    "66657": {
+     "hip": 66657,
+     "ra_deg": 204.9719,
+     "dec_deg": -53.4664,
+     "mag": 2.29,
+     "name": "센타우루스자리 엡실론",
+     "item_id": "Q14228",
+     "distance_ly": 375.76,
+     "distance_basis": "parallax"
+    },
+    "68002": {
+     "hip": 68002,
+     "ra_deg": 208.8849,
+     "dec_deg": -47.2884,
+     "mag": 2.55,
+     "name": "Alnair",
+     "item_id": null,
+     "distance_ly": 381.92,
+     "distance_basis": "parallax"
+    },
+    "67472": {
+     "hip": 67472,
+     "ra_deg": 207.4041,
+     "dec_deg": -42.4737,
+     "mag": 3.47,
+     "name": "μ 센타우루스자리",
+     "item_id": null,
+     "distance_ly": 391.09,
+     "distance_basis": "wikidata"
+    },
+    "67464": {
+     "hip": 67464,
+     "ra_deg": 207.3762,
+     "dec_deg": -41.6877,
+     "mag": 3.41,
+     "name": "ν 센타우루스자리",
+     "item_id": null,
+     "distance_ly": 364.67,
+     "distance_basis": "wikidata"
+    },
+    "68933": {
+     "hip": 68933,
+     "ra_deg": 211.6706,
+     "dec_deg": -36.37,
+     "mag": 2.06,
+     "name": "멘켄트",
+     "item_id": "Q14225",
+     "distance_ly": 58.77,
+     "distance_basis": "wikidata"
+    },
+    "71352": {
+     "hip": 71352,
+     "ra_deg": 218.8768,
+     "dec_deg": -42.1578,
+     "mag": 2.33,
+     "name": "센타우루스자리 에타",
+     "item_id": "Q14229",
+     "distance_ly": 305.68,
+     "distance_basis": "parallax"
+    },
+    "73334": {
+     "hip": 73334,
+     "ra_deg": 224.7904,
+     "dec_deg": -42.1042,
+     "mag": 3.13,
+     "name": "Ke Kwan",
+     "item_id": null,
+     "distance_ly": 433.37,
+     "distance_basis": "wikidata"
+    },
+    "65109": {
+     "hip": 65109,
+     "ra_deg": 200.1492,
+     "dec_deg": -36.7123,
+     "mag": 2.75,
+     "name": "ι 센타우루스자리",
+     "item_id": null,
+     "distance_ly": 58.14,
+     "distance_basis": "wikidata"
+    },
+    "71681": {
+     "hip": 71681,
+     "ra_deg": 219.8962,
+     "dec_deg": -60.8372,
+     "mag": 1.35,
+     "name": "Toliman",
+     "item_id": null,
+     "distance_ly": 4.22,
+     "distance_basis": "wikidata"
+    },
+    "68702": {
+     "hip": 68702,
+     "ra_deg": 210.9559,
+     "dec_deg": -60.373,
+     "mag": 0.61,
+     "name": "하다르",
+     "item_id": "Q13175",
+     "distance_ly": 392.01,
+     "distance_basis": "parallax"
+    },
+    "59449": {
+     "hip": 59449,
+     "ra_deg": 182.913,
+     "dec_deg": -52.3685,
+     "mag": 3.97,
+     "name": "ρ 센타우루스자리",
+     "item_id": null,
+     "distance_ly": 275.88,
+     "distance_basis": "wikidata"
+    },
+    "56243": {
+     "hip": 56243,
+     "ra_deg": 172.942,
+     "dec_deg": -59.4421,
+     "mag": 5.07,
+     "name": "ο1 센타우루스자리",
+     "item_id": null,
+     "distance_ly": 3228.02,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cep": {
+   "item_id": "Q10468",
+   "name": "세페우스자리",
+   "lines": [
+    [
+     101093,
+     102422,
+     105199,
+     107259,
+     109857,
+     109492,
+     110991,
+     112724,
+     116727,
+     106032,
+     105199
+    ],
+    [
+     106032,
+     112724
+    ]
+   ],
+   "stars": {
+    "101093": {
+     "hip": 101093,
+     "ra_deg": 307.3954,
+     "dec_deg": 62.9941,
+     "mag": 4.21,
+     "name": "Al Kidr",
+     "item_id": null,
+     "distance_ly": 132.65,
+     "distance_basis": "wikidata"
+    },
+    "102422": {
+     "hip": 102422,
+     "ra_deg": 311.3224,
+     "dec_deg": 61.8388,
+     "mag": 3.41,
+     "name": "Kabalfird",
+     "item_id": null,
+     "distance_ly": 46.85,
+     "distance_basis": "wikidata"
+    },
+    "105199": {
+     "hip": 105199,
+     "ra_deg": 319.6449,
+     "dec_deg": 62.5856,
+     "mag": 2.45,
+     "name": "알데라민",
+     "item_id": "Q13259",
+     "distance_ly": 49.06,
+     "distance_basis": "wikidata"
+    },
+    "107259": {
+     "hip": 107259,
+     "ra_deg": 325.8769,
+     "dec_deg": 58.78,
+     "mag": 4.23,
+     "name": "The Garnet Star",
+     "item_id": null,
+     "distance_ly": 5930.12,
+     "distance_basis": "parallax"
+    },
+    "109857": {
+     "hip": 109857,
+     "ra_deg": 333.7591,
+     "dec_deg": 57.0436,
+     "mag": 4.18,
+     "name": "ε 세페우스자리",
+     "item_id": null,
+     "distance_ly": 85.62,
+     "distance_basis": "wikidata"
+    },
+    "109492": {
+     "hip": 109492,
+     "ra_deg": 332.7137,
+     "dec_deg": 58.2013,
+     "mag": 3.39,
+     "name": "ζ 세페우스자리",
+     "item_id": null,
+     "distance_ly": 591.92,
+     "distance_basis": "wikidata"
+    },
+    "110991": {
+     "hip": 110991,
+     "ra_deg": 337.2928,
+     "dec_deg": 58.4152,
+     "mag": 4.07,
+     "name": "δ 세페우스자리",
+     "item_id": null,
+     "distance_ly": 866.74,
+     "distance_basis": "wikidata"
+    },
+    "112724": {
+     "hip": 112724,
+     "ra_deg": 342.4201,
+     "dec_deg": 66.2004,
+     "mag": 3.5,
+     "name": "ι 세페우스자리",
+     "item_id": null,
+     "distance_ly": 120.55,
+     "distance_basis": "wikidata"
+    },
+    "116727": {
+     "hip": 116727,
+     "ra_deg": 354.8369,
+     "dec_deg": 77.6323,
+     "mag": 3.21,
+     "name": "Errai",
+     "item_id": null,
+     "distance_ly": 44.98,
+     "distance_basis": "wikidata"
+    },
+    "106032": {
+     "hip": 106032,
+     "ra_deg": 322.165,
+     "dec_deg": 70.5607,
+     "mag": 3.23,
+     "name": "Alfirk",
+     "item_id": null,
+     "distance_ly": 595.18,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Cet": {
+   "item_id": "Q8839",
+   "name": "고래자리",
+   "lines": [
+    [
+     12706,
+     12093,
+     11484,
+     12828,
+     13954,
+     14135,
+     12706,
+     12387
+    ],
+    [
+     8645,
+     8102,
+     3419,
+     1562,
+     5364,
+     6537,
+     8645
+    ]
+   ],
+   "stars": {
+    "12706": {
+     "hip": 12706,
+     "ra_deg": 40.8252,
+     "dec_deg": 3.2358,
+     "mag": 3.47,
+     "name": "Kaffaljidhma",
+     "item_id": null,
+     "distance_ly": 79.61,
+     "distance_basis": "parallax"
+    },
+    "12093": {
+     "hip": 12093,
+     "ra_deg": 38.9686,
+     "dec_deg": 5.5932,
+     "mag": 4.87,
+     "name": "ν 고래자리",
+     "item_id": null,
+     "distance_ly": 391.09,
+     "distance_basis": "wikidata"
+    },
+    "11484": {
+     "hip": 11484,
+     "ra_deg": 37.0398,
+     "dec_deg": 8.4601,
+     "mag": 4.3,
+     "name": "ξ2 고래자리",
+     "item_id": null,
+     "distance_ly": 196.6,
+     "distance_basis": "wikidata"
+    },
+    "12828": {
+     "hip": 12828,
+     "ra_deg": 41.2356,
+     "dec_deg": 10.1141,
+     "mag": 4.27,
+     "name": "μ 고래자리",
+     "item_id": null,
+     "distance_ly": 86.62,
+     "distance_basis": "wikidata"
+    },
+    "13954": {
+     "hip": 13954,
+     "ra_deg": 44.9288,
+     "dec_deg": 8.9074,
+     "mag": 4.71,
+     "name": "Menkar",
+     "item_id": null,
+     "distance_ly": 391.09,
+     "distance_basis": "wikidata"
+    },
+    "14135": {
+     "hip": 14135,
+     "ra_deg": 45.5699,
+     "dec_deg": 4.0897,
+     "mag": 2.54,
+     "name": "Menkar",
+     "item_id": null,
+     "distance_ly": 249.45,
+     "distance_basis": "wikidata"
+    },
+    "12387": {
+     "hip": 12387,
+     "ra_deg": 39.8707,
+     "dec_deg": 0.3285,
+     "mag": 4.08,
+     "name": "δ 고래자리",
+     "item_id": null,
+     "distance_ly": 649.71,
+     "distance_basis": "parallax"
+    },
+    "8645": {
+     "hip": 8645,
+     "ra_deg": 27.8651,
+     "dec_deg": -10.335,
+     "mag": 3.74,
+     "name": "Baten Kaitos",
+     "item_id": null,
+     "distance_ly": 237.83,
+     "distance_basis": "wikidata"
+    },
+    "8102": {
+     "hip": 8102,
+     "ra_deg": 26.017,
+     "dec_deg": -15.9375,
+     "mag": 3.49,
+     "name": "τ 고래자리",
+     "item_id": null,
+     "distance_ly": 11.91,
+     "distance_basis": "wikidata"
+    },
+    "3419": {
+     "hip": 3419,
+     "ra_deg": 10.8974,
+     "dec_deg": -17.9866,
+     "mag": 2.04,
+     "name": "데네브 카이토스",
+     "item_id": "Q13170",
+     "distance_ly": 95.82,
+     "distance_basis": "parallax"
+    },
+    "1562": {
+     "hip": 1562,
+     "ra_deg": 4.857,
+     "dec_deg": -8.8239,
+     "mag": 3.56,
+     "name": "Deneb Kaitos Shemali",
+     "item_id": null,
+     "distance_ly": 253.68,
+     "distance_basis": "wikidata"
+    },
+    "5364": {
+     "hip": 5364,
+     "ra_deg": 17.1475,
+     "dec_deg": -10.1823,
+     "mag": 3.46,
+     "name": "Dheneb",
+     "item_id": null,
+     "distance_ly": 120.5,
+     "distance_basis": "wikidata"
+    },
+    "6537": {
+     "hip": 6537,
+     "ra_deg": 21.0059,
+     "dec_deg": -8.1833,
+     "mag": 3.6,
+     "name": "Al Naymat",
+     "item_id": null,
+     "distance_ly": 113.26,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cha": {
+   "item_id": "Q10457",
+   "name": "카멜레온자리",
+   "lines": [
+    [
+     40702,
+     51839,
+     52595,
+     60000,
+     58484,
+     51839
+    ]
+   ],
+   "stars": {
+    "40702": {
+     "hip": 40702,
+     "ra_deg": 124.6315,
+     "dec_deg": -76.9197,
+     "mag": 4.05,
+     "name": "α 카멜레온자리",
+     "item_id": null,
+     "distance_ly": 63.16,
+     "distance_basis": "wikidata"
+    },
+    "51839": {
+     "hip": 51839,
+     "ra_deg": 158.8671,
+     "dec_deg": -78.6078,
+     "mag": 4.11,
+     "name": "γ 카멜레온자리",
+     "item_id": null,
+     "distance_ly": 406.95,
+     "distance_basis": "wikidata"
+    },
+    "52595": {
+     "hip": 52595,
+     "ra_deg": 161.318,
+     "dec_deg": -80.4696,
+     "mag": 5.46,
+     "name": "δ1 카멜레온자리",
+     "item_id": null,
+     "distance_ly": 348.46,
+     "distance_basis": "parallax"
+    },
+    "60000": {
+     "hip": 60000,
+     "ra_deg": 184.5868,
+     "dec_deg": -79.3122,
+     "mag": 4.24,
+     "name": "β 카멜레온자리",
+     "item_id": null,
+     "distance_ly": 300.19,
+     "distance_basis": "wikidata"
+    },
+    "58484": {
+     "hip": 58484,
+     "ra_deg": 179.9066,
+     "dec_deg": -78.2218,
+     "mag": 4.88,
+     "name": "ε 카멜레온자리",
+     "item_id": null,
+     "distance_ly": 361.59,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Cir": {
+   "item_id": "Q10508",
+   "name": "컴퍼스자리",
+   "lines": [
+    [
+     74824,
+     71908,
+     75323
+    ]
+   ],
+   "stars": {
+    "74824": {
+     "hip": 74824,
+     "ra_deg": 229.3785,
+     "dec_deg": -58.8012,
+     "mag": 4.07,
+     "name": "β 컴퍼스자리",
+     "item_id": null,
+     "distance_ly": 96.4,
+     "distance_basis": "wikidata"
+    },
+    "71908": {
+     "hip": 71908,
+     "ra_deg": 220.6267,
+     "dec_deg": -64.9751,
+     "mag": 3.18,
+     "name": "α 컴퍼스자리",
+     "item_id": null,
+     "distance_ly": 52.64,
+     "distance_basis": "wikidata"
+    },
+    "75323": {
+     "hip": 75323,
+     "ra_deg": 230.8444,
+     "dec_deg": -59.3208,
+     "mag": 4.48,
+     "name": "γ 컴퍼스자리",
+     "item_id": null,
+     "distance_ly": 448.63,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Col": {
+   "item_id": "Q10425",
+   "name": "비둘기자리",
+   "lines": [
+    [
+     30277,
+     27628,
+     26634,
+     25859
+    ],
+    [
+     27628,
+     28328
+    ]
+   ],
+   "stars": {
+    "30277": {
+     "hip": 30277,
+     "ra_deg": 95.5285,
+     "dec_deg": -33.4364,
+     "mag": 3.85,
+     "name": "δ 비둘기자리",
+     "item_id": null,
+     "distance_ly": 201.89,
+     "distance_basis": "wikidata"
+    },
+    "27628": {
+     "hip": 27628,
+     "ra_deg": 87.74,
+     "dec_deg": -35.7683,
+     "mag": 3.12,
+     "name": "Wazn",
+     "item_id": null,
+     "distance_ly": 89.42,
+     "distance_basis": "wikidata"
+    },
+    "26634": {
+     "hip": 26634,
+     "ra_deg": 84.9122,
+     "dec_deg": -34.0741,
+     "mag": 2.65,
+     "name": "Phact",
+     "item_id": null,
+     "distance_ly": 276.7,
+     "distance_basis": "wikidata"
+    },
+    "25859": {
+     "hip": 25859,
+     "ra_deg": 82.8031,
+     "dec_deg": -35.4705,
+     "mag": 3.86,
+     "name": "ε 비둘기자리",
+     "item_id": null,
+     "distance_ly": 270.06,
+     "distance_basis": "wikidata"
+    },
+    "28328": {
+     "hip": 28328,
+     "ra_deg": 89.7867,
+     "dec_deg": -42.8151,
+     "mag": 3.96,
+     "name": "η 비둘기자리",
+     "item_id": null,
+     "distance_ly": 443.94,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Com": {
+   "item_id": "Q9285",
+   "name": "머리털자리",
+   "lines": [
+    [
+     64241,
+     64394,
+     60742
+    ]
+   ],
+   "stars": {
+    "64241": {
+     "hip": 64241,
+     "ra_deg": 197.497,
+     "dec_deg": 17.5294,
+     "mag": 4.32,
+     "name": "Diadem",
+     "item_id": null,
+     "distance_ly": 58.14,
+     "distance_basis": "parallax"
+    },
+    "64394": {
+     "hip": 64394,
+     "ra_deg": 197.9683,
+     "dec_deg": 27.8782,
+     "mag": 4.23,
+     "name": "β 머리털자리",
+     "item_id": null,
+     "distance_ly": 29.96,
+     "distance_basis": "wikidata"
+    },
+    "60742": {
+     "hip": 60742,
+     "ra_deg": 186.7345,
+     "dec_deg": 28.2684,
+     "mag": 4.35,
+     "name": "Al Dafirah",
+     "item_id": null,
+     "distance_ly": 166.64,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "CrA": {
+   "item_id": "Q10413",
+   "name": "남쪽왕관자리",
+   "lines": [
+    [
+     93174,
+     93825,
+     94114,
+     94160,
+     94005,
+     93542,
+     92382,
+     90982
+    ]
+   ],
+   "stars": {
+    "93174": {
+     "hip": 93174,
+     "ra_deg": 284.6807,
+     "dec_deg": -37.1074,
+     "mag": 4.83,
+     "name": "ε 남쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 102.11,
+     "distance_basis": "wikidata"
+    },
+    "93825": {
+     "hip": 93825,
+     "ra_deg": 286.6046,
+     "dec_deg": -37.0634,
+     "mag": 4.23,
+     "name": "γ 남쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 56.44,
+     "distance_basis": "parallax"
+    },
+    "94114": {
+     "hip": 94114,
+     "ra_deg": 287.3681,
+     "dec_deg": -37.9045,
+     "mag": 4.11,
+     "name": "Meridiana",
+     "item_id": null,
+     "distance_ly": 119.44,
+     "distance_basis": "wikidata"
+    },
+    "94160": {
+     "hip": 94160,
+     "ra_deg": 287.5073,
+     "dec_deg": -39.3408,
+     "mag": 4.1,
+     "name": "β 남쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 433.37,
+     "distance_basis": "wikidata"
+    },
+    "94005": {
+     "hip": 94005,
+     "ra_deg": 287.0874,
+     "dec_deg": -40.4967,
+     "mag": 4.57,
+     "name": "δ 남쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 179.69,
+     "distance_basis": "wikidata"
+    },
+    "93542": {
+     "hip": 93542,
+     "ra_deg": 285.7787,
+     "dec_deg": -42.0951,
+     "mag": 4.74,
+     "name": "ζ 남쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 183.39,
+     "distance_basis": "wikidata"
+    },
+    "92382": {
+     "hip": 92382,
+     "ra_deg": 282.3958,
+     "dec_deg": -43.4341,
+     "mag": 5.6,
+     "name": "η2 남쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 782.18,
+     "distance_basis": "wikidata"
+    },
+    "90982": {
+     "hip": 90982,
+     "ra_deg": 278.3758,
+     "dec_deg": -42.3125,
+     "mag": 4.62,
+     "name": "θ 남쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 512.65,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "CrB": {
+   "item_id": "Q10406",
+   "name": "북쪽왕관자리",
+   "lines": [
+    [
+     76127,
+     75695,
+     76267,
+     76952,
+     77512,
+     78159,
+     78493
+    ]
+   ],
+   "stars": {
+    "76127": {
+     "hip": 76127,
+     "ra_deg": 233.23239999999998,
+     "dec_deg": 31.3591,
+     "mag": 4.14,
+     "name": "θ 북쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 234.65,
+     "distance_basis": "wikidata"
+    },
+    "75695": {
+     "hip": 75695,
+     "ra_deg": 231.9572,
+     "dec_deg": 29.1057,
+     "mag": 3.66,
+     "name": "Nusakan",
+     "item_id": null,
+     "distance_ly": 104.64,
+     "distance_basis": "wikidata"
+    },
+    "76267": {
+     "hip": 76267,
+     "ra_deg": 233.672,
+     "dec_deg": 26.7147,
+     "mag": 2.22,
+     "name": "알페카",
+     "item_id": "Q14046",
+     "distance_ly": 74.7,
+     "distance_basis": "wikidata"
+    },
+    "76952": {
+     "hip": 76952,
+     "ra_deg": 235.6857,
+     "dec_deg": 26.2956,
+     "mag": 3.81,
+     "name": "γ 북쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 133.18,
+     "distance_basis": "wikidata"
+    },
+    "77512": {
+     "hip": 77512,
+     "ra_deg": 237.3985,
+     "dec_deg": 26.0684,
+     "mag": 4.59,
+     "name": "δ 북쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 166.64,
+     "distance_basis": "wikidata"
+    },
+    "78159": {
+     "hip": 78159,
+     "ra_deg": 239.39690000000002,
+     "dec_deg": 26.8779,
+     "mag": 4.14,
+     "name": "ε 북쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 228.31,
+     "distance_basis": "wikidata"
+    },
+    "78493": {
+     "hip": 78493,
+     "ra_deg": 240.3607,
+     "dec_deg": 29.8511,
+     "mag": 4.98,
+     "name": "ι 북쪽왕관자리",
+     "item_id": null,
+     "distance_ly": 365.72,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Crv": {
+   "item_id": "Q10517",
+   "name": "까마귀자리",
+   "lines": [
+    [
+     59199,
+     59316,
+     59803,
+     60965,
+     61359,
+     59316
+    ]
+   ],
+   "stars": {
+    "59199": {
+     "hip": 59199,
+     "ra_deg": 182.1034,
+     "dec_deg": -24.7289,
+     "mag": 4.02,
+     "name": "Alchiba",
+     "item_id": null,
+     "distance_ly": 48.78,
+     "distance_basis": "wikidata"
+    },
+    "59316": {
+     "hip": 59316,
+     "ra_deg": 182.5312,
+     "dec_deg": -22.6198,
+     "mag": 3.02,
+     "name": "Minkar",
+     "item_id": null,
+     "distance_ly": 284.33,
+     "distance_basis": "wikidata"
+    },
+    "59803": {
+     "hip": 59803,
+     "ra_deg": 183.9515,
+     "dec_deg": -17.5419,
+     "mag": 2.58,
+     "name": "Gienah",
+     "item_id": null,
+     "distance_ly": 153.62,
+     "distance_basis": "wikidata"
+    },
+    "60965": {
+     "hip": 60965,
+     "ra_deg": 187.4661,
+     "dec_deg": -16.5154,
+     "mag": 2.94,
+     "name": "Algorab",
+     "item_id": null,
+     "distance_ly": 85.14,
+     "distance_basis": "wikidata"
+    },
+    "61359": {
+     "hip": 61359,
+     "ra_deg": 188.5968,
+     "dec_deg": -23.3968,
+     "mag": 2.65,
+     "name": "Kraz",
+     "item_id": null,
+     "distance_ly": 155.38,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Crt": {
+   "item_id": "Q9282",
+   "name": "컵자리",
+   "lines": [
+    [
+     56633,
+     55687,
+     55282,
+     53740,
+     54682,
+     55598,
+     55705,
+     57283,
+     58188
+    ],
+    [
+     55282,
+     55705
+    ]
+   ],
+   "stars": {
+    "56633": {
+     "hip": 56633,
+     "ra_deg": 174.1705,
+     "dec_deg": -9.8022,
+     "mag": 4.7,
+     "name": "θ 컵자리",
+     "item_id": null,
+     "distance_ly": 294.9,
+     "distance_basis": "wikidata"
+    },
+    "55687": {
+     "hip": 55687,
+     "ra_deg": 171.1525,
+     "dec_deg": -10.8593,
+     "mag": 4.81,
+     "name": "ε 컵자리",
+     "item_id": null,
+     "distance_ly": 382.63,
+     "distance_basis": "wikidata"
+    },
+    "55282": {
+     "hip": 55282,
+     "ra_deg": 169.8352,
+     "dec_deg": -14.7785,
+     "mag": 3.56,
+     "name": "Labr",
+     "item_id": null,
+     "distance_ly": 177.05,
+     "distance_basis": "wikidata"
+    },
+    "53740": {
+     "hip": 53740,
+     "ra_deg": 164.9436,
+     "dec_deg": -18.2988,
+     "mag": 4.08,
+     "name": "Alkes",
+     "item_id": null,
+     "distance_ly": 150.09,
+     "distance_basis": "wikidata"
+    },
+    "54682": {
+     "hip": 54682,
+     "ra_deg": 167.9145,
+     "dec_deg": -22.8258,
+     "mag": 4.46,
+     "name": "Al Sharasif",
+     "item_id": null,
+     "distance_ly": 306.0,
+     "distance_basis": "wikidata"
+    },
+    "55598": {
+     "hip": 55598,
+     "ra_deg": 170.8412,
+     "dec_deg": -18.78,
+     "mag": 5.08,
+     "name": "λ 컵자리",
+     "item_id": null,
+     "distance_ly": 144.28,
+     "distance_basis": "wikidata"
+    },
+    "55705": {
+     "hip": 55705,
+     "ra_deg": 171.2205,
+     "dec_deg": -17.684,
+     "mag": 4.06,
+     "name": "γ 컵자리",
+     "item_id": null,
+     "distance_ly": 86.04,
+     "distance_basis": "wikidata"
+    },
+    "57283": {
+     "hip": 57283,
+     "ra_deg": 176.1907,
+     "dec_deg": -18.3507,
+     "mag": 4.71,
+     "name": "ζ 컵자리",
+     "item_id": null,
+     "distance_ly": 334.01,
+     "distance_basis": "wikidata"
+    },
+    "58188": {
+     "hip": 58188,
+     "ra_deg": 179.004,
+     "dec_deg": -17.1508,
+     "mag": 5.17,
+     "name": "η 컵자리",
+     "item_id": null,
+     "distance_ly": 253.68,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cru": {
+   "item_id": "Q10542",
+   "name": "남십자자리",
+   "lines": [
+    [
+     62434,
+     59747
+    ],
+    [
+     60718,
+     61084
+    ]
+   ],
+   "stars": {
+    "62434": {
+     "hip": 62434,
+     "ra_deg": 191.9303,
+     "dec_deg": -59.6888,
+     "mag": 1.25,
+     "name": "남십자자리 베타",
+     "item_id": "Q13105",
+     "distance_ly": 274.82,
+     "distance_basis": "wikidata"
+    },
+    "59747": {
+     "hip": 59747,
+     "ra_deg": 183.7863,
+     "dec_deg": -58.7489,
+     "mag": 2.79,
+     "name": "Imai",
+     "item_id": null,
+     "distance_ly": 369.95,
+     "distance_basis": "wikidata"
+    },
+    "60718": {
+     "hip": 60718,
+     "ra_deg": 186.6496,
+     "dec_deg": -63.0991,
+     "mag": 0.77,
+     "name": "아크룩스",
+     "item_id": "Q66476660",
+     "distance_ly": 317.1,
+     "distance_basis": "wikidata"
+    },
+    "61084": {
+     "hip": 61084,
+     "ra_deg": 187.7915,
+     "dec_deg": -57.1132,
+     "mag": 1.59,
+     "name": "가크룩스",
+     "item_id": "Q14233",
+     "distance_ly": 87.73,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Cyg": {
+   "item_id": "Q8921",
+   "name": "백조자리",
+   "lines": [
+    [
+     104732,
+     102488,
+     100453,
+     97165,
+     95853,
+     94779
+    ],
+    [
+     102098,
+     100453,
+     98110,
+     95947
+    ]
+   ],
+   "stars": {
+    "104732": {
+     "hip": 104732,
+     "ra_deg": 318.2341,
+     "dec_deg": 30.2269,
+     "mag": 3.21,
+     "name": "ζ 고니자리",
+     "item_id": null,
+     "distance_ly": 155.11,
+     "distance_basis": "wikidata"
+    },
+    "102488": {
+     "hip": 102488,
+     "ra_deg": 311.5528,
+     "dec_deg": 33.9703,
+     "mag": 2.48,
+     "name": "백조자리 엡실론",
+     "item_id": "Q13328",
+     "distance_ly": 75.05,
+     "distance_basis": "wikidata"
+    },
+    "100453": {
+     "hip": 100453,
+     "ra_deg": 305.5571,
+     "dec_deg": 40.2567,
+     "mag": 2.23,
+     "name": "사드르",
+     "item_id": "Q13327",
+     "distance_ly": 1826.48,
+     "distance_basis": "wikidata"
+    },
+    "97165": {
+     "hip": 97165,
+     "ra_deg": 296.2437,
+     "dec_deg": 45.1308,
+     "mag": 2.86,
+     "name": "Fawaris",
+     "item_id": null,
+     "distance_ly": 167.01,
+     "distance_basis": "wikidata"
+    },
+    "95853": {
+     "hip": 95853,
+     "ra_deg": 292.42650000000003,
+     "dec_deg": 51.7298,
+     "mag": 3.76,
+     "name": "ι 고니자리",
+     "item_id": null,
+     "distance_ly": 121.45,
+     "distance_basis": "wikidata"
+    },
+    "94779": {
+     "hip": 94779,
+     "ra_deg": 289.27570000000003,
+     "dec_deg": 53.3685,
+     "mag": 3.8,
+     "name": "Fawaris",
+     "item_id": null,
+     "distance_ly": 121.87,
+     "distance_basis": "wikidata"
+    },
+    "102098": {
+     "hip": 102098,
+     "ra_deg": 310.358,
+     "dec_deg": 45.2803,
+     "mag": 1.25,
+     "name": "데네브",
+     "item_id": "Q12179",
+     "distance_ly": 1640.01,
+     "distance_basis": "wikidata"
+    },
+    "98110": {
+     "hip": 98110,
+     "ra_deg": 299.0765,
+     "dec_deg": 35.0834,
+     "mag": 3.89,
+     "name": "η 고니자리",
+     "item_id": null,
+     "distance_ly": 137.94,
+     "distance_basis": "wikidata"
+    },
+    "95947": {
+     "hip": 95947,
+     "ra_deg": 292.6803,
+     "dec_deg": 27.9597,
+     "mag": 3.05,
+     "name": "Albireo",
+     "item_id": null,
+     "distance_ly": 327.67,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Del": {
+   "item_id": "Q9302",
+   "name": "돌고래자리",
+   "lines": [
+    [
+     101421,
+     101769,
+     101958,
+     102531,
+     102281,
+     101769
+    ]
+   ],
+   "stars": {
+    "101421": {
+     "hip": 101421,
+     "ra_deg": 308.3032,
+     "dec_deg": 11.3033,
+     "mag": 4.03,
+     "name": "Aldulfin",
+     "item_id": null,
+     "distance_ly": 362.55,
+     "distance_basis": "wikidata"
+    },
+    "101769": {
+     "hip": 101769,
+     "ra_deg": 309.3873,
+     "dec_deg": 14.5951,
+     "mag": 3.64,
+     "name": "Rotanev",
+     "item_id": null,
+     "distance_ly": 97.39,
+     "distance_basis": "parallax"
+    },
+    "101958": {
+     "hip": 101958,
+     "ra_deg": 309.9095,
+     "dec_deg": 15.9121,
+     "mag": 3.77,
+     "name": "Sualocin",
+     "item_id": null,
+     "distance_ly": 227.78,
+     "distance_basis": "wikidata"
+    },
+    "102531": {
+     "hip": 102531,
+     "ra_deg": 311.6619,
+     "dec_deg": 16.1241,
+     "mag": 5.15,
+     "name": "γ1 돌고래자리",
+     "item_id": null,
+     "distance_ly": 114.79,
+     "distance_basis": "wikidata"
+    },
+    "102281": {
+     "hip": 102281,
+     "ra_deg": 310.86469999999997,
+     "dec_deg": 15.0746,
+     "mag": 4.43,
+     "name": "Al Ukud",
+     "item_id": null,
+     "distance_ly": 210.34,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Dor": {
+   "item_id": "Q8837",
+   "name": "황새치자리",
+   "lines": [
+    [
+     19893,
+     21281,
+     26069,
+     27100,
+     27890,
+     26069,
+     23693,
+     21281
+    ]
+   ],
+   "stars": {
+    "19893": {
+     "hip": 19893,
+     "ra_deg": 64.0066,
+     "dec_deg": -51.4866,
+     "mag": 4.26,
+     "name": "γ 황새치자리",
+     "item_id": null,
+     "distance_ly": 66.64,
+     "distance_basis": "wikidata"
+    },
+    "21281": {
+     "hip": 21281,
+     "ra_deg": 68.4991,
+     "dec_deg": -55.045,
+     "mag": 3.3,
+     "name": "α 황새치자리",
+     "item_id": null,
+     "distance_ly": 169.0,
+     "distance_basis": "wikidata"
+    },
+    "26069": {
+     "hip": 26069,
+     "ra_deg": 83.4063,
+     "dec_deg": -62.4898,
+     "mag": 3.76,
+     "name": "β 황새치자리",
+     "item_id": null,
+     "distance_ly": 1078.14,
+     "distance_basis": "wikidata"
+    },
+    "27100": {
+     "hip": 27100,
+     "ra_deg": 86.1932,
+     "dec_deg": -65.7355,
+     "mag": 4.34,
+     "name": "δ 황새치자리",
+     "item_id": null,
+     "distance_ly": 146.45,
+     "distance_basis": "wikidata"
+    },
+    "27890": {
+     "hip": 27890,
+     "ra_deg": 88.5252,
+     "dec_deg": -63.0896,
+     "mag": 4.65,
+     "name": "HIP 27890",
+     "item_id": null,
+     "distance_ly": 88.26,
+     "distance_basis": "wikidata"
+    },
+    "23693": {
+     "hip": 23693,
+     "ra_deg": 76.3777,
+     "dec_deg": -57.4727,
+     "mag": 4.71,
+     "name": "ζ 황새치자리",
+     "item_id": null,
+     "distance_ly": 38.03,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Dra": {
+   "item_id": "Q8675",
+   "name": "용자리",
+   "lines": [
+    [
+     87585,
+     87833,
+     85670,
+     85829,
+     87585,
+     94376,
+     89908,
+     83895,
+     80331,
+     78527,
+     75458,
+     68756,
+     61281,
+     56211
+    ],
+    [
+     89908,
+     89937
+    ],
+    [
+     94376,
+     97433
+    ]
+   ],
+   "stars": {
+    "87585": {
+     "hip": 87585,
+     "ra_deg": 268.3822,
+     "dec_deg": 56.8726,
+     "mag": 3.73,
+     "name": "Grumium",
+     "item_id": null,
+     "distance_ly": 110.56,
+     "distance_basis": "wikidata"
+    },
+    "87833": {
+     "hip": 87833,
+     "ra_deg": 269.1515,
+     "dec_deg": 51.4889,
+     "mag": 2.24,
+     "name": "엘타닌",
+     "item_id": "Q14246",
+     "distance_ly": 147.58,
+     "distance_basis": "parallax"
+    },
+    "85670": {
+     "hip": 85670,
+     "ra_deg": 262.6082,
+     "dec_deg": 52.3014,
+     "mag": 2.79,
+     "name": "Rastaban",
+     "item_id": null,
+     "distance_ly": 401.66,
+     "distance_basis": "wikidata"
+    },
+    "85829": {
+     "hip": 85829,
+     "ra_deg": 263.0668,
+     "dec_deg": 55.173,
+     "mag": 4.86,
+     "name": "Kuma",
+     "item_id": null,
+     "distance_ly": 97.67,
+     "distance_basis": "wikidata"
+    },
+    "94376": {
+     "hip": 94376,
+     "ra_deg": 288.1388,
+     "dec_deg": 67.6615,
+     "mag": 3.07,
+     "name": "Altais",
+     "item_id": null,
+     "distance_ly": 100.15,
+     "distance_basis": "wikidata"
+    },
+    "89908": {
+     "hip": 89908,
+     "ra_deg": 275.1893,
+     "dec_deg": 71.3378,
+     "mag": 4.22,
+     "name": "Aldhiba",
+     "item_id": null,
+     "distance_ly": 302.84,
+     "distance_basis": "parallax"
+    },
+    "83895": {
+     "hip": 83895,
+     "ra_deg": 257.1966,
+     "dec_deg": 65.7147,
+     "mag": 3.17,
+     "name": "Aldhibah",
+     "item_id": null,
+     "distance_ly": 396.38,
+     "distance_basis": "wikidata"
+    },
+    "80331": {
+     "hip": 80331,
+     "ra_deg": 245.99790000000002,
+     "dec_deg": 61.5142,
+     "mag": 2.73,
+     "name": "Athebyne",
+     "item_id": null,
+     "distance_ly": 88.79,
+     "distance_basis": "wikidata"
+    },
+    "78527": {
+     "hip": 78527,
+     "ra_deg": 240.47230000000002,
+     "dec_deg": 58.5653,
+     "mag": 4.01,
+     "name": "θ 용자리",
+     "item_id": null,
+     "distance_ly": 70.13,
+     "distance_basis": "wikidata"
+    },
+    "75458": {
+     "hip": 75458,
+     "ra_deg": 231.2324,
+     "dec_deg": 58.9661,
+     "mag": 3.29,
+     "name": "Edasich",
+     "item_id": null,
+     "distance_ly": 102.74,
+     "distance_basis": "wikidata"
+    },
+    "68756": {
+     "hip": 68756,
+     "ra_deg": 211.0973,
+     "dec_deg": 64.3759,
+     "mag": 3.67,
+     "name": "Thuban",
+     "item_id": null,
+     "distance_ly": 264.25,
+     "distance_basis": "wikidata"
+    },
+    "61281": {
+     "hip": 61281,
+     "ra_deg": 188.3706,
+     "dec_deg": 69.7882,
+     "mag": 3.85,
+     "name": "κ 용자리",
+     "item_id": null,
+     "distance_ly": 459.8,
+     "distance_basis": "wikidata"
+    },
+    "56211": {
+     "hip": 56211,
+     "ra_deg": 172.8509,
+     "dec_deg": 69.3311,
+     "mag": 3.82,
+     "name": "Giausar",
+     "item_id": null,
+     "distance_ly": 384.22,
+     "distance_basis": "wikidata"
+    },
+    "89937": {
+     "hip": 89937,
+     "ra_deg": 275.2641,
+     "dec_deg": 72.7328,
+     "mag": 3.55,
+     "name": "Alahakan",
+     "item_id": null,
+     "distance_ly": 27.06,
+     "distance_basis": "wikidata"
+    },
+    "97433": {
+     "hip": 97433,
+     "ra_deg": 297.0431,
+     "dec_deg": 70.2679,
+     "mag": 3.84,
+     "name": "Tyl",
+     "item_id": null,
+     "distance_ly": 145.61,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Equ": {
+   "item_id": "Q10438",
+   "name": "조랑말자리",
+   "lines": [
+    [
+     104987,
+     104858,
+     104521
+    ]
+   ],
+   "stars": {
+    "104987": {
+     "hip": 104987,
+     "ra_deg": 318.956,
+     "dec_deg": 5.2478,
+     "mag": 3.92,
+     "name": "Kitalpha",
+     "item_id": null,
+     "distance_ly": 178.63,
+     "distance_basis": "wikidata"
+    },
+    "104858": {
+     "hip": 104858,
+     "ra_deg": 318.6201,
+     "dec_deg": 10.007,
+     "mag": 4.47,
+     "name": "δ 조랑말자리",
+     "item_id": null,
+     "distance_ly": 60.45,
+     "distance_basis": "wikidata"
+    },
+    "104521": {
+     "hip": 104521,
+     "ra_deg": 317.5854,
+     "dec_deg": 10.1316,
+     "mag": 4.7,
+     "name": "γ 조랑말자리",
+     "item_id": null,
+     "distance_ly": 118.38,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Eri": {
+   "item_id": "Q10433",
+   "name": "에리다누스자리",
+   "lines": [
+    [
+     23875,
+     22109,
+     21444,
+     19587,
+     18543,
+     17593,
+     17378,
+     16537,
+     13701,
+     12770,
+     12843,
+     14146,
+     15474,
+     16611,
+     17651,
+     21393,
+     20535,
+     20042,
+     17874,
+     16870,
+     15510,
+     13847,
+     12486,
+     11407,
+     10602,
+     9007,
+     7588
+    ]
+   ],
+   "stars": {
+    "23875": {
+     "hip": 23875,
+     "ra_deg": 76.9624,
+     "dec_deg": -5.0864,
+     "mag": 2.78,
+     "name": "Cursa",
+     "item_id": null,
+     "distance_ly": 89.48,
+     "distance_basis": "wikidata"
+    },
+    "22109": {
+     "hip": 22109,
+     "ra_deg": 71.3756,
+     "dec_deg": -3.2547,
+     "mag": 4.01,
+     "name": "μ 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 639.49,
+     "distance_basis": "wikidata"
+    },
+    "21444": {
+     "hip": 21444,
+     "ra_deg": 69.0798,
+     "dec_deg": -3.3525,
+     "mag": 3.93,
+     "name": "ν 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 681.77,
+     "distance_basis": "wikidata"
+    },
+    "19587": {
+     "hip": 19587,
+     "ra_deg": 62.9664,
+     "dec_deg": -6.8376,
+     "mag": 4.04,
+     "name": "Beid",
+     "item_id": null,
+     "distance_ly": 122.19,
+     "distance_basis": "wikidata"
+    },
+    "18543": {
+     "hip": 18543,
+     "ra_deg": 59.5074,
+     "dec_deg": -13.5085,
+     "mag": 2.97,
+     "name": "Zaurak",
+     "item_id": null,
+     "distance_ly": 181.8,
+     "distance_basis": "wikidata"
+    },
+    "17593": {
+     "hip": 17593,
+     "ra_deg": 56.5356,
+     "dec_deg": -12.1016,
+     "mag": 4.43,
+     "name": "π 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 454.51,
+     "distance_basis": "wikidata"
+    },
+    "17378": {
+     "hip": 17378,
+     "ra_deg": 55.8121,
+     "dec_deg": -9.7634,
+     "mag": 3.52,
+     "name": "Rana",
+     "item_id": null,
+     "distance_ly": 29.62,
+     "distance_basis": "wikidata"
+    },
+    "16537": {
+     "hip": 16537,
+     "ra_deg": 53.2327,
+     "dec_deg": -9.4583,
+     "mag": 3.72,
+     "name": "Ran",
+     "item_id": null,
+     "distance_ly": 10.5,
+     "distance_basis": "wikidata"
+    },
+    "13701": {
+     "hip": 13701,
+     "ra_deg": 44.1069,
+     "dec_deg": -8.8981,
+     "mag": 3.89,
+     "name": "Azha",
+     "item_id": null,
+     "distance_ly": 131.81,
+     "distance_basis": "wikidata"
+    },
+    "12770": {
+     "hip": 12770,
+     "ra_deg": 41.0306,
+     "dec_deg": -13.8587,
+     "mag": 4.24,
+     "name": "π 고래자리",
+     "item_id": null,
+     "distance_ly": 368.36,
+     "distance_basis": "wikidata"
+    },
+    "12843": {
+     "hip": 12843,
+     "ra_deg": 41.2758,
+     "dec_deg": -18.5726,
+     "mag": 4.47,
+     "name": "τ1 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 46.35,
+     "distance_basis": "wikidata"
+    },
+    "14146": {
+     "hip": 14146,
+     "ra_deg": 45.5979,
+     "dec_deg": -23.6245,
+     "mag": 4.08,
+     "name": "τ3 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 86.41,
+     "distance_basis": "wikidata"
+    },
+    "15474": {
+     "hip": 15474,
+     "ra_deg": 49.8792,
+     "dec_deg": -21.7579,
+     "mag": 3.7,
+     "name": "Angetenar",
+     "item_id": null,
+     "distance_ly": 328.2,
+     "distance_basis": "wikidata"
+    },
+    "16611": {
+     "hip": 16611,
+     "ra_deg": 53.447,
+     "dec_deg": -21.6329,
+     "mag": 4.26,
+     "name": "τ5 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 292.26,
+     "distance_basis": "wikidata"
+    },
+    "17651": {
+     "hip": 17651,
+     "ra_deg": 56.712,
+     "dec_deg": -23.2497,
+     "mag": 4.22,
+     "name": "τ6 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 57.77,
+     "distance_basis": "wikidata"
+    },
+    "21393": {
+     "hip": 21393,
+     "ra_deg": 68.8877,
+     "dec_deg": -30.5623,
+     "mag": 3.81,
+     "name": "Theemin",
+     "item_id": null,
+     "distance_ly": 206.12,
+     "distance_basis": "wikidata"
+    },
+    "20535": {
+     "hip": 20535,
+     "ra_deg": 66.0092,
+     "dec_deg": -34.0168,
+     "mag": 3.97,
+     "name": "Beemim",
+     "item_id": null,
+     "distance_ly": 282.75,
+     "distance_basis": "wikidata"
+    },
+    "20042": {
+     "hip": 20042,
+     "ra_deg": 64.4736,
+     "dec_deg": -33.7983,
+     "mag": 3.55,
+     "name": "Beemim",
+     "item_id": null,
+     "distance_ly": 177.05,
+     "distance_basis": "wikidata"
+    },
+    "17874": {
+     "hip": 17874,
+     "ra_deg": 57.3635,
+     "dec_deg": -36.2003,
+     "mag": 4.17,
+     "name": "g 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 217.21,
+     "distance_basis": "wikidata"
+    },
+    "16870": {
+     "hip": 16870,
+     "ra_deg": 54.2737,
+     "dec_deg": -40.2745,
+     "mag": 4.57,
+     "name": "y 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 238.35,
+     "distance_basis": "wikidata"
+    },
+    "15510": {
+     "hip": 15510,
+     "ra_deg": 49.9819,
+     "dec_deg": -43.0698,
+     "mag": 4.26,
+     "name": "e 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 19.7,
+     "distance_basis": "wikidata"
+    },
+    "13847": {
+     "hip": 13847,
+     "ra_deg": 44.5653,
+     "dec_deg": -40.3047,
+     "mag": 2.88,
+     "name": "Acamar",
+     "item_id": null,
+     "distance_ly": 167.01,
+     "distance_basis": "wikidata"
+    },
+    "12486": {
+     "hip": 12486,
+     "ra_deg": 40.1668,
+     "dec_deg": -39.8554,
+     "mag": 4.11,
+     "name": "ι 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 144.02,
+     "distance_basis": "wikidata"
+    },
+    "11407": {
+     "hip": 11407,
+     "ra_deg": 36.7463,
+     "dec_deg": -47.7038,
+     "mag": 4.24,
+     "name": "κ 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 454.51,
+     "distance_basis": "wikidata"
+    },
+    "10602": {
+     "hip": 10602,
+     "ra_deg": 34.1274,
+     "dec_deg": -51.5122,
+     "mag": 3.56,
+     "name": "φ 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 152.51,
+     "distance_basis": "wikidata"
+    },
+    "9007": {
+     "hip": 9007,
+     "ra_deg": 28.9895,
+     "dec_deg": -51.6089,
+     "mag": 3.69,
+     "name": "χ 에리다누스자리",
+     "item_id": null,
+     "distance_ly": 57.13,
+     "distance_basis": "wikidata"
+    },
+    "7588": {
+     "hip": 7588,
+     "ra_deg": 24.4285,
+     "dec_deg": -57.2368,
+     "mag": 0.45,
+     "name": "아케르나르",
+     "item_id": "Q12183",
+     "distance_ly": 142.19,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "For": {
+   "item_id": "Q8913",
+   "name": "화로자리",
+   "lines": [
+    [
+     14879,
+     13147,
+     9677
+    ]
+   ],
+   "stars": {
+    "14879": {
+     "hip": 14879,
+     "ra_deg": 48.0189,
+     "dec_deg": -28.9876,
+     "mag": 3.8,
+     "name": "Dalim",
+     "item_id": null,
+     "distance_ly": 45.56,
+     "distance_basis": "wikidata"
+    },
+    "13147": {
+     "hip": 13147,
+     "ra_deg": 42.2726,
+     "dec_deg": -32.4059,
+     "mag": 4.45,
+     "name": "β 화로자리",
+     "item_id": null,
+     "distance_ly": 177.15,
+     "distance_basis": "wikidata"
+    },
+    "9677": {
+     "hip": 9677,
+     "ra_deg": 31.1227,
+     "dec_deg": -29.2968,
+     "mag": 4.68,
+     "name": "ν 화로자리",
+     "item_id": null,
+     "distance_ly": 339.3,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Gem": {
+   "item_id": "Q8923",
+   "name": "쌍둥이자리",
+   "lines": [
+    [
+     29655,
+     30343,
+     32246,
+     34693,
+     36850,
+     37826,
+     36962,
+     35550,
+     34088,
+     31681,
+     32362
+    ],
+    [
+     35550,
+     35350
+    ]
+   ],
+   "stars": {
+    "29655": {
+     "hip": 29655,
+     "ra_deg": 93.7194,
+     "dec_deg": 22.5068,
+     "mag": 3.31,
+     "name": "Propus",
+     "item_id": null,
+     "distance_ly": 384.0,
+     "distance_basis": "wikidata"
+    },
+    "30343": {
+     "hip": 30343,
+     "ra_deg": 95.7401,
+     "dec_deg": 22.5136,
+     "mag": 2.87,
+     "name": "Tejat",
+     "item_id": null,
+     "distance_ly": 231.65,
+     "distance_basis": "parallax"
+    },
+    "32246": {
+     "hip": 32246,
+     "ra_deg": 100.983,
+     "dec_deg": 25.1311,
+     "mag": 3.06,
+     "name": "Mebsuta",
+     "item_id": null,
+     "distance_ly": 844.96,
+     "distance_basis": "parallax"
+    },
+    "34693": {
+     "hip": 34693,
+     "ra_deg": 107.7849,
+     "dec_deg": 30.2452,
+     "mag": 4.41,
+     "name": "τ 쌍둥이자리",
+     "item_id": null,
+     "distance_ly": 369.95,
+     "distance_basis": "wikidata"
+    },
+    "36850": {
+     "hip": 36850,
+     "ra_deg": 113.6494,
+     "dec_deg": 31.8883,
+     "mag": 1.58,
+     "name": "카스토르 (항성)",
+     "item_id": "Q13029",
+     "distance_ly": 49.8,
+     "distance_basis": "wikidata"
+    },
+    "37826": {
+     "hip": 37826,
+     "ra_deg": 116.329,
+     "dec_deg": 28.0262,
+     "mag": 1.16,
+     "name": "폴룩스 (항성)",
+     "item_id": "Q13028",
+     "distance_ly": 33.77,
+     "distance_basis": "wikidata"
+    },
+    "36962": {
+     "hip": 36962,
+     "ra_deg": 113.9806,
+     "dec_deg": 26.8957,
+     "mag": 4.06,
+     "name": "υ 쌍둥이자리",
+     "item_id": null,
+     "distance_ly": 258.97,
+     "distance_basis": "wikidata"
+    },
+    "35550": {
+     "hip": 35550,
+     "ra_deg": 110.0307,
+     "dec_deg": 21.9823,
+     "mag": 3.5,
+     "name": "Wasat",
+     "item_id": null,
+     "distance_ly": 56.44,
+     "distance_basis": "wikidata"
+    },
+    "34088": {
+     "hip": 34088,
+     "ra_deg": 106.0272,
+     "dec_deg": 20.5703,
+     "mag": 4.01,
+     "name": "Mekbuda",
+     "item_id": null,
+     "distance_ly": 1206.78,
+     "distance_basis": "wikidata"
+    },
+    "31681": {
+     "hip": 31681,
+     "ra_deg": 99.4279,
+     "dec_deg": 16.3993,
+     "mag": 1.93,
+     "name": "알레나",
+     "item_id": "Q14238",
+     "distance_ly": 108.87,
+     "distance_basis": "wikidata"
+    },
+    "32362": {
+     "hip": 32362,
+     "ra_deg": 101.3224,
+     "dec_deg": 12.8956,
+     "mag": 3.35,
+     "name": "Alzirr",
+     "item_id": null,
+     "distance_ly": 59.83,
+     "distance_basis": "wikidata"
+    },
+    "35350": {
+     "hip": 35350,
+     "ra_deg": 109.5232,
+     "dec_deg": 16.5404,
+     "mag": 3.58,
+     "name": "λ 쌍둥이자리",
+     "item_id": null,
+     "distance_ly": 91.96,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Gru": {
+   "item_id": "Q10563",
+   "name": "두루미자리",
+   "lines": [
+    [
+     113638,
+     112623,
+     112122,
+     111043,
+     109268,
+     112122
+    ],
+    [
+     110997,
+     109908,
+     109111,
+     108085
+    ]
+   ],
+   "stars": {
+    "113638": {
+     "hip": 113638,
+     "ra_deg": 345.22,
+     "dec_deg": -52.7541,
+     "mag": 4.11,
+     "name": "ζ 두루미자리",
+     "item_id": null,
+     "distance_ly": 148.51,
+     "distance_basis": "wikidata"
+    },
+    "112623": {
+     "hip": 112623,
+     "ra_deg": 342.1387,
+     "dec_deg": -51.3169,
+     "mag": 3.49,
+     "name": "ε 두루미자리",
+     "item_id": null,
+     "distance_ly": 131.07,
+     "distance_basis": "wikidata"
+    },
+    "112122": {
+     "hip": 112122,
+     "ra_deg": 340.6669,
+     "dec_deg": -46.8846,
+     "mag": 2.07,
+     "name": "두루미자리 베타",
+     "item_id": "Q14244",
+     "distance_ly": 176.97,
+     "distance_basis": "parallax"
+    },
+    "111043": {
+     "hip": 111043,
+     "ra_deg": 337.4393,
+     "dec_deg": -43.7492,
+     "mag": 4.12,
+     "name": "δ2 두루미자리",
+     "item_id": null,
+     "distance_ly": 315.51,
+     "distance_basis": "wikidata"
+    },
+    "109268": {
+     "hip": 109268,
+     "ra_deg": 332.0583,
+     "dec_deg": -46.961,
+     "mag": 1.73,
+     "name": "두루미자리 알파",
+     "item_id": "Q854042",
+     "distance_ly": 101.05,
+     "distance_basis": "wikidata"
+    },
+    "110997": {
+     "hip": 110997,
+     "ra_deg": 337.3174,
+     "dec_deg": -43.4956,
+     "mag": 3.97,
+     "name": "δ1 두루미자리",
+     "item_id": null,
+     "distance_ly": 337.71,
+     "distance_basis": "wikidata"
+    },
+    "109908": {
+     "hip": 109908,
+     "ra_deg": 333.9038,
+     "dec_deg": -41.3467,
+     "mag": 4.79,
+     "name": "μ1 두루미자리",
+     "item_id": null,
+     "distance_ly": 294.9,
+     "distance_basis": "wikidata"
+    },
+    "109111": {
+     "hip": 109111,
+     "ra_deg": 331.5287,
+     "dec_deg": -39.5434,
+     "mag": 4.47,
+     "name": "λ 두루미자리",
+     "item_id": null,
+     "distance_ly": 251.04,
+     "distance_basis": "wikidata"
+    },
+    "108085": {
+     "hip": 108085,
+     "ra_deg": 328.4822,
+     "dec_deg": -37.3649,
+     "mag": 3,
+     "name": "Aldhanab",
+     "item_id": null,
+     "distance_ly": 182.86,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Her": {
+   "item_id": "Q10448",
+   "name": "허큘리스자리",
+   "lines": [
+    [
+     80170,
+     80816,
+     81693,
+     81833,
+     81126,
+     79992,
+     79101,
+     77760
+    ],
+    [
+     81693,
+     83207
+    ],
+    [
+     81833,
+     84380
+    ],
+    [
+     87808,
+     85112,
+     84380,
+     83207,
+     84379,
+     86974,
+     87933,
+     88794
+    ],
+    [
+     84345,
+     80816
+    ]
+   ],
+   "stars": {
+    "80170": {
+     "hip": 80170,
+     "ra_deg": 245.4801,
+     "dec_deg": 19.1531,
+     "mag": 3.74,
+     "name": "γ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 192.37,
+     "distance_basis": "wikidata"
+    },
+    "80816": {
+     "hip": 80816,
+     "ra_deg": 247.555,
+     "dec_deg": 21.4896,
+     "mag": 2.78,
+     "name": "Kornephoros",
+     "item_id": null,
+     "distance_ly": 147.98,
+     "distance_basis": "wikidata"
+    },
+    "81693": {
+     "hip": 81693,
+     "ra_deg": 250.32150000000001,
+     "dec_deg": 31.6027,
+     "mag": 2.81,
+     "name": "Rutilicus",
+     "item_id": null,
+     "distance_ly": 35.2,
+     "distance_basis": "wikidata"
+    },
+    "81833": {
+     "hip": 81833,
+     "ra_deg": 250.724,
+     "dec_deg": 38.9223,
+     "mag": 3.48,
+     "name": "η 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 110.19,
+     "distance_basis": "wikidata"
+    },
+    "81126": {
+     "hip": 81126,
+     "ra_deg": 248.5258,
+     "dec_deg": 42.437,
+     "mag": 4.2,
+     "name": "σ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 273.76,
+     "distance_basis": "wikidata"
+    },
+    "79992": {
+     "hip": 79992,
+     "ra_deg": 244.9352,
+     "dec_deg": 46.3134,
+     "mag": 3.91,
+     "name": "τ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 317.1,
+     "distance_basis": "wikidata"
+    },
+    "79101": {
+     "hip": 79101,
+     "ra_deg": 242.19240000000002,
+     "dec_deg": 44.9349,
+     "mag": 4.23,
+     "name": "φ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 229.37,
+     "distance_basis": "wikidata"
+    },
+    "77760": {
+     "hip": 77760,
+     "ra_deg": 238.1689,
+     "dec_deg": 42.4515,
+     "mag": 4.6,
+     "name": "χ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 51.77,
+     "distance_basis": "wikidata"
+    },
+    "83207": {
+     "hip": 83207,
+     "ra_deg": 255.07240000000002,
+     "dec_deg": 30.9264,
+     "mag": 3.92,
+     "name": "ε 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 164.36,
+     "distance_basis": "wikidata"
+    },
+    "84380": {
+     "hip": 84380,
+     "ra_deg": 258.7618,
+     "dec_deg": 36.8092,
+     "mag": 3.16,
+     "name": "π 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 363.08,
+     "distance_basis": "wikidata"
+    },
+    "87808": {
+     "hip": 87808,
+     "ra_deg": 269.0633,
+     "dec_deg": 37.2505,
+     "mag": 3.86,
+     "name": "θ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 977.73,
+     "distance_basis": "wikidata"
+    },
+    "85112": {
+     "hip": 85112,
+     "ra_deg": 260.9206,
+     "dec_deg": 37.1459,
+     "mag": 4.15,
+     "name": "ρ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 359.38,
+     "distance_basis": "wikidata"
+    },
+    "84379": {
+     "hip": 84379,
+     "ra_deg": 258.758,
+     "dec_deg": 24.8392,
+     "mag": 3.12,
+     "name": "Sarin",
+     "item_id": null,
+     "distance_ly": 76.42,
+     "distance_basis": "wikidata"
+    },
+    "86974": {
+     "hip": 86974,
+     "ra_deg": 266.61469999999997,
+     "dec_deg": 27.7207,
+     "mag": 3.42,
+     "name": "μ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 27.29,
+     "distance_basis": "wikidata"
+    },
+    "87933": {
+     "hip": 87933,
+     "ra_deg": 269.4412,
+     "dec_deg": 29.2479,
+     "mag": 3.7,
+     "name": "ξ 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 132.87,
+     "distance_basis": "wikidata"
+    },
+    "88794": {
+     "hip": 88794,
+     "ra_deg": 271.8856,
+     "dec_deg": 28.7625,
+     "mag": 3.84,
+     "name": "ο 허큘리스자리",
+     "item_id": null,
+     "distance_ly": 341.41,
+     "distance_basis": "wikidata"
+    },
+    "84345": {
+     "hip": 84345,
+     "ra_deg": 258.6619,
+     "dec_deg": 14.3903,
+     "mag": 2.78,
+     "name": "Rasalgethi",
+     "item_id": null,
+     "distance_ly": 358.77,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Hor": {
+   "item_id": "Q10574",
+   "name": "시계자리",
+   "lines": [
+    [
+     19747,
+     12653,
+     12225,
+     12484,
+     14240,
+     13884
+    ]
+   ],
+   "stars": {
+    "19747": {
+     "hip": 19747,
+     "ra_deg": 63.5005,
+     "dec_deg": -42.2944,
+     "mag": 3.85,
+     "name": "α 시계자리",
+     "item_id": null,
+     "distance_ly": 117.49,
+     "distance_basis": "wikidata"
+    },
+    "12653": {
+     "hip": 12653,
+     "ra_deg": 40.6394,
+     "dec_deg": -50.8003,
+     "mag": 5.4,
+     "name": "ι 시계자리",
+     "item_id": null,
+     "distance_ly": 56.6,
+     "distance_basis": "wikidata"
+    },
+    "12225": {
+     "hip": 12225,
+     "ra_deg": 39.3515,
+     "dec_deg": -52.5431,
+     "mag": 5.3,
+     "name": "η 시계자리",
+     "item_id": null,
+     "distance_ly": 132.65,
+     "distance_basis": "wikidata"
+    },
+    "12484": {
+     "hip": 12484,
+     "ra_deg": 40.1651,
+     "dec_deg": -54.5499,
+     "mag": 5.21,
+     "name": "ζ 시계자리",
+     "item_id": null,
+     "distance_ly": 160.4,
+     "distance_basis": "wikidata"
+    },
+    "14240": {
+     "hip": 14240,
+     "ra_deg": 45.9034,
+     "dec_deg": -59.7378,
+     "mag": 5.12,
+     "name": "μ 시계자리",
+     "item_id": null,
+     "distance_ly": 140.37,
+     "distance_basis": "wikidata"
+    },
+    "13884": {
+     "hip": 13884,
+     "ra_deg": 44.6992,
+     "dec_deg": -64.0713,
+     "mag": 4.98,
+     "name": "β 시계자리",
+     "item_id": null,
+     "distance_ly": 316.57,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Hya": {
+   "item_id": "Q10578",
+   "name": "바다뱀자리",
+   "lines": [
+    [
+     43109,
+     43234,
+     42799,
+     42402,
+     42313,
+     43109,
+     43813,
+     45336,
+     47431,
+     46390,
+     48356,
+     49841,
+     51069,
+     52943,
+     56343,
+     57936,
+     64962,
+     68895,
+     72571
+    ]
+   ],
+   "stars": {
+    "43109": {
+     "hip": 43109,
+     "ra_deg": 131.6938,
+     "dec_deg": 6.4188,
+     "mag": 3.38,
+     "name": "Ashlesha",
+     "item_id": null,
+     "distance_ly": 135.17,
+     "distance_basis": "parallax"
+    },
+    "43234": {
+     "hip": 43234,
+     "ra_deg": 132.1082,
+     "dec_deg": 5.8378,
+     "mag": 4.35,
+     "name": "ρ 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 311.82,
+     "distance_basis": "wikidata"
+    },
+    "42799": {
+     "hip": 42799,
+     "ra_deg": 130.8061,
+     "dec_deg": 3.3987,
+     "mag": 4.3,
+     "name": "η 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 433.37,
+     "distance_basis": "wikidata"
+    },
+    "42402": {
+     "hip": 42402,
+     "ra_deg": 129.6893,
+     "dec_deg": 3.3414,
+     "mag": 4.45,
+     "name": "Minchir",
+     "item_id": null,
+     "distance_ly": 380.52,
+     "distance_basis": "wikidata"
+    },
+    "42313": {
+     "hip": 42313,
+     "ra_deg": 129.414,
+     "dec_deg": 5.7038,
+     "mag": 4.14,
+     "name": "Minazal",
+     "item_id": null,
+     "distance_ly": 169.12,
+     "distance_basis": "wikidata"
+    },
+    "43813": {
+     "hip": 43813,
+     "ra_deg": 133.8484,
+     "dec_deg": 5.9456,
+     "mag": 3.11,
+     "name": "ζ 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 155.38,
+     "distance_basis": "wikidata"
+    },
+    "45336": {
+     "hip": 45336,
+     "ra_deg": 138.5911,
+     "dec_deg": 2.3143,
+     "mag": 3.89,
+     "name": "θ 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 117.86,
+     "distance_basis": "wikidata"
+    },
+    "47431": {
+     "hip": 47431,
+     "ra_deg": 144.964,
+     "dec_deg": -1.1428,
+     "mag": 3.9,
+     "name": "Ukdah",
+     "item_id": null,
+     "distance_ly": 246.28,
+     "distance_basis": "wikidata"
+    },
+    "46390": {
+     "hip": 46390,
+     "ra_deg": 141.8968,
+     "dec_deg": -8.6586,
+     "mag": 1.99,
+     "name": "알파드",
+     "item_id": "Q13577",
+     "distance_ly": 177.26,
+     "distance_basis": "parallax"
+    },
+    "48356": {
+     "hip": 48356,
+     "ra_deg": 147.8696,
+     "dec_deg": -14.8466,
+     "mag": 4.11,
+     "name": "Zhang",
+     "item_id": null,
+     "distance_ly": 248.4,
+     "distance_basis": "wikidata"
+    },
+    "49841": {
+     "hip": 49841,
+     "ra_deg": 152.647,
+     "dec_deg": -12.3541,
+     "mag": 3.61,
+     "name": "λ 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 108.87,
+     "distance_basis": "wikidata"
+    },
+    "51069": {
+     "hip": 51069,
+     "ra_deg": 156.5226,
+     "dec_deg": -16.8363,
+     "mag": 3.83,
+     "name": "μ 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 225.14,
+     "distance_basis": "wikidata"
+    },
+    "52943": {
+     "hip": 52943,
+     "ra_deg": 162.4062,
+     "dec_deg": -16.1936,
+     "mag": 3.11,
+     "name": "ν 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 140.42,
+     "distance_basis": "wikidata"
+    },
+    "56343": {
+     "hip": 56343,
+     "ra_deg": 173.2505,
+     "dec_deg": -31.8576,
+     "mag": 3.54,
+     "name": "ξ 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 122.4,
+     "distance_basis": "wikidata"
+    },
+    "57936": {
+     "hip": 57936,
+     "ra_deg": 178.2272,
+     "dec_deg": -33.9081,
+     "mag": 4.29,
+     "name": "β 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 309.74,
+     "distance_basis": "parallax"
+    },
+    "64962": {
+     "hip": 64962,
+     "ra_deg": 199.7304,
+     "dec_deg": -23.1715,
+     "mag": 2.99,
+     "name": "γ 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 132.13,
+     "distance_basis": "wikidata"
+    },
+    "68895": {
+     "hip": 68895,
+     "ra_deg": 211.5929,
+     "dec_deg": -26.6824,
+     "mag": 3.25,
+     "name": "π 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 99.31,
+     "distance_basis": "wikidata"
+    },
+    "72571": {
+     "hip": 72571,
+     "ra_deg": 222.5721,
+     "dec_deg": -27.9604,
+     "mag": 4.42,
+     "name": "E 바다뱀자리",
+     "item_id": null,
+     "distance_ly": 295.96,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Hyi": {
+   "item_id": "Q10416",
+   "name": "물뱀자리",
+   "lines": [
+    [
+     2021,
+     17678,
+     12394,
+     11001,
+     8928,
+     9236
+    ]
+   ],
+   "stars": {
+    "2021": {
+     "hip": 2021,
+     "ra_deg": 6.4378,
+     "dec_deg": -77.2542,
+     "mag": 2.82,
+     "name": "β 물뱀자리",
+     "item_id": null,
+     "distance_ly": 24.4,
+     "distance_basis": "wikidata"
+    },
+    "17678": {
+     "hip": 17678,
+     "ra_deg": 56.8098,
+     "dec_deg": -74.239,
+     "mag": 3.26,
+     "name": "γ 물뱀자리",
+     "item_id": null,
+     "distance_ly": 206.64,
+     "distance_basis": "wikidata"
+    },
+    "12394": {
+     "hip": 12394,
+     "ra_deg": 39.8973,
+     "dec_deg": -68.2669,
+     "mag": 4.12,
+     "name": "ε 물뱀자리",
+     "item_id": null,
+     "distance_ly": 153.29,
+     "distance_basis": "wikidata"
+    },
+    "11001": {
+     "hip": 11001,
+     "ra_deg": 35.4373,
+     "dec_deg": -68.6594,
+     "mag": 4.08,
+     "name": "δ 물뱀자리",
+     "item_id": null,
+     "distance_ly": 138.73,
+     "distance_basis": "wikidata"
+    },
+    "8928": {
+     "hip": 8928,
+     "ra_deg": 28.7339,
+     "dec_deg": -67.6473,
+     "mag": 4.68,
+     "name": "η2 물뱀자리",
+     "item_id": null,
+     "distance_ly": 220.91,
+     "distance_basis": "wikidata"
+    },
+    "9236": {
+     "hip": 9236,
+     "ra_deg": 29.6925,
+     "dec_deg": -61.5699,
+     "mag": 2.86,
+     "name": "α 물뱀자리",
+     "item_id": null,
+     "distance_ly": 63.31,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Ind": {
+   "item_id": "Q10450",
+   "name": "인디언자리",
+   "lines": [
+    [
+     101772,
+     102333,
+     103227,
+     108431,
+     105319,
+     101772
+    ]
+   ],
+   "stars": {
+    "101772": {
+     "hip": 101772,
+     "ra_deg": 309.3918,
+     "dec_deg": -47.2915,
+     "mag": 3.11,
+     "name": "Persian",
+     "item_id": null,
+     "distance_ly": 97.14,
+     "distance_basis": "wikidata"
+    },
+    "102333": {
+     "hip": 102333,
+     "ra_deg": 311.0097,
+     "dec_deg": -51.921,
+     "mag": 4.51,
+     "name": "η 인디언자리",
+     "item_id": null,
+     "distance_ly": 78.22,
+     "distance_basis": "wikidata"
+    },
+    "103227": {
+     "hip": 103227,
+     "ra_deg": 313.7025,
+     "dec_deg": -58.4542,
+     "mag": 3.67,
+     "name": "β 인디언자리",
+     "item_id": null,
+     "distance_ly": 544.36,
+     "distance_basis": "wikidata"
+    },
+    "108431": {
+     "hip": 108431,
+     "ra_deg": 329.47950000000003,
+     "dec_deg": -54.9926,
+     "mag": 4.4,
+     "name": "δ 인디언자리",
+     "item_id": null,
+     "distance_ly": 181.8,
+     "distance_basis": "wikidata"
+    },
+    "105319": {
+     "hip": 105319,
+     "ra_deg": 319.96659999999997,
+     "dec_deg": -53.4494,
+     "mag": 4.39,
+     "name": "θ 인디언자리",
+     "item_id": null,
+     "distance_ly": 97.4,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Lac": {
+   "item_id": "Q10430",
+   "name": "도마뱀자리",
+   "lines": [
+    [
+     110538,
+     111169,
+     111022,
+     110351,
+     111104,
+     111944,
+     111022,
+     110609,
+     110538
+    ],
+    [
+     111104,
+     109754,
+     109937
+    ]
+   ],
+   "stars": {
+    "110538": {
+     "hip": 110538,
+     "ra_deg": 335.8901,
+     "dec_deg": 52.229,
+     "mag": 4.42,
+     "name": "β 도마뱀자리",
+     "item_id": null,
+     "distance_ly": 167.48,
+     "distance_basis": "wikidata"
+    },
+    "111169": {
+     "hip": 111169,
+     "ra_deg": 337.8229,
+     "dec_deg": 50.2825,
+     "mag": 3.76,
+     "name": "α 도마뱀자리",
+     "item_id": null,
+     "distance_ly": 102.05,
+     "distance_basis": "wikidata"
+    },
+    "111022": {
+     "hip": 111022,
+     "ra_deg": 337.3826,
+     "dec_deg": 47.7069,
+     "mag": 4.34,
+     "name": "HIP 111022",
+     "item_id": null,
+     "distance_ly": 1164.84,
+     "distance_basis": "parallax"
+    },
+    "110351": {
+     "hip": 110351,
+     "ra_deg": 335.2564,
+     "dec_deg": 46.5366,
+     "mag": 4.55,
+     "name": "HIP 110351",
+     "item_id": null,
+     "distance_ly": 528.5,
+     "distance_basis": "wikidata"
+    },
+    "111104": {
+     "hip": 111104,
+     "ra_deg": 337.6219,
+     "dec_deg": 43.1234,
+     "mag": 4.52,
+     "name": "HIP 111104",
+     "item_id": null,
+     "distance_ly": 961.87,
+     "distance_basis": "wikidata"
+    },
+    "111944": {
+     "hip": 111944,
+     "ra_deg": 340.1286,
+     "dec_deg": 44.2763,
+     "mag": 4.5,
+     "name": "HIP 111944",
+     "item_id": null,
+     "distance_ly": 338.24,
+     "distance_basis": "wikidata"
+    },
+    "110609": {
+     "hip": 110609,
+     "ra_deg": 336.1291,
+     "dec_deg": 49.4764,
+     "mag": 4.55,
+     "name": "HIP 110609",
+     "item_id": null,
+     "distance_ly": 2536.8,
+     "distance_basis": "wikidata"
+    },
+    "109754": {
+     "hip": 109754,
+     "ra_deg": 333.4697,
+     "dec_deg": 39.7149,
+     "mag": 4.5,
+     "name": "HIP 109754",
+     "item_id": null,
+     "distance_ly": 581.35,
+     "distance_basis": "wikidata"
+    },
+    "109937": {
+     "hip": 109937,
+     "ra_deg": 333.9924,
+     "dec_deg": 37.7487,
+     "mag": 4.14,
+     "name": "HIP 109937",
+     "item_id": null,
+     "distance_ly": 618.35,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Leo": {
+   "item_id": "Q8853",
+   "name": "사자자리",
+   "lines": [
+    [
+     49669,
+     49583,
+     50583,
+     54872,
+     57632,
+     54879,
+     49669
+    ],
+    [
+     50583,
+     50335,
+     48455,
+     47908
+    ]
+   ],
+   "stars": {
+    "49669": {
+     "hip": 49669,
+     "ra_deg": 152.093,
+     "dec_deg": 11.9672,
+     "mag": 1.36,
+     "name": "레굴루스",
+     "item_id": "Q76493786",
+     "distance_ly": 77.16,
+     "distance_basis": "wikidata"
+    },
+    "49583": {
+     "hip": 49583,
+     "ra_deg": 151.8331,
+     "dec_deg": 16.7627,
+     "mag": 3.48,
+     "name": "Al Jabhah",
+     "item_id": null,
+     "distance_ly": 1268.4,
+     "distance_basis": "wikidata"
+    },
+    "50583": {
+     "hip": 50583,
+     "ra_deg": 154.9931,
+     "dec_deg": 19.8415,
+     "mag": 2.01,
+     "name": "알기에바",
+     "item_id": "Q66477100",
+     "distance_ly": 130.01,
+     "distance_basis": "wikidata"
+    },
+    "54872": {
+     "hip": 54872,
+     "ra_deg": 168.5271,
+     "dec_deg": 20.5237,
+     "mag": 2.56,
+     "name": "Zosma",
+     "item_id": null,
+     "distance_ly": 57.71,
+     "distance_basis": "wikidata"
+    },
+    "57632": {
+     "hip": 57632,
+     "ra_deg": 177.2649,
+     "dec_deg": 14.5721,
+     "mag": 2.14,
+     "name": "데네볼라",
+     "item_id": "Q13015",
+     "distance_ly": 36.15,
+     "distance_basis": "wikidata"
+    },
+    "54879": {
+     "hip": 54879,
+     "ra_deg": 168.56,
+     "dec_deg": 15.4296,
+     "mag": 3.33,
+     "name": "Chertan",
+     "item_id": null,
+     "distance_ly": 168.59,
+     "distance_basis": "wikidata"
+    },
+    "50335": {
+     "hip": 50335,
+     "ra_deg": 154.1726,
+     "dec_deg": 23.4173,
+     "mag": 3.43,
+     "name": "Adhafera",
+     "item_id": null,
+     "distance_ly": 235.71,
+     "distance_basis": "wikidata"
+    },
+    "48455": {
+     "hip": 48455,
+     "ra_deg": 148.1909,
+     "dec_deg": 26.007,
+     "mag": 3.88,
+     "name": "Rasalas",
+     "item_id": null,
+     "distance_ly": 124.09,
+     "distance_basis": "wikidata"
+    },
+    "47908": {
+     "hip": 47908,
+     "ra_deg": 146.4628,
+     "dec_deg": 23.7743,
+     "mag": 2.97,
+     "name": "Algenubi",
+     "item_id": null,
+     "distance_ly": 261.61,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "LMi": {
+   "item_id": "Q10403",
+   "name": "작은사자자리",
+   "lines": [
+    [
+     49593,
+     51056,
+     53229,
+     51233,
+     49593,
+     46952
+    ]
+   ],
+   "stars": {
+    "49593": {
+     "hip": 49593,
+     "ra_deg": 151.8573,
+     "dec_deg": 35.2447,
+     "mag": 4.49,
+     "name": "HIP 49593",
+     "item_id": null,
+     "distance_ly": 88.95,
+     "distance_basis": "wikidata"
+    },
+    "51056": {
+     "hip": 51056,
+     "ra_deg": 156.4784,
+     "dec_deg": 33.7961,
+     "mag": 4.72,
+     "name": "HIP 51056",
+     "item_id": null,
+     "distance_ly": 239.94,
+     "distance_basis": "wikidata"
+    },
+    "53229": {
+     "hip": 53229,
+     "ra_deg": 163.3279,
+     "dec_deg": 34.2149,
+     "mag": 3.79,
+     "name": "Praecipua",
+     "item_id": null,
+     "distance_ly": 101.84,
+     "distance_basis": "wikidata"
+    },
+    "51233": {
+     "hip": 51233,
+     "ra_deg": 156.9708,
+     "dec_deg": 36.7072,
+     "mag": 4.2,
+     "name": "β 작은사자자리",
+     "item_id": null,
+     "distance_ly": 151.15,
+     "distance_basis": "wikidata"
+    },
+    "46952": {
+     "hip": 46952,
+     "ra_deg": 143.5558,
+     "dec_deg": 36.3976,
+     "mag": 4.54,
+     "name": "HIP 46952",
+     "item_id": null,
+     "distance_ly": 185.5,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Lep": {
+   "item_id": "Q10446",
+   "name": "토끼자리",
+   "lines": [
+    [
+     28910,
+     28103,
+     27288,
+     25985,
+     24305,
+     23685,
+     25606,
+     27072,
+     27654
+    ],
+    [
+     24327,
+     24305,
+     24845
+    ]
+   ],
+   "stars": {
+    "28910": {
+     "hip": 28910,
+     "ra_deg": 91.5388,
+     "dec_deg": -14.9353,
+     "mag": 4.67,
+     "name": "θ 토끼자리",
+     "item_id": null,
+     "distance_ly": 164.47,
+     "distance_basis": "wikidata"
+    },
+    "28103": {
+     "hip": 28103,
+     "ra_deg": 89.1012,
+     "dec_deg": -14.1677,
+     "mag": 3.71,
+     "name": "η 토끼자리",
+     "item_id": null,
+     "distance_ly": 48.09,
+     "distance_basis": "wikidata"
+    },
+    "27288": {
+     "hip": 27288,
+     "ra_deg": 86.7389,
+     "dec_deg": -14.822,
+     "mag": 3.55,
+     "name": "ζ 토끼자리",
+     "item_id": null,
+     "distance_ly": 72.09,
+     "distance_basis": "wikidata"
+    },
+    "25985": {
+     "hip": 25985,
+     "ra_deg": 83.1826,
+     "dec_deg": -17.8223,
+     "mag": 2.58,
+     "name": "Arneb",
+     "item_id": null,
+     "distance_ly": 694.96,
+     "distance_basis": "parallax"
+    },
+    "24305": {
+     "hip": 24305,
+     "ra_deg": 78.2329,
+     "dec_deg": -16.2055,
+     "mag": 3.29,
+     "name": "μ 토끼자리",
+     "item_id": null,
+     "distance_ly": 160.14,
+     "distance_basis": "wikidata"
+    },
+    "23685": {
+     "hip": 23685,
+     "ra_deg": 76.3653,
+     "dec_deg": -22.371,
+     "mag": 3.19,
+     "name": "ε 토끼자리",
+     "item_id": null,
+     "distance_ly": 205.59,
+     "distance_basis": "wikidata"
+    },
+    "25606": {
+     "hip": 25606,
+     "ra_deg": 82.0613,
+     "dec_deg": -20.7594,
+     "mag": 2.81,
+     "name": "Nihal",
+     "item_id": null,
+     "distance_ly": 148.51,
+     "distance_basis": "wikidata"
+    },
+    "27072": {
+     "hip": 27072,
+     "ra_deg": 86.1158,
+     "dec_deg": -22.4484,
+     "mag": 3.59,
+     "name": "Kursi al Jabbar",
+     "item_id": null,
+     "distance_ly": 29.0,
+     "distance_basis": "wikidata"
+    },
+    "27654": {
+     "hip": 27654,
+     "ra_deg": 87.8304,
+     "dec_deg": -20.8791,
+     "mag": 3.76,
+     "name": "Arsh al Jauzah",
+     "item_id": null,
+     "distance_ly": 111.83,
+     "distance_basis": "wikidata"
+    },
+    "24327": {
+     "hip": 24327,
+     "ra_deg": 78.3078,
+     "dec_deg": -12.9413,
+     "mag": 4.36,
+     "name": "κ 토끼자리",
+     "item_id": null,
+     "distance_ly": 459.8,
+     "distance_basis": "wikidata"
+    },
+    "24845": {
+     "hip": 24845,
+     "ra_deg": 79.8939,
+     "dec_deg": -13.1768,
+     "mag": 4.29,
+     "name": "λ 토끼자리",
+     "item_id": null,
+     "distance_ly": 877.31,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Lib": {
+   "item_id": "Q10580",
+   "name": "천칭자리",
+   "lines": [
+    [
+     73714,
+     72622,
+     74785,
+     76333,
+     76470,
+     76600
+    ],
+    [
+     72622,
+     76333
+    ]
+   ],
+   "stars": {
+    "73714": {
+     "hip": 73714,
+     "ra_deg": 226.0176,
+     "dec_deg": -25.282,
+     "mag": 3.25,
+     "name": "Brachium",
+     "item_id": null,
+     "distance_ly": 260.02,
+     "distance_basis": "wikidata"
+    },
+    "72622": {
+     "hip": 72622,
+     "ra_deg": 222.7196,
+     "dec_deg": -16.0418,
+     "mag": 2.75,
+     "name": "Zubenelgenubi",
+     "item_id": null,
+     "distance_ly": 75.8,
+     "distance_basis": "parallax"
+    },
+    "74785": {
+     "hip": 74785,
+     "ra_deg": 229.2517,
+     "dec_deg": -9.3829,
+     "mag": 2.61,
+     "name": "Zubeneschamali",
+     "item_id": null,
+     "distance_ly": 184.98,
+     "distance_basis": "wikidata"
+    },
+    "76333": {
+     "hip": 76333,
+     "ra_deg": 233.8816,
+     "dec_deg": -14.7895,
+     "mag": 3.91,
+     "name": "Zubenelhakrabi",
+     "item_id": null,
+     "distance_ly": 159.08,
+     "distance_basis": "wikidata"
+    },
+    "76470": {
+     "hip": 76470,
+     "ra_deg": 234.256,
+     "dec_deg": -28.1351,
+     "mag": 3.6,
+     "name": "υ 천칭자리",
+     "item_id": null,
+     "distance_ly": 205.59,
+     "distance_basis": "wikidata"
+    },
+    "76600": {
+     "hip": 76600,
+     "ra_deg": 234.664,
+     "dec_deg": -29.7778,
+     "mag": 3.66,
+     "name": "τ 천칭자리",
+     "item_id": null,
+     "distance_ly": 444.96,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Lup": {
+   "item_id": "Q10571",
+   "name": "이리자리",
+   "lines": [
+    [
+     77634,
+     76705,
+     75177,
+     75141,
+     73273,
+     71860,
+     74395,
+     74911,
+     75264,
+     76297,
+     78384,
+     78918
+    ],
+    [
+     75141,
+     76297
+    ]
+   ],
+   "stars": {
+    "77634": {
+     "hip": 77634,
+     "ra_deg": 237.7397,
+     "dec_deg": -33.6272,
+     "mag": 3.97,
+     "name": "χ 이리자리",
+     "item_id": null,
+     "distance_ly": 204.0,
+     "distance_basis": "wikidata"
+    },
+    "76705": {
+     "hip": 76705,
+     "ra_deg": 234.9416,
+     "dec_deg": -34.4119,
+     "mag": 4.66,
+     "name": "ψ1 이리자리",
+     "item_id": null,
+     "distance_ly": 214.04,
+     "distance_basis": "wikidata"
+    },
+    "75177": {
+     "hip": 75177,
+     "ra_deg": 230.4515,
+     "dec_deg": -36.2614,
+     "mag": 3.57,
+     "name": "φ1 이리자리",
+     "item_id": null,
+     "distance_ly": 293.32,
+     "distance_basis": "wikidata"
+    },
+    "75141": {
+     "hip": 75141,
+     "ra_deg": 230.343,
+     "dec_deg": -40.6475,
+     "mag": 3.22,
+     "name": "δ 이리자리",
+     "item_id": null,
+     "distance_ly": 428.09,
+     "distance_basis": "wikidata"
+    },
+    "73273": {
+     "hip": 73273,
+     "ra_deg": 224.633,
+     "dec_deg": -43.134,
+     "mag": 2.68,
+     "name": "KeKouan",
+     "item_id": null,
+     "distance_ly": 383.0,
+     "distance_basis": "wikidata"
+    },
+    "71860": {
+     "hip": 71860,
+     "ra_deg": 220.4823,
+     "dec_deg": -47.3882,
+     "mag": 2.3,
+     "name": "이리자리 알파",
+     "item_id": "Q14230",
+     "distance_ly": 464.61,
+     "distance_basis": "parallax"
+    },
+    "74395": {
+     "hip": 74395,
+     "ra_deg": 228.0712,
+     "dec_deg": -52.0992,
+     "mag": 3.41,
+     "name": "ζ 이리자리",
+     "item_id": null,
+     "distance_ly": 112.73,
+     "distance_basis": "wikidata"
+    },
+    "74911": {
+     "hip": 74911,
+     "ra_deg": 229.6334,
+     "dec_deg": -47.8753,
+     "mag": 4.27,
+     "name": "μ 이리자리",
+     "item_id": null,
+     "distance_ly": 290.69,
+     "distance_basis": "parallax"
+    },
+    "75264": {
+     "hip": 75264,
+     "ra_deg": 230.6703,
+     "dec_deg": -44.6896,
+     "mag": 3.37,
+     "name": "ε 이리자리",
+     "item_id": null,
+     "distance_ly": 504.11,
+     "distance_basis": "parallax"
+    },
+    "76297": {
+     "hip": 76297,
+     "ra_deg": 233.7852,
+     "dec_deg": -41.1668,
+     "mag": 2.8,
+     "name": "γ 이리자리",
+     "item_id": null,
+     "distance_ly": 420.85,
+     "distance_basis": "parallax"
+    },
+    "78384": {
+     "hip": 78384,
+     "ra_deg": 240.03050000000002,
+     "dec_deg": -38.3967,
+     "mag": 3.42,
+     "name": "η 이리자리",
+     "item_id": null,
+     "distance_ly": 443.94,
+     "distance_basis": "wikidata"
+    },
+    "78918": {
+     "hip": 78918,
+     "ra_deg": 241.6481,
+     "dec_deg": -36.8023,
+     "mag": 4.22,
+     "name": "θ 이리자리",
+     "item_id": null,
+     "distance_ly": 422.8,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Lyn": {
+   "item_id": "Q10443",
+   "name": "살쾡이자리",
+   "lines": [
+    [
+     30060,
+     33449,
+     36145,
+     41075,
+     44248,
+     45688,
+     45860
+    ]
+   ],
+   "stars": {
+    "30060": {
+     "hip": 30060,
+     "ra_deg": 94.9058,
+     "dec_deg": 59.011,
+     "mag": 4.44,
+     "name": "HIP 30060",
+     "item_id": null,
+     "distance_ly": 145.34,
+     "distance_basis": "wikidata"
+    },
+    "33449": {
+     "hip": 33449,
+     "ra_deg": 104.3192,
+     "dec_deg": 58.4228,
+     "mag": 4.35,
+     "name": "HIP 33449",
+     "item_id": null,
+     "distance_ly": 147.98,
+     "distance_basis": "wikidata"
+    },
+    "36145": {
+     "hip": 36145,
+     "ra_deg": 111.6785,
+     "dec_deg": 49.2115,
+     "mag": 4.61,
+     "name": "HIP 36145",
+     "item_id": null,
+     "distance_ly": 270.59,
+     "distance_basis": "wikidata"
+    },
+    "41075": {
+     "hip": 41075,
+     "ra_deg": 125.7088,
+     "dec_deg": 43.1881,
+     "mag": 4.25,
+     "name": "Alsciaukat",
+     "item_id": null,
+     "distance_ly": 391.09,
+     "distance_basis": "wikidata"
+    },
+    "44248": {
+     "hip": 44248,
+     "ra_deg": 135.1599,
+     "dec_deg": 41.7829,
+     "mag": 3.96,
+     "name": "HIP 44248",
+     "item_id": null,
+     "distance_ly": 53.43,
+     "distance_basis": "wikidata"
+    },
+    "45688": {
+     "hip": 45688,
+     "ra_deg": 139.711,
+     "dec_deg": 36.8026,
+     "mag": 3.82,
+     "name": "HIP 45688",
+     "item_id": null,
+     "distance_ly": 121.93,
+     "distance_basis": "parallax"
+    },
+    "45860": {
+     "hip": 45860,
+     "ra_deg": 140.2638,
+     "dec_deg": 34.3926,
+     "mag": 3.14,
+     "name": "α 살쾡이자리",
+     "item_id": null,
+     "distance_ly": 214.57,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Lyr": {
+   "item_id": "Q10484",
+   "name": "거문고자리",
+   "lines": [
+    [
+     91971,
+     91926,
+     91262,
+     91971,
+     92791,
+     93194,
+     92420,
+     91971
+    ]
+   ],
+   "stars": {
+    "91971": {
+     "hip": 91971,
+     "ra_deg": 281.1932,
+     "dec_deg": 37.6051,
+     "mag": 4.34,
+     "name": "Nasr Alwaki",
+     "item_id": null,
+     "distance_ly": 156.07,
+     "distance_basis": "wikidata"
+    },
+    "91926": {
+     "hip": 91926,
+     "ra_deg": 281.0949,
+     "dec_deg": 39.6127,
+     "mag": 4.59,
+     "name": "ε2 거문고자리",
+     "item_id": null,
+     "distance_ly": 155.53,
+     "distance_basis": "parallax"
+    },
+    "91262": {
+     "hip": 91262,
+     "ra_deg": 279.2347,
+     "dec_deg": 38.7837,
+     "mag": 0.03,
+     "name": "베가",
+     "item_id": "Q3427",
+     "distance_ly": 25.02,
+     "distance_basis": "wikidata"
+    },
+    "92791": {
+     "hip": 92791,
+     "ra_deg": 283.6262,
+     "dec_deg": 36.8986,
+     "mag": 4.22,
+     "name": "δ2 거문고자리",
+     "item_id": null,
+     "distance_ly": 771.61,
+     "distance_basis": "wikidata"
+    },
+    "93194": {
+     "hip": 93194,
+     "ra_deg": 284.7359,
+     "dec_deg": 32.6896,
+     "mag": 3.25,
+     "name": "Sulafat",
+     "item_id": null,
+     "distance_ly": 602.49,
+     "distance_basis": "wikidata"
+    },
+    "92420": {
+     "hip": 92420,
+     "ra_deg": 282.52,
+     "dec_deg": 33.3627,
+     "mag": 3.52,
+     "name": "Sheliak",
+     "item_id": null,
+     "distance_ly": 993.58,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Men": {
+   "item_id": "Q9289",
+   "name": "테이블산자리",
+   "lines": [
+    [
+     29271,
+     25918,
+     22871,
+     23467
+    ]
+   ],
+   "stars": {
+    "29271": {
+     "hip": 29271,
+     "ra_deg": 92.5603,
+     "dec_deg": -74.753,
+     "mag": 5.08,
+     "name": "α 테이블산자리",
+     "item_id": null,
+     "distance_ly": 33.31,
+     "distance_basis": "wikidata"
+    },
+    "25918": {
+     "hip": 25918,
+     "ra_deg": 82.9709,
+     "dec_deg": -76.341,
+     "mag": 5.18,
+     "name": "γ 테이블산자리",
+     "item_id": null,
+     "distance_ly": 105.75,
+     "distance_basis": "wikidata"
+    },
+    "22871": {
+     "hip": 22871,
+     "ra_deg": 73.7967,
+     "dec_deg": -74.9369,
+     "mag": 5.47,
+     "name": "η 테이블산자리",
+     "item_id": null,
+     "distance_ly": 651.11,
+     "distance_basis": "wikidata"
+    },
+    "23467": {
+     "hip": 23467,
+     "ra_deg": 75.6792,
+     "dec_deg": -71.3143,
+     "mag": 5.3,
+     "name": "β 테이블산자리",
+     "item_id": null,
+     "distance_ly": 673.31,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Mic": {
+   "item_id": "Q10492",
+   "name": "현미경자리",
+   "lines": [
+    [
+     102831,
+     102693,
+     105382,
+     105140,
+     103738,
+     102831
+    ]
+   ],
+   "stars": {
+    "102831": {
+     "hip": 102831,
+     "ra_deg": 312.492,
+     "dec_deg": -33.7797,
+     "mag": 4.89,
+     "name": "α 현미경자리",
+     "item_id": null,
+     "distance_ly": 398.49,
+     "distance_basis": "wikidata"
+    },
+    "102693": {
+     "hip": 102693,
+     "ra_deg": 312.1214,
+     "dec_deg": -43.9885,
+     "mag": 5.11,
+     "name": "ι 현미경자리",
+     "item_id": null,
+     "distance_ly": 122.98,
+     "distance_basis": "wikidata"
+    },
+    "105382": {
+     "hip": 105382,
+     "ra_deg": 320.1902,
+     "dec_deg": -40.8095,
+     "mag": 4.8,
+     "name": "θ1 현미경자리",
+     "item_id": null,
+     "distance_ly": 170.18,
+     "distance_basis": "wikidata"
+    },
+    "105140": {
+     "hip": 105140,
+     "ra_deg": 319.4845,
+     "dec_deg": -32.1725,
+     "mag": 4.71,
+     "name": "ε 현미경자리",
+     "item_id": null,
+     "distance_ly": 167.53,
+     "distance_basis": "wikidata"
+    },
+    "103738": {
+     "hip": 103738,
+     "ra_deg": 315.32280000000003,
+     "dec_deg": -32.2578,
+     "mag": 4.67,
+     "name": "γ 현미경자리",
+     "item_id": null,
+     "distance_ly": 238.88,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Mon": {
+   "item_id": "Q10428",
+   "name": "외뿔소자리",
+   "lines": [
+    [
+     37447,
+     39863,
+     34769,
+     30867,
+     29651
+    ],
+    [
+     34769,
+     32578,
+     30419,
+     31216,
+     31978
+    ]
+   ],
+   "stars": {
+    "37447": {
+     "hip": 37447,
+     "ra_deg": 115.3118,
+     "dec_deg": -9.5511,
+     "mag": 3.94,
+     "name": "α 외뿔소자리",
+     "item_id": null,
+     "distance_ly": 143.17,
+     "distance_basis": "wikidata"
+    },
+    "39863": {
+     "hip": 39863,
+     "ra_deg": 122.1485,
+     "dec_deg": -2.9838,
+     "mag": 4.36,
+     "name": "ζ 외뿔소자리",
+     "item_id": null,
+     "distance_ly": 845.6,
+     "distance_basis": "wikidata"
+    },
+    "34769": {
+     "hip": 34769,
+     "ra_deg": 107.9661,
+     "dec_deg": -0.4928,
+     "mag": 4.15,
+     "name": "δ 외뿔소자리",
+     "item_id": null,
+     "distance_ly": 380.52,
+     "distance_basis": "wikidata"
+    },
+    "30867": {
+     "hip": 30867,
+     "ra_deg": 97.2045,
+     "dec_deg": -7.0331,
+     "mag": 3.76,
+     "name": "β 외뿔소자리",
+     "item_id": null,
+     "distance_ly": 676.67,
+     "distance_basis": "parallax"
+    },
+    "29651": {
+     "hip": 29651,
+     "ra_deg": 93.7139,
+     "dec_deg": -6.2748,
+     "mag": 3.99,
+     "name": "γ 외뿔소자리",
+     "item_id": null,
+     "distance_ly": 443.94,
+     "distance_basis": "wikidata"
+    },
+    "32578": {
+     "hip": 32578,
+     "ra_deg": 101.9652,
+     "dec_deg": 2.4122,
+     "mag": 4.48,
+     "name": "HIP 32578",
+     "item_id": null,
+     "distance_ly": 397.96,
+     "distance_basis": "wikidata"
+    },
+    "30419": {
+     "hip": 30419,
+     "ra_deg": 95.942,
+     "dec_deg": 4.5929,
+     "mag": 4.39,
+     "name": "ε 외뿔소자리",
+     "item_id": null,
+     "distance_ly": 134.24,
+     "distance_basis": "wikidata"
+    },
+    "31216": {
+     "hip": 31216,
+     "ra_deg": 98.2259,
+     "dec_deg": 7.333,
+     "mag": 4.47,
+     "name": "HIP 31216",
+     "item_id": null,
+     "distance_ly": 2642.5,
+     "distance_basis": "wikidata"
+    },
+    "31978": {
+     "hip": 31978,
+     "ra_deg": 100.2444,
+     "dec_deg": 9.8958,
+     "mag": 4.66,
+     "name": "HIP 31978",
+     "item_id": null,
+     "distance_ly": 2008.3,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Mus": {
+   "item_id": "Q10435",
+   "name": "파리자리",
+   "lines": [
+    [
+     57363,
+     59929,
+     61585,
+     62322,
+     63613,
+     61199,
+     61585
+    ]
+   ],
+   "stars": {
+    "57363": {
+     "hip": 57363,
+     "ra_deg": 176.4017,
+     "dec_deg": -66.7288,
+     "mag": 3.63,
+     "name": "λ 파리자리",
+     "item_id": null,
+     "distance_ly": 132.65,
+     "distance_basis": "wikidata"
+    },
+    "59929": {
+     "hip": 59929,
+     "ra_deg": 184.3928,
+     "dec_deg": -67.9607,
+     "mag": 4.06,
+     "name": "ε 파리자리",
+     "item_id": null,
+     "distance_ly": 300.72,
+     "distance_basis": "wikidata"
+    },
+    "61585": {
+     "hip": 61585,
+     "ra_deg": 189.2959,
+     "dec_deg": -69.1356,
+     "mag": 2.69,
+     "name": "α 파리자리",
+     "item_id": null,
+     "distance_ly": 380.52,
+     "distance_basis": "wikidata"
+    },
+    "62322": {
+     "hip": 62322,
+     "ra_deg": 191.57,
+     "dec_deg": -68.1081,
+     "mag": 3.04,
+     "name": "β 파리자리",
+     "item_id": null,
+     "distance_ly": 311.22,
+     "distance_basis": "parallax"
+    },
+    "63613": {
+     "hip": 63613,
+     "ra_deg": 195.5678,
+     "dec_deg": -71.5489,
+     "mag": 3.61,
+     "name": "δ 파리자리",
+     "item_id": null,
+     "distance_ly": 86.15,
+     "distance_basis": "wikidata"
+    },
+    "61199": {
+     "hip": 61199,
+     "ra_deg": 188.1167,
+     "dec_deg": -72.133,
+     "mag": 3.84,
+     "name": "γ 파리자리",
+     "item_id": null,
+     "distance_ly": 359.38,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Nor": {
+   "item_id": "Q10582",
+   "name": "직각자자리",
+   "lines": [
+    [
+     78914,
+     80582,
+     80000,
+     78639,
+     78914
+    ]
+   ],
+   "stars": {
+    "78914": {
+     "hip": 78914,
+     "ra_deg": 241.6227,
+     "dec_deg": -45.1732,
+     "mag": 4.73,
+     "name": "δ 직각자자리",
+     "item_id": null,
+     "distance_ly": 109.82,
+     "distance_basis": "wikidata"
+    },
+    "80582": {
+     "hip": 80582,
+     "ra_deg": 246.796,
+     "dec_deg": -47.5548,
+     "mag": 4.46,
+     "name": "ε 직각자자리",
+     "item_id": null,
+     "distance_ly": 602.49,
+     "distance_basis": "wikidata"
+    },
+    "80000": {
+     "hip": 80000,
+     "ra_deg": 244.9601,
+     "dec_deg": -50.1555,
+     "mag": 4.01,
+     "name": "γ2 직각자자리",
+     "item_id": null,
+     "distance_ly": 138.94,
+     "distance_basis": "wikidata"
+    },
+    "78639": {
+     "hip": 78639,
+     "ra_deg": 240.8037,
+     "dec_deg": -49.2297,
+     "mag": 4.65,
+     "name": "η 직각자자리",
+     "item_id": null,
+     "distance_ly": 229.37,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Oct": {
+   "item_id": "Q10503",
+   "name": "팔분의자리",
+   "lines": [
+    [
+     70638,
+     112405,
+     107089,
+     70638
+    ]
+   ],
+   "stars": {
+    "70638": {
+     "hip": 70638,
+     "ra_deg": 216.7301,
+     "dec_deg": -83.6679,
+     "mag": 4.31,
+     "name": "δ 팔분의자리",
+     "item_id": null,
+     "distance_ly": 298.6,
+     "distance_basis": "wikidata"
+    },
+    "112405": {
+     "hip": 112405,
+     "ra_deg": 341.5146,
+     "dec_deg": -81.3816,
+     "mag": 4.13,
+     "name": "β 팔분의자리",
+     "item_id": null,
+     "distance_ly": 141.64,
+     "distance_basis": "wikidata"
+    },
+    "107089": {
+     "hip": 107089,
+     "ra_deg": 325.3694,
+     "dec_deg": -77.39,
+     "mag": 3.73,
+     "name": "ν 팔분의자리",
+     "item_id": null,
+     "distance_ly": 66.01,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Oph": {
+   "item_id": "Q8906",
+   "name": "땅꾼자리",
+   "lines": [
+    [
+     88048,
+     87108,
+     86742,
+     86032,
+     83000,
+     80883,
+     79593,
+     79882,
+     81377,
+     84012
+    ],
+    [
+     83000,
+     81377,
+     80894,
+     80569,
+     80343,
+     80473
+    ],
+    [
+     86742,
+     84012,
+     84970,
+     85423
+    ]
+   ],
+   "stars": {
+    "88048": {
+     "hip": 88048,
+     "ra_deg": 269.7566,
+     "dec_deg": -9.7736,
+     "mag": 3.32,
+     "name": "Sinistra",
+     "item_id": null,
+     "distance_ly": 142.7,
+     "distance_basis": "wikidata"
+    },
+    "87108": {
+     "hip": 87108,
+     "ra_deg": 266.9732,
+     "dec_deg": 2.7073,
+     "mag": 3.75,
+     "name": "Muliphen",
+     "item_id": null,
+     "distance_ly": 97.67,
+     "distance_basis": "wikidata"
+    },
+    "86742": {
+     "hip": 86742,
+     "ra_deg": 265.8681,
+     "dec_deg": 4.5673,
+     "mag": 2.76,
+     "name": "Cebalrai",
+     "item_id": null,
+     "distance_ly": 82.29,
+     "distance_basis": "wikidata"
+    },
+    "86032": {
+     "hip": 86032,
+     "ra_deg": 263.7336,
+     "dec_deg": 12.56,
+     "mag": 2.08,
+     "name": "라스 알하게",
+     "item_id": "Q13504",
+     "distance_ly": 48.59,
+     "distance_basis": "parallax"
+    },
+    "83000": {
+     "hip": 83000,
+     "ra_deg": 254.4171,
+     "dec_deg": 9.375,
+     "mag": 3.19,
+     "name": "κ 뱀주인자리",
+     "item_id": null,
+     "distance_ly": 88.31,
+     "distance_basis": "wikidata"
+    },
+    "80883": {
+     "hip": 80883,
+     "ra_deg": 247.7284,
+     "dec_deg": 1.9839,
+     "mag": 3.82,
+     "name": "Marfik",
+     "item_id": null,
+     "distance_ly": 166.15,
+     "distance_basis": "parallax"
+    },
+    "79593": {
+     "hip": 79593,
+     "ra_deg": 243.5864,
+     "dec_deg": -3.6943,
+     "mag": 2.73,
+     "name": "Yed Prior",
+     "item_id": null,
+     "distance_ly": 159.61,
+     "distance_basis": "wikidata"
+    },
+    "79882": {
+     "hip": 79882,
+     "ra_deg": 244.5804,
+     "dec_deg": -4.6925,
+     "mag": 3.23,
+     "name": "Yed Posterior",
+     "item_id": null,
+     "distance_ly": 107.34,
+     "distance_basis": "wikidata"
+    },
+    "81377": {
+     "hip": 81377,
+     "ra_deg": 249.28969999999998,
+     "dec_deg": -10.5671,
+     "mag": 2.54,
+     "name": "Saik",
+     "item_id": null,
+     "distance_ly": 440.23,
+     "distance_basis": "parallax"
+    },
+    "84012": {
+     "hip": 84012,
+     "ra_deg": 257.5945,
+     "dec_deg": -15.7249,
+     "mag": 2.43,
+     "name": "사빅",
+     "item_id": "Q670536",
+     "distance_ly": 84.13,
+     "distance_basis": "parallax"
+    },
+    "80894": {
+     "hip": 80894,
+     "ra_deg": 247.7849,
+     "dec_deg": -16.6127,
+     "mag": 4.29,
+     "name": "φ 뱀주인자리",
+     "item_id": null,
+     "distance_ly": 236.24,
+     "distance_basis": "wikidata"
+    },
+    "80569": {
+     "hip": 80569,
+     "ra_deg": 246.756,
+     "dec_deg": -18.4563,
+     "mag": 4.22,
+     "name": "χ 뱀주인자리",
+     "item_id": null,
+     "distance_ly": 449.23,
+     "distance_basis": "wikidata"
+    },
+    "80343": {
+     "hip": 80343,
+     "ra_deg": 246.0258,
+     "dec_deg": -20.0373,
+     "mag": 4.48,
+     "name": "ψ 뱀주인자리",
+     "item_id": null,
+     "distance_ly": 193.43,
+     "distance_basis": "wikidata"
+    },
+    "80473": {
+     "hip": 80473,
+     "ra_deg": 246.3963,
+     "dec_deg": -23.4472,
+     "mag": 4.57,
+     "name": "ρ 뱀주인자리",
+     "item_id": null,
+     "distance_ly": 361.19,
+     "distance_basis": "parallax"
+    },
+    "84970": {
+     "hip": 84970,
+     "ra_deg": 260.50239999999997,
+     "dec_deg": -24.9995,
+     "mag": 3.27,
+     "name": "Garafsa",
+     "item_id": null,
+     "distance_ly": 436.54,
+     "distance_basis": "wikidata"
+    },
+    "85423": {
+     "hip": 85423,
+     "ra_deg": 261.8386,
+     "dec_deg": -29.867,
+     "mag": 4.28,
+     "name": "d 뱀주인자리",
+     "item_id": null,
+     "distance_ly": 110.46,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Ori": {
+   "item_id": "Q8860",
+   "name": "오리온자리",
+   "lines": [
+    [
+     29038,
+     27913,
+     28716,
+     29426,
+     28614,
+     27989,
+     25336,
+     22845
+    ],
+    [
+     23123,
+     22797,
+     22549,
+     22449,
+     22509,
+     22845,
+     22957,
+     23607,
+     24010
+    ],
+    [
+     24436,
+     25281,
+     25930,
+     25336,
+     26207,
+     27989,
+     26727,
+     27366
+    ],
+    [
+     26727,
+     26311,
+     25930
+    ]
+   ],
+   "stars": {
+    "29038": {
+     "hip": 29038,
+     "ra_deg": 91.893,
+     "dec_deg": 14.7685,
+     "mag": 4.42,
+     "name": "ν 오리온자리",
+     "item_id": null,
+     "distance_ly": 470.37,
+     "distance_basis": "wikidata"
+    },
+    "27913": {
+     "hip": 27913,
+     "ra_deg": 88.5958,
+     "dec_deg": 20.2762,
+     "mag": 4.39,
+     "name": "χ1 오리온자리",
+     "item_id": null,
+     "distance_ly": 28.33,
+     "distance_basis": "wikidata"
+    },
+    "28716": {
+     "hip": 28716,
+     "ra_deg": 90.9799,
+     "dec_deg": 20.1385,
+     "mag": 4.64,
+     "name": "χ2 오리온자리",
+     "item_id": null,
+     "distance_ly": 5285.0,
+     "distance_basis": "wikidata"
+    },
+    "29426": {
+     "hip": 29426,
+     "ra_deg": 92.985,
+     "dec_deg": 14.2088,
+     "mag": 4.45,
+     "name": "ξ 오리온자리",
+     "item_id": null,
+     "distance_ly": 687.05,
+     "distance_basis": "wikidata"
+    },
+    "28614": {
+     "hip": 28614,
+     "ra_deg": 90.5958,
+     "dec_deg": 9.6473,
+     "mag": 4.12,
+     "name": "μ 오리온자리",
+     "item_id": null,
+     "distance_ly": 190.26,
+     "distance_basis": "wikidata"
+    },
+    "27989": {
+     "hip": 27989,
+     "ra_deg": 88.7929,
+     "dec_deg": 7.4071,
+     "mag": 0.45,
+     "name": "베텔게우스",
+     "item_id": "Q12124",
+     "distance_ly": 548.0,
+     "distance_basis": "wikidata"
+    },
+    "25336": {
+     "hip": 25336,
+     "ra_deg": 81.2828,
+     "dec_deg": 6.3497,
+     "mag": 1.64,
+     "name": "벨라트릭스",
+     "item_id": "Q13066",
+     "distance_ly": 243.04,
+     "distance_basis": "parallax"
+    },
+    "22845": {
+     "hip": 22845,
+     "ra_deg": 73.7239,
+     "dec_deg": 10.1508,
+     "mag": 4.64,
+     "name": "π1 오리온자리",
+     "item_id": null,
+     "distance_ly": 116.43,
+     "distance_basis": "wikidata"
+    },
+    "23123": {
+     "hip": 23123,
+     "ra_deg": 74.6371,
+     "dec_deg": 1.714,
+     "mag": 4.47,
+     "name": "π6 오리온자리",
+     "item_id": null,
+     "distance_ly": 887.88,
+     "distance_basis": "wikidata"
+    },
+    "22797": {
+     "hip": 22797,
+     "ra_deg": 73.5629,
+     "dec_deg": 2.4407,
+     "mag": 3.71,
+     "name": "π5 오리온자리",
+     "item_id": null,
+     "distance_ly": 924.88,
+     "distance_basis": "wikidata"
+    },
+    "22549": {
+     "hip": 22549,
+     "ra_deg": 72.8015,
+     "dec_deg": 5.6051,
+     "mag": 3.68,
+     "name": "π4 오리온자리",
+     "item_id": null,
+     "distance_ly": 813.89,
+     "distance_basis": "wikidata"
+    },
+    "22449": {
+     "hip": 22449,
+     "ra_deg": 72.46,
+     "dec_deg": 6.9613,
+     "mag": 3.19,
+     "name": "Tabit",
+     "item_id": null,
+     "distance_ly": 26.21,
+     "distance_basis": "wikidata"
+    },
+    "22509": {
+     "hip": 22509,
+     "ra_deg": 72.653,
+     "dec_deg": 8.9002,
+     "mag": 4.35,
+     "name": "Al Taj",
+     "item_id": null,
+     "distance_ly": 202.42,
+     "distance_basis": "wikidata"
+    },
+    "22957": {
+     "hip": 22957,
+     "ra_deg": 74.0928,
+     "dec_deg": 13.5145,
+     "mag": 4.06,
+     "name": "ο2 오리온자리",
+     "item_id": null,
+     "distance_ly": 175.99,
+     "distance_basis": "wikidata"
+    },
+    "23607": {
+     "hip": 23607,
+     "ra_deg": 76.1423,
+     "dec_deg": 15.4041,
+     "mag": 4.65,
+     "name": "HIP 23607",
+     "item_id": null,
+     "distance_ly": 348.81,
+     "distance_basis": "wikidata"
+    },
+    "24010": {
+     "hip": 24010,
+     "ra_deg": 77.4248,
+     "dec_deg": 15.5972,
+     "mag": 4.81,
+     "name": "HIP 24010",
+     "item_id": null,
+     "distance_ly": 332.96,
+     "distance_basis": "wikidata"
+    },
+    "24436": {
+     "hip": 24436,
+     "ra_deg": 78.6345,
+     "dec_deg": -8.2016,
+     "mag": 0.18,
+     "name": "리겔",
+     "item_id": "Q12126",
+     "distance_ly": 856.17,
+     "distance_basis": "wikidata"
+    },
+    "25281": {
+     "hip": 25281,
+     "ra_deg": 81.1192,
+     "dec_deg": -2.3971,
+     "mag": 3.35,
+     "name": "Saif al Jabbar",
+     "item_id": null,
+     "distance_ly": 900.98,
+     "distance_basis": "parallax"
+    },
+    "25930": {
+     "hip": 25930,
+     "ra_deg": 83.0017,
+     "dec_deg": -0.2991,
+     "mag": 2.25,
+     "name": "민타카",
+     "item_id": "Q680341",
+     "distance_ly": 692.48,
+     "distance_basis": "parallax"
+    },
+    "26207": {
+     "hip": 26207,
+     "ra_deg": 83.7845,
+     "dec_deg": 9.9342,
+     "mag": 3.39,
+     "name": "Meissa",
+     "item_id": null,
+     "distance_ly": 1043.7,
+     "distance_basis": "wikidata"
+    },
+    "26727": {
+     "hip": 26727,
+     "ra_deg": 85.1897,
+     "dec_deg": -1.9426,
+     "mag": 1.74,
+     "name": "알니타크",
+     "item_id": "Q13076",
+     "distance_ly": 1260.01,
+     "distance_basis": "wikidata"
+    },
+    "27366": {
+     "hip": 27366,
+     "ra_deg": 86.9391,
+     "dec_deg": -9.6696,
+     "mag": 2.07,
+     "name": "오리온자리 카파",
+     "item_id": "Q14028",
+     "distance_ly": 845.6,
+     "distance_basis": "wikidata"
+    },
+    "26311": {
+     "hip": 26311,
+     "ra_deg": 84.0534,
+     "dec_deg": -1.2019,
+     "mag": 1.69,
+     "name": "알닐람",
+     "item_id": "Q13070",
+     "distance_ly": 1162.7,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Pav": {
+   "item_id": "Q10515",
+   "name": "공작자리",
+   "lines": [
+    [
+     100751,
+     102395,
+     99240,
+     92609,
+     90098,
+     88866,
+     86929,
+     91792,
+     98495,
+     102395,
+     105858
+    ]
+   ],
+   "stars": {
+    "100751": {
+     "hip": 100751,
+     "ra_deg": 306.4119,
+     "dec_deg": -56.7351,
+     "mag": 1.94,
+     "name": "피콕 (항성)",
+     "item_id": "Q14240",
+     "distance_ly": 183.3,
+     "distance_basis": "wikidata"
+    },
+    "102395": {
+     "hip": 102395,
+     "ra_deg": 311.2396,
+     "dec_deg": -66.2032,
+     "mag": 3.42,
+     "name": "β 공작자리",
+     "item_id": null,
+     "distance_ly": 132.13,
+     "distance_basis": "wikidata"
+    },
+    "99240": {
+     "hip": 99240,
+     "ra_deg": 302.1817,
+     "dec_deg": -66.1821,
+     "mag": 3.55,
+     "name": "δ 공작자리",
+     "item_id": null,
+     "distance_ly": 19.89,
+     "distance_basis": "wikidata"
+    },
+    "92609": {
+     "hip": 92609,
+     "ra_deg": 283.0543,
+     "dec_deg": -62.1876,
+     "mag": 4.22,
+     "name": "λ 공작자리",
+     "item_id": null,
+     "distance_ly": 887.88,
+     "distance_basis": "wikidata"
+    },
+    "90098": {
+     "hip": 90098,
+     "ra_deg": 275.8068,
+     "dec_deg": -61.4939,
+     "mag": 4.35,
+     "name": "ξ 공작자리",
+     "item_id": null,
+     "distance_ly": 443.94,
+     "distance_basis": "wikidata"
+    },
+    "88866": {
+     "hip": 88866,
+     "ra_deg": 272.1451,
+     "dec_deg": -63.6686,
+     "mag": 4.33,
+     "name": "π 공작자리",
+     "item_id": null,
+     "distance_ly": 133.02,
+     "distance_basis": "wikidata"
+    },
+    "86929": {
+     "hip": 86929,
+     "ra_deg": 266.43330000000003,
+     "dec_deg": -64.7239,
+     "mag": 3.61,
+     "name": "η 공작자리",
+     "item_id": null,
+     "distance_ly": 342.47,
+     "distance_basis": "wikidata"
+    },
+    "91792": {
+     "hip": 91792,
+     "ra_deg": 280.7589,
+     "dec_deg": -71.4281,
+     "mag": 4.01,
+     "name": "ζ 공작자리",
+     "item_id": null,
+     "distance_ly": 211.93,
+     "distance_basis": "wikidata"
+    },
+    "98495": {
+     "hip": 98495,
+     "ra_deg": 300.1481,
+     "dec_deg": -72.9105,
+     "mag": 3.97,
+     "name": "ε 공작자리",
+     "item_id": null,
+     "distance_ly": 103.32,
+     "distance_basis": "wikidata"
+    },
+    "105858": {
+     "hip": 105858,
+     "ra_deg": 321.6109,
+     "dec_deg": -65.3662,
+     "mag": 4.21,
+     "name": "γ 공작자리",
+     "item_id": null,
+     "distance_ly": 30.21,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Peg": {
+   "item_id": "Q8864",
+   "name": "페가수스자리",
+   "lines": [
+    [
+     109410,
+     112158,
+     113881,
+     677,
+     1067,
+     113963,
+     112447,
+     112029,
+     109427,
+     107315
+    ],
+    [
+     113963,
+     113881,
+     112748,
+     112440,
+     109176,
+     107354
+    ]
+   ],
+   "stars": {
+    "109410": {
+     "hip": 109410,
+     "ra_deg": 332.4969,
+     "dec_deg": 33.1782,
+     "mag": 4.28,
+     "name": "π 페가수스자리",
+     "item_id": null,
+     "distance_ly": 271.12,
+     "distance_basis": "wikidata"
+    },
+    "112158": {
+     "hip": 112158,
+     "ra_deg": 340.7506,
+     "dec_deg": 30.2212,
+     "mag": 2.93,
+     "name": "Matar",
+     "item_id": null,
+     "distance_ly": 217.21,
+     "distance_basis": "wikidata"
+    },
+    "113881": {
+     "hip": 113881,
+     "ra_deg": 345.9436,
+     "dec_deg": 28.0828,
+     "mag": 2.44,
+     "name": "페가수스자리 베타",
+     "item_id": "Q14258",
+     "distance_ly": 198.72,
+     "distance_basis": "wikidata"
+    },
+    "677": {
+     "hip": 677,
+     "ra_deg": 2.0969,
+     "dec_deg": 29.0904,
+     "mag": 2.07,
+     "name": "알페라츠",
+     "item_id": "Q13039",
+     "distance_ly": 97.24,
+     "distance_basis": "wikidata"
+    },
+    "1067": {
+     "hip": 1067,
+     "ra_deg": 3.309,
+     "dec_deg": 15.1836,
+     "mag": 2.83,
+     "name": "Algenib",
+     "item_id": null,
+     "distance_ly": 399.04,
+     "distance_basis": "wikidata"
+    },
+    "113963": {
+     "hip": 113963,
+     "ra_deg": 346.1902,
+     "dec_deg": 15.2053,
+     "mag": 2.49,
+     "name": "페가수스자리 알파",
+     "item_id": "Q14262",
+     "distance_ly": 140.0,
+     "distance_basis": "wikidata"
+    },
+    "112447": {
+     "hip": 112447,
+     "ra_deg": 341.6733,
+     "dec_deg": 12.1729,
+     "mag": 4.2,
+     "name": "Suudalnujum",
+     "item_id": null,
+     "distance_ly": 52.96,
+     "distance_basis": "wikidata"
+    },
+    "112029": {
+     "hip": 112029,
+     "ra_deg": 340.3655,
+     "dec_deg": 10.8314,
+     "mag": 3.41,
+     "name": "Homam",
+     "item_id": null,
+     "distance_ly": 228.31,
+     "distance_basis": "wikidata"
+    },
+    "109427": {
+     "hip": 109427,
+     "ra_deg": 332.5499,
+     "dec_deg": 6.1979,
+     "mag": 3.52,
+     "name": "Biham",
+     "item_id": null,
+     "distance_ly": 88.79,
+     "distance_basis": "wikidata"
+    },
+    "107315": {
+     "hip": 107315,
+     "ra_deg": 326.0465,
+     "dec_deg": 9.875,
+     "mag": 2.38,
+     "name": "에니프",
+     "item_id": "Q14255",
+     "distance_ly": 670.0,
+     "distance_basis": "wikidata"
+    },
+    "112748": {
+     "hip": 112748,
+     "ra_deg": 342.5008,
+     "dec_deg": 24.6016,
+     "mag": 3.51,
+     "name": "Sadalbari",
+     "item_id": null,
+     "distance_ly": 113.94,
+     "distance_basis": "wikidata"
+    },
+    "112440": {
+     "hip": 112440,
+     "ra_deg": 341.6328,
+     "dec_deg": 23.5657,
+     "mag": 3.97,
+     "name": "Sadalnazi",
+     "item_id": null,
+     "distance_ly": 412.23,
+     "distance_basis": "wikidata"
+    },
+    "109176": {
+     "hip": 109176,
+     "ra_deg": 331.7528,
+     "dec_deg": 25.3451,
+     "mag": 3.77,
+     "name": "ι 페가수스자리",
+     "item_id": null,
+     "distance_ly": 38.42,
+     "distance_basis": "wikidata"
+    },
+    "107354": {
+     "hip": 107354,
+     "ra_deg": 326.1614,
+     "dec_deg": 25.645,
+     "mag": 4.14,
+     "name": "κ 페가수스자리",
+     "item_id": null,
+     "distance_ly": 111.62,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Per": {
+   "item_id": "Q10511",
+   "name": "페르세우스자리",
+   "lines": [
+    [
+     17448,
+     18246,
+     18614,
+     18532,
+     17529,
+     17358,
+     16826,
+     15863,
+     14328,
+     13268,
+     13531,
+     14632,
+     14668,
+     14576,
+     14817,
+     14354,
+     13879,
+     13949,
+     14576
+    ],
+    [
+     19167,
+     19812,
+     19343,
+     17358
+    ],
+    [
+     14632,
+     12777,
+     8068
+    ]
+   ],
+   "stars": {
+    "17448": {
+     "hip": 17448,
+     "ra_deg": 56.0797,
+     "dec_deg": 32.2882,
+     "mag": 3.84,
+     "name": "Atik",
+     "item_id": null,
+     "distance_ly": 1162.7,
+     "distance_basis": "wikidata"
+    },
+    "18246": {
+     "hip": 18246,
+     "ra_deg": 58.533,
+     "dec_deg": 31.8836,
+     "mag": 2.84,
+     "name": "Atik",
+     "item_id": null,
+     "distance_ly": 1268.4,
+     "distance_basis": "wikidata"
+    },
+    "18614": {
+     "hip": 18614,
+     "ra_deg": 59.7413,
+     "dec_deg": 35.791,
+     "mag": 3.98,
+     "name": "Menkib",
+     "item_id": null,
+     "distance_ly": 1477.68,
+     "distance_basis": "wikidata"
+    },
+    "18532": {
+     "hip": 18532,
+     "ra_deg": 59.4635,
+     "dec_deg": 40.0102,
+     "mag": 2.9,
+     "name": "ε 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 739.9,
+     "distance_basis": "wikidata"
+    },
+    "17529": {
+     "hip": 17529,
+     "ra_deg": 56.2985,
+     "dec_deg": 42.5785,
+     "mag": 3.77,
+     "name": "ν 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 486.22,
+     "distance_basis": "wikidata"
+    },
+    "17358": {
+     "hip": 17358,
+     "ra_deg": 55.7313,
+     "dec_deg": 47.7876,
+     "mag": 3.01,
+     "name": "δ 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 369.95,
+     "distance_basis": "wikidata"
+    },
+    "16826": {
+     "hip": 16826,
+     "ra_deg": 54.1224,
+     "dec_deg": 48.1926,
+     "mag": 4.32,
+     "name": "ψ 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 549.64,
+     "distance_basis": "wikidata"
+    },
+    "15863": {
+     "hip": 15863,
+     "ra_deg": 51.0807,
+     "dec_deg": 49.8612,
+     "mag": 1.79,
+     "name": "미르파크",
+     "item_id": "Q13790",
+     "distance_ly": 548.68,
+     "distance_basis": "wikidata"
+    },
+    "14328": {
+     "hip": 14328,
+     "ra_deg": 46.1991,
+     "dec_deg": 53.5064,
+     "mag": 2.91,
+     "name": "γ 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 232.54,
+     "distance_basis": "wikidata"
+    },
+    "13268": {
+     "hip": 13268,
+     "ra_deg": 42.6742,
+     "dec_deg": 55.8955,
+     "mag": 3.77,
+     "name": "Miram",
+     "item_id": null,
+     "distance_ly": 771.61,
+     "distance_basis": "wikidata"
+    },
+    "13531": {
+     "hip": 13531,
+     "ra_deg": 43.5644,
+     "dec_deg": 52.7625,
+     "mag": 3.93,
+     "name": "τ 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 235.18,
+     "distance_basis": "wikidata"
+    },
+    "14632": {
+     "hip": 14632,
+     "ra_deg": 47.2667,
+     "dec_deg": 49.6133,
+     "mag": 4.05,
+     "name": "ι 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 34.35,
+     "distance_basis": "wikidata"
+    },
+    "14668": {
+     "hip": 14668,
+     "ra_deg": 47.374,
+     "dec_deg": 44.8575,
+     "mag": 3.79,
+     "name": "Misam",
+     "item_id": null,
+     "distance_ly": 111.78,
+     "distance_basis": "wikidata"
+    },
+    "14576": {
+     "hip": 14576,
+     "ra_deg": 47.0422,
+     "dec_deg": 40.9556,
+     "mag": 2.09,
+     "name": "알골",
+     "item_id": "Q13080",
+     "distance_ly": 93.02,
+     "distance_basis": "wikidata"
+    },
+    "14817": {
+     "hip": 14817,
+     "ra_deg": 47.8224,
+     "dec_deg": 39.6116,
+     "mag": 4.61,
+     "name": "Gorgonea Quarta",
+     "item_id": null,
+     "distance_ly": 301.77,
+     "distance_basis": "wikidata"
+    },
+    "14354": {
+     "hip": 14354,
+     "ra_deg": 46.2941,
+     "dec_deg": 38.8403,
+     "mag": 3.32,
+     "name": "Gorgonea Tertia",
+     "item_id": null,
+     "distance_ly": 325.18,
+     "distance_basis": "parallax"
+    },
+    "13879": {
+     "hip": 13879,
+     "ra_deg": 44.6903,
+     "dec_deg": 39.6627,
+     "mag": 4.68,
+     "name": "Gorgonea Secunda",
+     "item_id": null,
+     "distance_ly": 307.06,
+     "distance_basis": "wikidata"
+    },
+    "13949": {
+     "hip": 13949,
+     "ra_deg": 44.9162,
+     "dec_deg": 41.0329,
+     "mag": 5.89,
+     "name": "HIP 13949",
+     "item_id": null,
+     "distance_ly": 729.33,
+     "distance_basis": "wikidata"
+    },
+    "19167": {
+     "hip": 19167,
+     "ra_deg": 61.646,
+     "dec_deg": 50.3513,
+     "mag": 4.25,
+     "name": "λ 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 443.94,
+     "distance_basis": "wikidata"
+    },
+    "19812": {
+     "hip": 19812,
+     "ra_deg": 63.7244,
+     "dec_deg": 48.4093,
+     "mag": 4.12,
+     "name": "μ 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 900.98,
+     "distance_basis": "parallax"
+    },
+    "19343": {
+     "hip": 19343,
+     "ra_deg": 62.1654,
+     "dec_deg": 47.7125,
+     "mag": 3.96,
+     "name": "Nembus",
+     "item_id": null,
+     "distance_ly": 613.06,
+     "distance_basis": "wikidata"
+    },
+    "12777": {
+     "hip": 12777,
+     "ra_deg": 41.0499,
+     "dec_deg": 49.2284,
+     "mag": 4.1,
+     "name": "θ 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 36.37,
+     "distance_basis": "wikidata"
+    },
+    "8068": {
+     "hip": 8068,
+     "ra_deg": 25.9152,
+     "dec_deg": 50.6887,
+     "mag": 4.01,
+     "name": "φ 페르세우스자리",
+     "item_id": null,
+     "distance_ly": 565.5,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Phe": {
+   "item_id": "Q10441",
+   "name": "봉황자리",
+   "lines": [
+    [
+     2081,
+     5165,
+     6867,
+     7083,
+     5348,
+     5165,
+     765,
+     2081
+    ]
+   ],
+   "stars": {
+    "2081": {
+     "hip": 2081,
+     "ra_deg": 6.571,
+     "dec_deg": -42.306,
+     "mag": 2.4,
+     "name": "안카",
+     "item_id": "Q14251",
+     "distance_ly": 81.39,
+     "distance_basis": "wikidata"
+    },
+    "5165": {
+     "hip": 5165,
+     "ra_deg": 16.521,
+     "dec_deg": -46.7184,
+     "mag": 3.32,
+     "name": "β 봉황자리",
+     "item_id": null,
+     "distance_ly": 198.15,
+     "distance_basis": "parallax"
+    },
+    "6867": {
+     "hip": 6867,
+     "ra_deg": 22.0914,
+     "dec_deg": -43.3182,
+     "mag": 3.41,
+     "name": "γ 봉황자리",
+     "item_id": null,
+     "distance_ly": 234.13,
+     "distance_basis": "wikidata"
+    },
+    "7083": {
+     "hip": 7083,
+     "ra_deg": 22.8129,
+     "dec_deg": -49.0727,
+     "mag": 3.93,
+     "name": "δ 봉황자리",
+     "item_id": null,
+     "distance_ly": 141.32,
+     "distance_basis": "wikidata"
+    },
+    "5348": {
+     "hip": 5348,
+     "ra_deg": 17.0962,
+     "dec_deg": -55.2458,
+     "mag": 3.94,
+     "name": "Wurren",
+     "item_id": null,
+     "distance_ly": 256.32,
+     "distance_basis": "wikidata"
+    },
+    "765": {
+     "hip": 765,
+     "ra_deg": 2.3527,
+     "dec_deg": -45.7474,
+     "mag": 3.88,
+     "name": "ε 봉황자리",
+     "item_id": null,
+     "distance_ly": 139.79,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Pic": {
+   "item_id": "Q10486",
+   "name": "화가자리",
+   "lines": [
+    [
+     32607,
+     27530,
+     27321
+    ]
+   ],
+   "stars": {
+    "32607": {
+     "hip": 32607,
+     "ra_deg": 102.0477,
+     "dec_deg": -61.9414,
+     "mag": 3.24,
+     "name": "α 화가자리",
+     "item_id": null,
+     "distance_ly": 96.55,
+     "distance_basis": "parallax"
+    },
+    "27530": {
+     "hip": 27530,
+     "ra_deg": 87.4569,
+     "dec_deg": -56.1667,
+     "mag": 4.5,
+     "name": "γ 화가자리",
+     "item_id": null,
+     "distance_ly": 180.75,
+     "distance_basis": "wikidata"
+    },
+    "27321": {
+     "hip": 27321,
+     "ra_deg": 86.8212,
+     "dec_deg": -51.0665,
+     "mag": 3.85,
+     "name": "β 화가자리",
+     "item_id": null,
+     "distance_ly": 63.42,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Psc": {
+   "item_id": "Q8679",
+   "name": "물고기자리",
+   "lines": [
+    [
+     5742,
+     5586,
+     6193,
+     5742,
+     5571,
+     7097,
+     8198,
+     9487,
+     8833,
+     7884,
+     7007,
+     5737,
+     4906,
+     3786,
+     118268,
+     116771,
+     115830,
+     115227,
+     114971,
+     115738,
+     116928,
+     117245,
+     116771
+    ],
+    [
+     114971,
+     113889
+    ]
+   ],
+   "stars": {
+    "5742": {
+     "hip": 5742,
+     "ra_deg": 18.4373,
+     "dec_deg": 24.5837,
+     "mag": 4.67,
+     "name": "φ 물고기자리",
+     "item_id": null,
+     "distance_ly": 399.02,
+     "distance_basis": "wikidata"
+    },
+    "5586": {
+     "hip": 5586,
+     "ra_deg": 17.9152,
+     "dec_deg": 30.0896,
+     "mag": 4.51,
+     "name": "τ 물고기자리",
+     "item_id": null,
+     "distance_ly": 171.23,
+     "distance_basis": "wikidata"
+    },
+    "6193": {
+     "hip": 6193,
+     "ra_deg": 19.8666,
+     "dec_deg": 27.2641,
+     "mag": 4.74,
+     "name": "υ 물고기자리",
+     "item_id": null,
+     "distance_ly": 324.5,
+     "distance_basis": "wikidata"
+    },
+    "5571": {
+     "hip": 5571,
+     "ra_deg": 17.8634,
+     "dec_deg": 21.0347,
+     "mag": 4.66,
+     "name": "χ 물고기자리",
+     "item_id": null,
+     "distance_ly": 376.29,
+     "distance_basis": "wikidata"
+    },
+    "7097": {
+     "hip": 7097,
+     "ra_deg": 22.8709,
+     "dec_deg": 15.3458,
+     "mag": 3.62,
+     "name": "Alpherg",
+     "item_id": null,
+     "distance_ly": 274.82,
+     "distance_basis": "wikidata"
+    },
+    "8198": {
+     "hip": 8198,
+     "ra_deg": 26.3485,
+     "dec_deg": 9.1577,
+     "mag": 4.26,
+     "name": "Torcular",
+     "item_id": null,
+     "distance_ly": 254.74,
+     "distance_basis": "wikidata"
+    },
+    "9487": {
+     "hip": 9487,
+     "ra_deg": 30.5118,
+     "dec_deg": 2.7638,
+     "mag": 3.82,
+     "name": "Alrescha",
+     "item_id": null,
+     "distance_ly": 139.09,
+     "distance_basis": "parallax"
+    },
+    "8833": {
+     "hip": 8833,
+     "ra_deg": 28.389,
+     "dec_deg": 3.1875,
+     "mag": 4.61,
+     "name": "ξ 물고기자리",
+     "item_id": null,
+     "distance_ly": 192.9,
+     "distance_basis": "wikidata"
+    },
+    "7884": {
+     "hip": 7884,
+     "ra_deg": 25.3579,
+     "dec_deg": 5.4876,
+     "mag": 4.45,
+     "name": "ν 물고기자리",
+     "item_id": null,
+     "distance_ly": 348.81,
+     "distance_basis": "wikidata"
+    },
+    "7007": {
+     "hip": 7007,
+     "ra_deg": 22.5463,
+     "dec_deg": 6.1438,
+     "mag": 4.84,
+     "name": "μ 물고기자리",
+     "item_id": null,
+     "distance_ly": 338.77,
+     "distance_basis": "wikidata"
+    },
+    "5737": {
+     "hip": 5737,
+     "ra_deg": 18.4329,
+     "dec_deg": 7.5754,
+     "mag": 5.21,
+     "name": "Revati",
+     "item_id": null,
+     "distance_ly": 132.13,
+     "distance_basis": "wikidata"
+    },
+    "4906": {
+     "hip": 4906,
+     "ra_deg": 15.7359,
+     "dec_deg": 7.8901,
+     "mag": 4.27,
+     "name": "ε 물고기자리",
+     "item_id": null,
+     "distance_ly": 185.5,
+     "distance_basis": "wikidata"
+    },
+    "3786": {
+     "hip": 3786,
+     "ra_deg": 12.1706,
+     "dec_deg": 7.5851,
+     "mag": 4.44,
+     "name": "Kuton",
+     "item_id": null,
+     "distance_ly": 300.19,
+     "distance_basis": "wikidata"
+    },
+    "118268": {
+     "hip": 118268,
+     "ra_deg": 359.8279,
+     "dec_deg": 6.8633,
+     "mag": 4.03,
+     "name": "ω 물고기자리",
+     "item_id": null,
+     "distance_ly": 106.7,
+     "distance_basis": "wikidata"
+    },
+    "116771": {
+     "hip": 116771,
+     "ra_deg": 354.9877,
+     "dec_deg": 5.6263,
+     "mag": 4.13,
+     "name": "ι 물고기자리",
+     "item_id": null,
+     "distance_ly": 44.53,
+     "distance_basis": "wikidata"
+    },
+    "115830": {
+     "hip": 115830,
+     "ra_deg": 351.9921,
+     "dec_deg": 6.379,
+     "mag": 4.27,
+     "name": "θ 물고기자리",
+     "item_id": null,
+     "distance_ly": 155.38,
+     "distance_basis": "wikidata"
+    },
+    "115227": {
+     "hip": 115227,
+     "ra_deg": 350.0858,
+     "dec_deg": 5.3813,
+     "mag": 5.05,
+     "name": "b 물고기자리",
+     "item_id": null,
+     "distance_ly": 350.92,
+     "distance_basis": "wikidata"
+    },
+    "114971": {
+     "hip": 114971,
+     "ra_deg": 349.2914,
+     "dec_deg": 3.2823,
+     "mag": 3.7,
+     "name": "γ 물고기자리",
+     "item_id": null,
+     "distance_ly": 135.3,
+     "distance_basis": "wikidata"
+    },
+    "115738": {
+     "hip": 115738,
+     "ra_deg": 351.7331,
+     "dec_deg": 1.2556,
+     "mag": 4.95,
+     "name": "κ 물고기자리",
+     "item_id": null,
+     "distance_ly": 160.08,
+     "distance_basis": "wikidata"
+    },
+    "116928": {
+     "hip": 116928,
+     "ra_deg": 355.5117,
+     "dec_deg": 1.78,
+     "mag": 4.49,
+     "name": "λ 물고기자리",
+     "item_id": null,
+     "distance_ly": 103.53,
+     "distance_basis": "wikidata"
+    },
+    "117245": {
+     "hip": 117245,
+     "ra_deg": 356.598,
+     "dec_deg": 3.4868,
+     "mag": 4.95,
+     "name": "HIP 117245",
+     "item_id": null,
+     "distance_ly": 724.05,
+     "distance_basis": "wikidata"
+    },
+    "113889": {
+     "hip": 113889,
+     "ra_deg": 345.9692,
+     "dec_deg": 3.82,
+     "mag": 4.48,
+     "name": "Fumalsamakah",
+     "item_id": null,
+     "distance_ly": 422.8,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "PsA": {
+   "item_id": "Q10409",
+   "name": "남쪽물고기자리",
+   "lines": [
+    [
+     111954,
+     113368,
+     113246,
+     112948,
+     111188,
+     109285,
+     107380,
+     107608,
+     109285,
+     111954
+    ]
+   ],
+   "stars": {
+    "111954": {
+     "hip": 111954,
+     "ra_deg": 340.1639,
+     "dec_deg": -27.0436,
+     "mag": 4.18,
+     "name": "ε 남쪽물고기자리",
+     "item_id": null,
+     "distance_ly": 475.65,
+     "distance_basis": "wikidata"
+    },
+    "113368": {
+     "hip": 113368,
+     "ra_deg": 344.4127,
+     "dec_deg": -29.6222,
+     "mag": 1.17,
+     "name": "포말하우트",
+     "item_id": "Q13169",
+     "distance_ly": 25.06,
+     "distance_basis": "wikidata"
+    },
+    "113246": {
+     "hip": 113246,
+     "ra_deg": 343.9871,
+     "dec_deg": -32.5396,
+     "mag": 4.2,
+     "name": "δ 남쪽물고기자리",
+     "item_id": null,
+     "distance_ly": 170.18,
+     "distance_basis": "wikidata"
+    },
+    "112948": {
+     "hip": 112948,
+     "ra_deg": 343.1314,
+     "dec_deg": -32.8755,
+     "mag": 4.46,
+     "name": "γ 남쪽물고기자리",
+     "item_id": null,
+     "distance_ly": 212.46,
+     "distance_basis": "wikidata"
+    },
+    "111188": {
+     "hip": 111188,
+     "ra_deg": 337.8764,
+     "dec_deg": -32.3461,
+     "mag": 4.29,
+     "name": "Fum al Hui",
+     "item_id": null,
+     "distance_ly": 140.58,
+     "distance_basis": "wikidata"
+    },
+    "109285": {
+     "hip": 109285,
+     "ra_deg": 332.09590000000003,
+     "dec_deg": -32.9885,
+     "mag": 4.5,
+     "name": "μ 남쪽물고기자리",
+     "item_id": null,
+     "distance_ly": 121.03,
+     "distance_basis": "wikidata"
+    },
+    "107380": {
+     "hip": 107380,
+     "ra_deg": 326.2367,
+     "dec_deg": -33.0258,
+     "mag": 4.35,
+     "name": "ι 남쪽물고기자리",
+     "item_id": null,
+     "distance_ly": 205.59,
+     "distance_basis": "wikidata"
+    },
+    "107608": {
+     "hip": 107608,
+     "ra_deg": 326.93399999999997,
+     "dec_deg": -30.8983,
+     "mag": 5.02,
+     "name": "θ 남쪽물고기자리",
+     "item_id": null,
+     "distance_ly": 338.69,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Pup": {
+   "item_id": "Q9251",
+   "name": "고물자리",
+   "lines": [
+    [
+     31685,
+     35264,
+     36917,
+     37229,
+     38170,
+     38835,
+     39757,
+     39429,
+     39953
+    ],
+    [
+     38170,
+     38070,
+     37677,
+     36917
+    ]
+   ],
+   "stars": {
+    "31685": {
+     "hip": 31685,
+     "ra_deg": 99.4403,
+     "dec_deg": -43.1959,
+     "mag": 3.17,
+     "name": "ν 고물자리",
+     "item_id": null,
+     "distance_ly": 369.95,
+     "distance_basis": "wikidata"
+    },
+    "35264": {
+     "hip": 35264,
+     "ra_deg": 109.2857,
+     "dec_deg": -37.0975,
+     "mag": 2.71,
+     "name": "π 고물자리",
+     "item_id": null,
+     "distance_ly": 807.32,
+     "distance_basis": "parallax"
+    },
+    "36917": {
+     "hip": 36917,
+     "ra_deg": 113.8454,
+     "dec_deg": -28.3693,
+     "mag": 4.65,
+     "name": "p 고물자리",
+     "item_id": null,
+     "distance_ly": 230.95,
+     "distance_basis": "wikidata"
+    },
+    "37229": {
+     "hip": 37229,
+     "ra_deg": 114.7078,
+     "dec_deg": -26.8038,
+     "mag": 3.8,
+     "name": "Markab",
+     "item_id": null,
+     "distance_ly": 346.61,
+     "distance_basis": "parallax"
+    },
+    "38170": {
+     "hip": 38170,
+     "ra_deg": 117.3236,
+     "dec_deg": -24.8598,
+     "mag": 3.34,
+     "name": "Azmidi",
+     "item_id": null,
+     "distance_ly": 1014.72,
+     "distance_basis": "wikidata"
+    },
+    "38835": {
+     "hip": 38835,
+     "ra_deg": 119.2147,
+     "dec_deg": -22.8801,
+     "mag": 4.2,
+     "name": "j 고물자리",
+     "item_id": null,
+     "distance_ly": 507.36,
+     "distance_basis": "wikidata"
+    },
+    "39757": {
+     "hip": 39757,
+     "ra_deg": 121.886,
+     "dec_deg": -24.3043,
+     "mag": 2.83,
+     "name": "Tureis",
+     "item_id": null,
+     "distance_ly": 64.53,
+     "distance_basis": "wikidata"
+    },
+    "39429": {
+     "hip": 39429,
+     "ra_deg": 120.896,
+     "dec_deg": -40.0031,
+     "mag": 2.21,
+     "name": "나오스",
+     "item_id": "Q13200",
+     "distance_ly": 1083.58,
+     "distance_basis": "parallax"
+    },
+    "39953": {
+     "hip": 39953,
+     "ra_deg": 122.3831,
+     "dec_deg": -47.3366,
+     "mag": 1.75,
+     "name": "돛자리 감마",
+     "item_id": "Q14235",
+     "distance_ly": 507.36,
+     "distance_basis": "wikidata"
+    },
+    "38070": {
+     "hip": 38070,
+     "ra_deg": 117.0215,
+     "dec_deg": -25.9372,
+     "mag": 4.4,
+     "name": "ο 고물자리",
+     "item_id": null,
+     "distance_ly": 829.75,
+     "distance_basis": "wikidata"
+    },
+    "37677": {
+     "hip": 37677,
+     "ra_deg": 115.952,
+     "dec_deg": -28.9548,
+     "mag": 3.94,
+     "name": "l 고물자리",
+     "item_id": null,
+     "distance_ly": 2058.29,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Pyx": {
+   "item_id": "Q10473",
+   "name": "나침반자리",
+   "lines": [
+    [
+     39429,
+     42515,
+     42828,
+     43409
+    ]
+   ],
+   "stars": {
+    "39429": {
+     "hip": 39429,
+     "ra_deg": 120.896,
+     "dec_deg": -40.0031,
+     "mag": 2.21,
+     "name": "나오스",
+     "item_id": "Q13200",
+     "distance_ly": 1083.58,
+     "distance_basis": "parallax"
+    },
+    "42515": {
+     "hip": 42515,
+     "ra_deg": 130.0256,
+     "dec_deg": -35.3084,
+     "mag": 3.97,
+     "name": "β 나침반자리",
+     "item_id": null,
+     "distance_ly": 348.81,
+     "distance_basis": "wikidata"
+    },
+    "42828": {
+     "hip": 42828,
+     "ra_deg": 130.8981,
+     "dec_deg": -33.1864,
+     "mag": 3.68,
+     "name": "α 나침반자리",
+     "item_id": null,
+     "distance_ly": 776.9,
+     "distance_basis": "wikidata"
+    },
+    "43409": {
+     "hip": 43409,
+     "ra_deg": 132.633,
+     "dec_deg": -27.7098,
+     "mag": 4.02,
+     "name": "γ 나침반자리",
+     "item_id": null,
+     "distance_ly": 208.76,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Ret": {
+   "item_id": "Q10498",
+   "name": "그물자리",
+   "lines": [
+    [
+     19780,
+     19921,
+     18597,
+     17440,
+     19780
+    ]
+   ],
+   "stars": {
+    "19780": {
+     "hip": 19780,
+     "ra_deg": 63.6062,
+     "dec_deg": -62.4739,
+     "mag": 3.33,
+     "name": "α 그물자리",
+     "item_id": null,
+     "distance_ly": 160.08,
+     "distance_basis": "wikidata"
+    },
+    "19921": {
+     "hip": 19921,
+     "ra_deg": 64.121,
+     "dec_deg": -59.3022,
+     "mag": 4.44,
+     "name": "ε 그물자리",
+     "item_id": null,
+     "distance_ly": 59.53,
+     "distance_basis": "wikidata"
+    },
+    "18597": {
+     "hip": 18597,
+     "ra_deg": 59.6865,
+     "dec_deg": -61.4002,
+     "mag": 4.56,
+     "name": "δ 그물자리",
+     "item_id": null,
+     "distance_ly": 475.65,
+     "distance_basis": "wikidata"
+    },
+    "17440": {
+     "hip": 17440,
+     "ra_deg": 56.0499,
+     "dec_deg": -64.8069,
+     "mag": 3.84,
+     "name": "β 그물자리",
+     "item_id": null,
+     "distance_ly": 104.48,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Sge": {
+   "item_id": "Q10513",
+   "name": "화살자리",
+   "lines": [
+    [
+     96757,
+     97365,
+     98337
+    ],
+    [
+     96837,
+     97365
+    ]
+   ],
+   "stars": {
+    "96757": {
+     "hip": 96757,
+     "ra_deg": 295.0241,
+     "dec_deg": 18.0139,
+     "mag": 4.39,
+     "name": "Sham",
+     "item_id": null,
+     "distance_ly": 404.83,
+     "distance_basis": "wikidata"
+    },
+    "97365": {
+     "hip": 97365,
+     "ra_deg": 296.8469,
+     "dec_deg": 18.5343,
+     "mag": 3.68,
+     "name": "δ 화살자리",
+     "item_id": null,
+     "distance_ly": 491.51,
+     "distance_basis": "wikidata"
+    },
+    "98337": {
+     "hip": 98337,
+     "ra_deg": 299.6893,
+     "dec_deg": 19.4921,
+     "mag": 3.51,
+     "name": "γ 화살자리",
+     "item_id": null,
+     "distance_ly": 274.82,
+     "distance_basis": "wikidata"
+    },
+    "96837": {
+     "hip": 96837,
+     "ra_deg": 295.2622,
+     "dec_deg": 17.476,
+     "mag": 4.39,
+     "name": "β 화살자리",
+     "item_id": null,
+     "distance_ly": 432.31,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Sgr": {
+   "item_id": "Q8866",
+   "name": "궁수자리",
+   "lines": [
+    [
+     89642,
+     90185,
+     89931,
+     90496,
+     89341
+    ],
+    [
+     95241,
+     95347,
+     93506,
+     92041,
+     90496
+    ],
+    [
+     98032,
+     98412,
+     98066,
+     96465,
+     95477,
+     94643,
+     92855,
+     92041,
+     89931,
+     88635,
+     90185,
+     93506,
+     93864,
+     92855,
+     93683,
+     94141,
+     94820,
+     95168,
+     95176
+    ],
+    [
+     93683,
+     93085,
+     92761,
+     92855
+    ]
+   ],
+   "stars": {
+    "89642": {
+     "hip": 89642,
+     "ra_deg": 274.4068,
+     "dec_deg": -36.7617,
+     "mag": 3.1,
+     "name": "Hamalwarid",
+     "item_id": null,
+     "distance_ly": 151.15,
+     "distance_basis": "wikidata"
+    },
+    "90185": {
+     "hip": 90185,
+     "ra_deg": 276.043,
+     "dec_deg": -34.3846,
+     "mag": 1.79,
+     "name": "카우스 오스트랄리스",
+     "item_id": "Q14034",
+     "distance_ly": 144.64,
+     "distance_basis": "parallax"
+    },
+    "89931": {
+     "hip": 89931,
+     "ra_deg": 275.24850000000004,
+     "dec_deg": -29.8281,
+     "mag": 2.72,
+     "name": "Kaus Media",
+     "item_id": null,
+     "distance_ly": 412.23,
+     "distance_basis": "wikidata"
+    },
+    "90496": {
+     "hip": 90496,
+     "ra_deg": 276.9927,
+     "dec_deg": -25.4217,
+     "mag": 2.82,
+     "name": "Kaus Borealis",
+     "item_id": null,
+     "distance_ly": 80.28,
+     "distance_basis": "wikidata"
+    },
+    "89341": {
+     "hip": 89341,
+     "ra_deg": 273.4409,
+     "dec_deg": -21.0588,
+     "mag": 3.84,
+     "name": "Polis",
+     "item_id": null,
+     "distance_ly": 4731.7,
+     "distance_basis": "parallax"
+    },
+    "95241": {
+     "hip": 95241,
+     "ra_deg": 290.6596,
+     "dec_deg": -44.459,
+     "mag": 3.96,
+     "name": "Arkab Prior",
+     "item_id": null,
+     "distance_ly": 264.25,
+     "distance_basis": "wikidata"
+    },
+    "95347": {
+     "hip": 95347,
+     "ra_deg": 290.97159999999997,
+     "dec_deg": -40.6159,
+     "mag": 3.96,
+     "name": "Rukbat",
+     "item_id": null,
+     "distance_ly": 178.63,
+     "distance_basis": "wikidata"
+    },
+    "93506": {
+     "hip": 93506,
+     "ra_deg": 285.653,
+     "dec_deg": -29.8801,
+     "mag": 2.6,
+     "name": "Ascella",
+     "item_id": null,
+     "distance_ly": 88.2,
+     "distance_basis": "parallax"
+    },
+    "92041": {
+     "hip": 92041,
+     "ra_deg": 281.4141,
+     "dec_deg": -26.9908,
+     "mag": 3.17,
+     "name": "Namalsadirah",
+     "item_id": null,
+     "distance_ly": 264.25,
+     "distance_basis": "wikidata"
+    },
+    "98032": {
+     "hip": 98032,
+     "ra_deg": 298.8154,
+     "dec_deg": -41.8683,
+     "mag": 4.12,
+     "name": "ι 궁수자리",
+     "item_id": null,
+     "distance_ly": 197.66,
+     "distance_basis": "wikidata"
+    },
+    "98412": {
+     "hip": 98412,
+     "ra_deg": 299.9341,
+     "dec_deg": -35.2763,
+     "mag": 4.37,
+     "name": "θ1 궁수자리",
+     "item_id": null,
+     "distance_ly": 518.53,
+     "distance_basis": "parallax"
+    },
+    "98066": {
+     "hip": 98066,
+     "ra_deg": 298.9598,
+     "dec_deg": -26.2995,
+     "mag": 4.7,
+     "name": "Terebellum",
+     "item_id": null,
+     "distance_ly": 76.32,
+     "distance_basis": "wikidata"
+    },
+    "96465": {
+     "hip": 96465,
+     "ra_deg": 294.1768,
+     "dec_deg": -24.8836,
+     "mag": 4.59,
+     "name": "h2 궁수자리",
+     "item_id": null,
+     "distance_ly": 179.69,
+     "distance_basis": "wikidata"
+    },
+    "95477": {
+     "hip": 95477,
+     "ra_deg": 291.31870000000004,
+     "dec_deg": -24.5086,
+     "mag": 5.02,
+     "name": "χ1 궁수자리",
+     "item_id": null,
+     "distance_ly": 295.96,
+     "distance_basis": "wikidata"
+    },
+    "94643": {
+     "hip": 94643,
+     "ra_deg": 288.88509999999997,
+     "dec_deg": -25.2567,
+     "mag": 4.86,
+     "name": "Al Kiladah",
+     "item_id": null,
+     "distance_ly": 321.86,
+     "distance_basis": "wikidata"
+    },
+    "92855": {
+     "hip": 92855,
+     "ra_deg": 283.8164,
+     "dec_deg": -26.2967,
+     "mag": 2.05,
+     "name": "눈키",
+     "item_id": "Q14036",
+     "distance_ly": 228.31,
+     "distance_basis": "wikidata"
+    },
+    "88635": {
+     "hip": 88635,
+     "ra_deg": 271.452,
+     "dec_deg": -30.4241,
+     "mag": 2.98,
+     "name": "Alnasl",
+     "item_id": null,
+     "distance_ly": 104.11,
+     "distance_basis": "wikidata"
+    },
+    "93864": {
+     "hip": 93864,
+     "ra_deg": 286.735,
+     "dec_deg": -27.6704,
+     "mag": 3.32,
+     "name": "τ 궁수자리",
+     "item_id": null,
+     "distance_ly": 116.27,
+     "distance_basis": "wikidata"
+    },
+    "93683": {
+     "hip": 93683,
+     "ra_deg": 286.1708,
+     "dec_deg": -21.7415,
+     "mag": 3.76,
+     "name": "Manubrij",
+     "item_id": null,
+     "distance_ly": 135.61,
+     "distance_basis": "wikidata"
+    },
+    "94141": {
+     "hip": 94141,
+     "ra_deg": 287.44100000000003,
+     "dec_deg": -21.0236,
+     "mag": 2.88,
+     "name": "Albaldah",
+     "item_id": null,
+     "distance_ly": 348.81,
+     "distance_basis": "wikidata"
+    },
+    "94820": {
+     "hip": 94820,
+     "ra_deg": 289.4087,
+     "dec_deg": -18.9529,
+     "mag": 4.88,
+     "name": "d 궁수자리",
+     "item_id": null,
+     "distance_ly": 473.01,
+     "distance_basis": "wikidata"
+    },
+    "95168": {
+     "hip": 95168,
+     "ra_deg": 290.4182,
+     "dec_deg": -17.8472,
+     "mag": 3.92,
+     "name": "ρ1 궁수자리",
+     "item_id": null,
+     "distance_ly": 126.84,
+     "distance_basis": "wikidata"
+    },
+    "95176": {
+     "hip": 95176,
+     "ra_deg": 290.4318,
+     "dec_deg": -15.955,
+     "mag": 4.52,
+     "name": "υ 궁수자리",
+     "item_id": null,
+     "distance_ly": 1585.5,
+     "distance_basis": "wikidata"
+    },
+    "93085": {
+     "hip": 93085,
+     "ra_deg": 284.4325,
+     "dec_deg": -21.1067,
+     "mag": 3.52,
+     "name": "ξ2 궁수자리",
+     "item_id": null,
+     "distance_ly": 285.39,
+     "distance_basis": "wikidata"
+    },
+    "92761": {
+     "hip": 92761,
+     "ra_deg": 283.5424,
+     "dec_deg": -22.7448,
+     "mag": 4.86,
+     "name": "Ainalrami",
+     "item_id": null,
+     "distance_ly": 1574.93,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Sco": {
+   "item_id": "Q8865",
+   "name": "전갈자리",
+   "lines": [
+    [
+     78265,
+     78401,
+     78820
+    ],
+    [
+     78401,
+     80112,
+     80763,
+     81266,
+     82396,
+     82514,
+     82729,
+     84143,
+     86228,
+     87073,
+     86670,
+     85927
+    ]
+   ],
+   "stars": {
+    "78265": {
+     "hip": 78265,
+     "ra_deg": 239.713,
+     "dec_deg": -26.1141,
+     "mag": 2.89,
+     "name": "Fang",
+     "item_id": null,
+     "distance_ly": 585.56,
+     "distance_basis": "parallax"
+    },
+    "78401": {
+     "hip": 78401,
+     "ra_deg": 240.08339999999998,
+     "dec_deg": -22.6217,
+     "mag": 2.29,
+     "name": "드슈바",
+     "item_id": "Q14248",
+     "distance_ly": 401.67,
+     "distance_basis": "parallax"
+    },
+    "78820": {
+     "hip": 78820,
+     "ra_deg": 241.35930000000002,
+     "dec_deg": -19.8055,
+     "mag": 2.56,
+     "name": "Acrab",
+     "item_id": null,
+     "distance_ly": 526.06,
+     "distance_basis": "parallax"
+    },
+    "80112": {
+     "hip": 80112,
+     "ra_deg": 245.2972,
+     "dec_deg": -25.5928,
+     "mag": 2.9,
+     "name": "Alniyat",
+     "item_id": null,
+     "distance_ly": 687.05,
+     "distance_basis": "wikidata"
+    },
+    "80763": {
+     "hip": 80763,
+     "ra_deg": 247.3519,
+     "dec_deg": -26.432,
+     "mag": 1.06,
+     "name": "안타레스",
+     "item_id": "Q12166",
+     "distance_ly": 550.0,
+     "distance_basis": "wikidata"
+    },
+    "81266": {
+     "hip": 81266,
+     "ra_deg": 248.9706,
+     "dec_deg": -28.216,
+     "mag": 2.82,
+     "name": "Paikauhale",
+     "item_id": null,
+     "distance_ly": 429.72,
+     "distance_basis": "parallax"
+    },
+    "82396": {
+     "hip": 82396,
+     "ra_deg": 252.5409,
+     "dec_deg": -34.2932,
+     "mag": 2.29,
+     "name": "전갈자리 엡실론",
+     "item_id": "Q14249",
+     "distance_ly": 79.28,
+     "distance_basis": "wikidata"
+    },
+    "82514": {
+     "hip": 82514,
+     "ra_deg": 252.9676,
+     "dec_deg": -38.0474,
+     "mag": 3,
+     "name": "Xamidimura",
+     "item_id": null,
+     "distance_ly": 821.55,
+     "distance_basis": "parallax"
+    },
+    "82729": {
+     "hip": 82729,
+     "ra_deg": 253.64589999999998,
+     "dec_deg": -42.3613,
+     "mag": 3.62,
+     "name": "Grafias",
+     "item_id": null,
+     "distance_ly": 128.43,
+     "distance_basis": "wikidata"
+    },
+    "84143": {
+     "hip": 84143,
+     "ra_deg": 258.0383,
+     "dec_deg": -43.2392,
+     "mag": 3.32,
+     "name": "η 전갈자리",
+     "item_id": null,
+     "distance_ly": 72.03,
+     "distance_basis": "wikidata"
+    },
+    "86228": {
+     "hip": 86228,
+     "ra_deg": 264.3297,
+     "dec_deg": -42.9978,
+     "mag": 1.86,
+     "name": "사르가스",
+     "item_id": "Q14236",
+     "distance_ly": 274.82,
+     "distance_basis": "wikidata"
+    },
+    "87073": {
+     "hip": 87073,
+     "ra_deg": 266.8962,
+     "dec_deg": -40.127,
+     "mag": 2.99,
+     "name": "Girtab",
+     "item_id": null,
+     "distance_ly": 1792.07,
+     "distance_basis": "parallax"
+    },
+    "86670": {
+     "hip": 86670,
+     "ra_deg": 265.622,
+     "dec_deg": -39.03,
+     "mag": 2.39,
+     "name": "기르타브",
+     "item_id": "Q14253",
+     "distance_ly": 463.95,
+     "distance_basis": "parallax"
+    },
+    "85927": {
+     "hip": 85927,
+     "ra_deg": 263.4022,
+     "dec_deg": -37.1038,
+     "mag": 1.62,
+     "name": "전갈자리 람다",
+     "item_id": "Q78603928",
+     "distance_ly": 571.2,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "Scl": {
+   "item_id": "Q9286",
+   "name": "조각가자리",
+   "lines": [
+    [
+     4577,
+     117452,
+     115102,
+     116231
+    ]
+   ],
+   "stars": {
+    "4577": {
+     "hip": 4577,
+     "ra_deg": 14.6515,
+     "dec_deg": -29.3574,
+     "mag": 4.3,
+     "name": "α 조각가자리",
+     "item_id": null,
+     "distance_ly": 697.62,
+     "distance_basis": "wikidata"
+    },
+    "117452": {
+     "hip": 117452,
+     "ra_deg": 357.2314,
+     "dec_deg": -28.1303,
+     "mag": 4.59,
+     "name": "δ 조각가자리",
+     "item_id": null,
+     "distance_ly": 141.53,
+     "distance_basis": "wikidata"
+    },
+    "115102": {
+     "hip": 115102,
+     "ra_deg": 349.706,
+     "dec_deg": -32.532,
+     "mag": 4.41,
+     "name": "γ 조각가자리",
+     "item_id": null,
+     "distance_ly": 177.58,
+     "distance_basis": "wikidata"
+    },
+    "116231": {
+     "hip": 116231,
+     "ra_deg": 353.2427,
+     "dec_deg": -37.8183,
+     "mag": 4.38,
+     "name": "β 조각가자리",
+     "item_id": null,
+     "distance_ly": 182.33,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Sct": {
+   "item_id": "Q10529",
+   "name": "방패자리",
+   "lines": [
+    [
+     91117,
+     92175,
+     91726,
+     90595,
+     91117
+    ]
+   ],
+   "stars": {
+    "91117": {
+     "hip": 91117,
+     "ra_deg": 278.8018,
+     "dec_deg": -8.2441,
+     "mag": 3.85,
+     "name": "α 방패자리",
+     "item_id": null,
+     "distance_ly": 192.9,
+     "distance_basis": "wikidata"
+    },
+    "92175": {
+     "hip": 92175,
+     "ra_deg": 281.79359999999997,
+     "dec_deg": -4.7479,
+     "mag": 4.22,
+     "name": "β 방패자리",
+     "item_id": null,
+     "distance_ly": 692.34,
+     "distance_basis": "wikidata"
+    },
+    "91726": {
+     "hip": 91726,
+     "ra_deg": 280.5684,
+     "dec_deg": -9.0525,
+     "mag": 4.7,
+     "name": "δ 방패자리",
+     "item_id": null,
+     "distance_ly": 200.83,
+     "distance_basis": "wikidata"
+    },
+    "90595": {
+     "hip": 90595,
+     "ra_deg": 277.2994,
+     "dec_deg": -14.5658,
+     "mag": 4.67,
+     "name": "γ 방패자리",
+     "item_id": null,
+     "distance_ly": 298.07,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Ser": {
+   "item_id": "Q8910",
+   "name": "뱀자리",
+   "lines": [
+    [
+     77233,
+     76852,
+     77450,
+     78072,
+     77233,
+     76276,
+     77070,
+     77622,
+     79593
+    ],
+    [
+     84012,
+     86263,
+     88048,
+     88404,
+     89962,
+     92946
+    ]
+   ],
+   "stars": {
+    "77233": {
+     "hip": 77233,
+     "ra_deg": 236.5469,
+     "dec_deg": 15.4218,
+     "mag": 3.65,
+     "name": "Nasak Shamiya",
+     "item_id": null,
+     "distance_ly": 151.68,
+     "distance_basis": "wikidata"
+    },
+    "76852": {
+     "hip": 76852,
+     "ra_deg": 235.3877,
+     "dec_deg": 19.6704,
+     "mag": 4.51,
+     "name": "ι 뱀자리",
+     "item_id": null,
+     "distance_ly": 190.07,
+     "distance_basis": "parallax"
+    },
+    "77450": {
+     "hip": 77450,
+     "ra_deg": 237.1849,
+     "dec_deg": 18.1416,
+     "mag": 4.09,
+     "name": "Gudja",
+     "item_id": null,
+     "distance_ly": 327.67,
+     "distance_basis": "wikidata"
+    },
+    "78072": {
+     "hip": 78072,
+     "ra_deg": 239.11329999999998,
+     "dec_deg": 15.6616,
+     "mag": 3.85,
+     "name": "γ 뱀자리",
+     "item_id": null,
+     "distance_ly": 36.41,
+     "distance_basis": "wikidata"
+    },
+    "76276": {
+     "hip": 76276,
+     "ra_deg": 233.7006,
+     "dec_deg": 10.5389,
+     "mag": 3.8,
+     "name": "Nasak Yamani",
+     "item_id": null,
+     "distance_ly": 209.88,
+     "distance_basis": "parallax"
+    },
+    "77070": {
+     "hip": 77070,
+     "ra_deg": 236.067,
+     "dec_deg": 6.4256,
+     "mag": 2.63,
+     "name": "Unukalhai",
+     "item_id": null,
+     "distance_ly": 78.32,
+     "distance_basis": "wikidata"
+    },
+    "77622": {
+     "hip": 77622,
+     "ra_deg": 237.704,
+     "dec_deg": 4.4777,
+     "mag": 3.71,
+     "name": "ε 뱀자리",
+     "item_id": null,
+     "distance_ly": 69.92,
+     "distance_basis": "wikidata"
+    },
+    "79593": {
+     "hip": 79593,
+     "ra_deg": 243.5864,
+     "dec_deg": -3.6943,
+     "mag": 2.73,
+     "name": "Yed Prior",
+     "item_id": null,
+     "distance_ly": 159.61,
+     "distance_basis": "wikidata"
+    },
+    "84012": {
+     "hip": 84012,
+     "ra_deg": 257.5945,
+     "dec_deg": -15.7249,
+     "mag": 2.43,
+     "name": "사빅",
+     "item_id": "Q670536",
+     "distance_ly": 84.13,
+     "distance_basis": "parallax"
+    },
+    "86263": {
+     "hip": 86263,
+     "ra_deg": 264.3967,
+     "dec_deg": -15.3986,
+     "mag": 3.54,
+     "name": "ξ 뱀자리",
+     "item_id": null,
+     "distance_ly": 101.89,
+     "distance_basis": "wikidata"
+    },
+    "88048": {
+     "hip": 88048,
+     "ra_deg": 269.7566,
+     "dec_deg": -9.7736,
+     "mag": 3.32,
+     "name": "Sinistra",
+     "item_id": null,
+     "distance_ly": 142.7,
+     "distance_basis": "wikidata"
+    },
+    "88404": {
+     "hip": 88404,
+     "ra_deg": 270.77049999999997,
+     "dec_deg": -8.1803,
+     "mag": 4.77,
+     "name": "τ 뱀주인자리",
+     "item_id": null,
+     "distance_ly": 175.46,
+     "distance_basis": "wikidata"
+    },
+    "89962": {
+     "hip": 89962,
+     "ra_deg": 275.3275,
+     "dec_deg": -2.8988,
+     "mag": 3.23,
+     "name": "η 뱀자리",
+     "item_id": null,
+     "distance_ly": 60.2,
+     "distance_basis": "wikidata"
+    },
+    "92946": {
+     "hip": 92946,
+     "ra_deg": 284.0549,
+     "dec_deg": 4.2036,
+     "mag": 4.62,
+     "name": "Alya",
+     "item_id": null,
+     "distance_ly": 131.07,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Sex": {
+   "item_id": "Q10525",
+   "name": "육분의자리",
+   "lines": [
+    [
+     49641,
+     48437,
+     51362,
+     51437
+    ]
+   ],
+   "stars": {
+    "49641": {
+     "hip": 49641,
+     "ra_deg": 151.9845,
+     "dec_deg": -0.3716,
+     "mag": 4.48,
+     "name": "α 육분의자리",
+     "item_id": null,
+     "distance_ly": 322.39,
+     "distance_basis": "wikidata"
+    },
+    "48437": {
+     "hip": 48437,
+     "ra_deg": 148.1268,
+     "dec_deg": -8.105,
+     "mag": 5.07,
+     "name": "γ 육분의자리",
+     "item_id": null,
+     "distance_ly": 261.0,
+     "distance_basis": "wikidata"
+    },
+    "51362": {
+     "hip": 51362,
+     "ra_deg": 157.3696,
+     "dec_deg": -2.7391,
+     "mag": 5.19,
+     "name": "δ 육분의자리",
+     "item_id": null,
+     "distance_ly": 344.05,
+     "distance_basis": "wikidata"
+    },
+    "51437": {
+     "hip": 51437,
+     "ra_deg": 157.5728,
+     "dec_deg": -0.637,
+     "mag": 5.08,
+     "name": "β 육분의자리",
+     "item_id": null,
+     "distance_ly": 365.19,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Tau": {
+   "item_id": "Q10570",
+   "name": "황소자리",
+   "lines": [
+    [
+     26451,
+     21421,
+     20894,
+     20205,
+     20455,
+     20889,
+     25428
+    ],
+    [
+     20205,
+     18724,
+     16083,
+     18907
+    ],
+    [
+     16083,
+     15900,
+     16852
+    ]
+   ],
+   "stars": {
+    "26451": {
+     "hip": 26451,
+     "ra_deg": 84.4112,
+     "dec_deg": 21.1425,
+     "mag": 2.97,
+     "name": "Tianguan",
+     "item_id": null,
+     "distance_ly": 456.62,
+     "distance_basis": "wikidata"
+    },
+    "21421": {
+     "hip": 21421,
+     "ra_deg": 68.9802,
+     "dec_deg": 16.5093,
+     "mag": 0.87,
+     "name": "알데바란",
+     "item_id": "Q88540091",
+     "distance_ly": 66.59,
+     "distance_basis": "wikidata"
+    },
+    "20894": {
+     "hip": 20894,
+     "ra_deg": 67.1656,
+     "dec_deg": 15.8709,
+     "mag": 3.4,
+     "name": "Chamukuy",
+     "item_id": null,
+     "distance_ly": 152.74,
+     "distance_basis": "wikidata"
+    },
+    "20205": {
+     "hip": 20205,
+     "ra_deg": 64.9483,
+     "dec_deg": 15.6276,
+     "mag": 3.65,
+     "name": "Prima Hyadum",
+     "item_id": null,
+     "distance_ly": 146.92,
+     "distance_basis": "wikidata"
+    },
+    "20455": {
+     "hip": 20455,
+     "ra_deg": 65.7337,
+     "dec_deg": 17.5425,
+     "mag": 3.77,
+     "name": "Secunda Hyadum",
+     "item_id": null,
+     "distance_ly": 165.95,
+     "distance_basis": "wikidata"
+    },
+    "20889": {
+     "hip": 20889,
+     "ra_deg": 67.1542,
+     "dec_deg": 19.1804,
+     "mag": 3.53,
+     "name": "Ain",
+     "item_id": null,
+     "distance_ly": 155.38,
+     "distance_basis": "wikidata"
+    },
+    "25428": {
+     "hip": 25428,
+     "ra_deg": 81.573,
+     "dec_deg": 28.6075,
+     "mag": 1.65,
+     "name": "엘 나스",
+     "item_id": "Q13508",
+     "distance_ly": 134.24,
+     "distance_basis": "wikidata"
+    },
+    "18724": {
+     "hip": 18724,
+     "ra_deg": 60.1701,
+     "dec_deg": 12.4903,
+     "mag": 3.41,
+     "name": "λ 황소자리",
+     "item_id": null,
+     "distance_ly": 401.66,
+     "distance_basis": "wikidata"
+    },
+    "16083": {
+     "hip": 16083,
+     "ra_deg": 51.7923,
+     "dec_deg": 9.7327,
+     "mag": 3.73,
+     "name": "ξ 황소자리",
+     "item_id": null,
+     "distance_ly": 197.66,
+     "distance_basis": "wikidata"
+    },
+    "18907": {
+     "hip": 18907,
+     "ra_deg": 60.7891,
+     "dec_deg": 5.9893,
+     "mag": 3.91,
+     "name": "ν 황소자리",
+     "item_id": null,
+     "distance_ly": 118.91,
+     "distance_basis": "wikidata"
+    },
+    "15900": {
+     "hip": 15900,
+     "ra_deg": 51.2033,
+     "dec_deg": 9.0289,
+     "mag": 3.61,
+     "name": "ο 황소자리",
+     "item_id": null,
+     "distance_ly": 203.47,
+     "distance_basis": "wikidata"
+    },
+    "16852": {
+     "hip": 16852,
+     "ra_deg": 54.2183,
+     "dec_deg": 0.4017,
+     "mag": 4.29,
+     "name": "HIP 16852",
+     "item_id": null,
+     "distance_ly": 45.05,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Tel": {
+   "item_id": "Q10546",
+   "name": "망원경자리",
+   "lines": [
+    [
+     89112,
+     90422,
+     90568
+    ]
+   ],
+   "stars": {
+    "89112": {
+     "hip": 89112,
+     "ra_deg": 272.8073,
+     "dec_deg": -45.9544,
+     "mag": 4.52,
+     "name": "ε 망원경자리",
+     "item_id": null,
+     "distance_ly": 396.38,
+     "distance_basis": "wikidata"
+    },
+    "90422": {
+     "hip": 90422,
+     "ra_deg": 276.7434,
+     "dec_deg": -45.9685,
+     "mag": 3.49,
+     "name": "α 망원경자리",
+     "item_id": null,
+     "distance_ly": 263.72,
+     "distance_basis": "wikidata"
+    },
+    "90568": {
+     "hip": 90568,
+     "ra_deg": 277.2077,
+     "dec_deg": -49.0706,
+     "mag": 4.1,
+     "name": "ζ 망원경자리",
+     "item_id": null,
+     "distance_ly": 121.87,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Tri": {
+   "item_id": "Q10565",
+   "name": "삼각형자리",
+   "lines": [
+    [
+     8796,
+     10064,
+     10670,
+     8796
+    ]
+   ],
+   "stars": {
+    "8796": {
+     "hip": 8796,
+     "ra_deg": 28.2704,
+     "dec_deg": 29.5788,
+     "mag": 3.42,
+     "name": "Mothallah",
+     "item_id": null,
+     "distance_ly": 63.53,
+     "distance_basis": "wikidata"
+    },
+    "10064": {
+     "hip": 10064,
+     "ra_deg": 32.3859,
+     "dec_deg": 34.9873,
+     "mag": 3,
+     "name": "Mizan",
+     "item_id": null,
+     "distance_ly": 126.86,
+     "distance_basis": "parallax"
+    },
+    "10670": {
+     "hip": 10670,
+     "ra_deg": 34.3286,
+     "dec_deg": 33.8472,
+     "mag": 4.03,
+     "name": "γ 삼각형자리",
+     "item_id": null,
+     "distance_ly": 113.63,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "TrA": {
+   "item_id": "Q10422",
+   "name": "남쪽삼각형자리",
+   "lines": [
+    [
+     82273,
+     77952,
+     74946,
+     82273
+    ]
+   ],
+   "stars": {
+    "82273": {
+     "hip": 82273,
+     "ra_deg": 252.1662,
+     "dec_deg": -69.0277,
+     "mag": 1.91,
+     "name": "아트리아",
+     "item_id": "Q14242",
+     "distance_ly": 390.61,
+     "distance_basis": "parallax"
+    },
+    "77952": {
+     "hip": 77952,
+     "ra_deg": 238.78570000000002,
+     "dec_deg": -63.4307,
+     "mag": 2.83,
+     "name": "β 남쪽삼각형자리",
+     "item_id": null,
+     "distance_ly": 40.75,
+     "distance_basis": "wikidata"
+    },
+    "74946": {
+     "hip": 74946,
+     "ra_deg": 229.7274,
+     "dec_deg": -68.6795,
+     "mag": 2.87,
+     "name": "γ 남쪽삼각형자리",
+     "item_id": null,
+     "distance_ly": 193.96,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Tuc": {
+   "item_id": "Q10567",
+   "name": "큰부리새자리",
+   "lines": [
+    [
+     110130,
+     114996,
+     2484,
+     1599,
+     118322,
+     110838,
+     110130
+    ]
+   ],
+   "stars": {
+    "110130": {
+     "hip": 110130,
+     "ra_deg": 334.6254,
+     "dec_deg": -60.2596,
+     "mag": 2.87,
+     "name": "α 큰부리새자리",
+     "item_id": null,
+     "distance_ly": 202.94,
+     "distance_basis": "wikidata"
+    },
+    "114996": {
+     "hip": 114996,
+     "ra_deg": 349.3574,
+     "dec_deg": -58.2357,
+     "mag": 3.99,
+     "name": "γ 큰부리새자리",
+     "item_id": null,
+     "distance_ly": 75.52,
+     "distance_basis": "wikidata"
+    },
+    "2484": {
+     "hip": 2484,
+     "ra_deg": 7.8861,
+     "dec_deg": -62.9582,
+     "mag": 4.36,
+     "name": "β1 큰부리새자리",
+     "item_id": null,
+     "distance_ly": 140.09,
+     "distance_basis": "wikidata"
+    },
+    "1599": {
+     "hip": 1599,
+     "ra_deg": 5.0178,
+     "dec_deg": -64.8748,
+     "mag": 4.23,
+     "name": "ζ 큰부리새자리",
+     "item_id": null,
+     "distance_ly": 27.96,
+     "distance_basis": "wikidata"
+    },
+    "118322": {
+     "hip": 118322,
+     "ra_deg": 359.9791,
+     "dec_deg": -65.5771,
+     "mag": 4.49,
+     "name": "ε 큰부리새자리",
+     "item_id": null,
+     "distance_ly": 353.57,
+     "distance_basis": "wikidata"
+    },
+    "110838": {
+     "hip": 110838,
+     "ra_deg": 336.8332,
+     "dec_deg": -64.9664,
+     "mag": 4.51,
+     "name": "δ 큰부리새자리",
+     "item_id": null,
+     "distance_ly": 250.89,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "UMa": {
+   "item_id": "Q8918",
+   "name": "큰곰자리",
+   "lines": [
+    [
+     59774,
+     54061,
+     53910,
+     58001,
+     59774,
+     62956,
+     65378,
+     67301
+    ],
+    [
+     58001,
+     57399,
+     55219,
+     55203
+    ],
+    [
+     57399,
+     54539,
+     50801
+    ],
+    [
+     54539,
+     50372
+    ],
+    [
+     54061,
+     46733,
+     41704,
+     48319,
+     53910
+    ],
+    [
+     53910,
+     48402,
+     46853,
+     44127
+    ],
+    [
+     44471,
+     46853
+    ]
+   ],
+   "stars": {
+    "59774": {
+     "hip": 59774,
+     "ra_deg": 183.8565,
+     "dec_deg": 57.0326,
+     "mag": 3.32,
+     "name": "Megrez",
+     "item_id": null,
+     "distance_ly": 80.97,
+     "distance_basis": "wikidata"
+    },
+    "54061": {
+     "hip": 54061,
+     "ra_deg": 165.932,
+     "dec_deg": 61.751,
+     "mag": 1.81,
+     "name": "두베",
+     "item_id": "Q13084",
+     "distance_ly": 122.61,
+     "distance_basis": "wikidata"
+    },
+    "53910": {
+     "hip": 53910,
+     "ra_deg": 165.4603,
+     "dec_deg": 56.3824,
+     "mag": 2.34,
+     "name": "메라크",
+     "item_id": "Q13096",
+     "distance_ly": 90.37,
+     "distance_basis": "wikidata"
+    },
+    "58001": {
+     "hip": 58001,
+     "ra_deg": 178.4577,
+     "dec_deg": 53.6948,
+     "mag": 2.41,
+     "name": "페크다",
+     "item_id": "Q13099",
+     "distance_ly": 110.99,
+     "distance_basis": "wikidata"
+    },
+    "62956": {
+     "hip": 62956,
+     "ra_deg": 193.5073,
+     "dec_deg": 55.9598,
+     "mag": 1.76,
+     "name": "알리오스",
+     "item_id": "Q13091",
+     "distance_ly": 79.28,
+     "distance_basis": "wikidata"
+    },
+    "65378": {
+     "hip": 65378,
+     "ra_deg": 200.9814,
+     "dec_deg": 54.9254,
+     "mag": 2.23,
+     "name": "미자르",
+     "item_id": "Q66477109",
+     "distance_ly": 78.16,
+     "distance_basis": "parallax"
+    },
+    "67301": {
+     "hip": 67301,
+     "ra_deg": 206.8852,
+     "dec_deg": 49.3133,
+     "mag": 1.85,
+     "name": "알카이드",
+     "item_id": "Q13093",
+     "distance_ly": 100.0,
+     "distance_basis": "wikidata"
+    },
+    "57399": {
+     "hip": 57399,
+     "ra_deg": 176.5126,
+     "dec_deg": 47.7794,
+     "mag": 3.69,
+     "name": "Taiyangshou",
+     "item_id": null,
+     "distance_ly": 196.07,
+     "distance_basis": "wikidata"
+    },
+    "55219": {
+     "hip": 55219,
+     "ra_deg": 169.6197,
+     "dec_deg": 33.0943,
+     "mag": 3.49,
+     "name": "Alula Borealis",
+     "item_id": null,
+     "distance_ly": 229.37,
+     "distance_basis": "wikidata"
+    },
+    "55203": {
+     "hip": 55203,
+     "ra_deg": 169.5468,
+     "dec_deg": 31.5308,
+     "mag": 3.79,
+     "name": "Alula Australis",
+     "item_id": null,
+     "distance_ly": 27.27,
+     "distance_basis": "wikidata"
+    },
+    "54539": {
+     "hip": 54539,
+     "ra_deg": 167.4159,
+     "dec_deg": 44.4985,
+     "mag": 3,
+     "name": "ψ 큰곰자리",
+     "item_id": null,
+     "distance_ly": 147.98,
+     "distance_basis": "wikidata"
+    },
+    "50801": {
+     "hip": 50801,
+     "ra_deg": 155.5823,
+     "dec_deg": 41.4995,
+     "mag": 3.06,
+     "name": "Tania Australis",
+     "item_id": null,
+     "distance_ly": 182.86,
+     "distance_basis": "wikidata"
+    },
+    "50372": {
+     "hip": 50372,
+     "ra_deg": 154.2741,
+     "dec_deg": 42.9144,
+     "mag": 3.45,
+     "name": "Tania Borealis",
+     "item_id": null,
+     "distance_ly": 102.53,
+     "distance_basis": "wikidata"
+    },
+    "46733": {
+     "hip": 46733,
+     "ra_deg": 142.8821,
+     "dec_deg": 63.0619,
+     "mag": 3.65,
+     "name": "h 큰곰자리",
+     "item_id": null,
+     "distance_ly": 77.16,
+     "distance_basis": "wikidata"
+    },
+    "41704": {
+     "hip": 41704,
+     "ra_deg": 127.5661,
+     "dec_deg": 60.7182,
+     "mag": 3.35,
+     "name": "Muscida",
+     "item_id": null,
+     "distance_ly": 183.92,
+     "distance_basis": "wikidata"
+    },
+    "48319": {
+     "hip": 48319,
+     "ra_deg": 147.7473,
+     "dec_deg": 59.0387,
+     "mag": 3.78,
+     "name": "υ 큰곰자리",
+     "item_id": null,
+     "distance_ly": 113.47,
+     "distance_basis": "wikidata"
+    },
+    "48402": {
+     "hip": 48402,
+     "ra_deg": 148.0265,
+     "dec_deg": 54.0643,
+     "mag": 4.55,
+     "name": "φ 큰곰자리",
+     "item_id": null,
+     "distance_ly": 508.82,
+     "distance_basis": "parallax"
+    },
+    "46853": {
+     "hip": 46853,
+     "ra_deg": 143.2143,
+     "dec_deg": 51.6773,
+     "mag": 3.17,
+     "name": "θ 큰곰자리",
+     "item_id": null,
+     "distance_ly": 44.76,
+     "distance_basis": "wikidata"
+    },
+    "44127": {
+     "hip": 44127,
+     "ra_deg": 134.8019,
+     "dec_deg": 48.0418,
+     "mag": 3.12,
+     "name": "Talitha",
+     "item_id": null,
+     "distance_ly": 47.32,
+     "distance_basis": "parallax"
+    },
+    "44471": {
+     "hip": 44471,
+     "ra_deg": 135.9064,
+     "dec_deg": 47.1565,
+     "mag": 3.57,
+     "name": "Alkaphrah",
+     "item_id": null,
+     "distance_ly": 358.41,
+     "distance_basis": "parallax"
+    }
+   }
+  },
+  "UMi": {
+   "item_id": "Q10478",
+   "name": "작은곰자리",
+   "lines": [
+    [
+     77055,
+     79822,
+     75097,
+     72607,
+     77055,
+     82080,
+     85822,
+     11767
+    ]
+   ],
+   "stars": {
+    "77055": {
+     "hip": 77055,
+     "ra_deg": 236.0147,
+     "dec_deg": 77.7945,
+     "mag": 4.29,
+     "name": "Akfa Farkadain",
+     "item_id": null,
+     "distance_ly": 337.18,
+     "distance_basis": "wikidata"
+    },
+    "79822": {
+     "hip": 79822,
+     "ra_deg": 244.37619999999998,
+     "dec_deg": 75.7553,
+     "mag": 4.95,
+     "name": "Anwa Farkadain",
+     "item_id": null,
+     "distance_ly": 96.93,
+     "distance_basis": "wikidata"
+    },
+    "75097": {
+     "hip": 75097,
+     "ra_deg": 230.1821,
+     "dec_deg": 71.834,
+     "mag": 3,
+     "name": "Pherkad",
+     "item_id": null,
+     "distance_ly": 486.8,
+     "distance_basis": "parallax"
+    },
+    "72607": {
+     "hip": 72607,
+     "ra_deg": 222.6764,
+     "dec_deg": 74.1555,
+     "mag": 2.07,
+     "name": "코카브",
+     "item_id": "Q14059",
+     "distance_ly": 128.48,
+     "distance_basis": "wikidata"
+    },
+    "82080": {
+     "hip": 82080,
+     "ra_deg": 251.4927,
+     "dec_deg": 82.0373,
+     "mag": 4.21,
+     "name": "Circitores",
+     "item_id": null,
+     "distance_ly": 324.5,
+     "distance_basis": "wikidata"
+    },
+    "85822": {
+     "hip": 85822,
+     "ra_deg": 263.0542,
+     "dec_deg": 86.5865,
+     "mag": 4.35,
+     "name": "Yildun",
+     "item_id": null,
+     "distance_ly": 180.01,
+     "distance_basis": "wikidata"
+    },
+    "11767": {
+     "hip": 11767,
+     "ra_deg": 37.9545,
+     "dec_deg": 89.2641,
+     "mag": 1.97,
+     "name": "폴라리스",
+     "item_id": "Q12980",
+     "distance_ly": 433.37,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Vel": {
+   "item_id": "Q10521",
+   "name": "돛자리",
+   "lines": [
+    [
+     42913,
+     45941,
+     48774,
+     52727,
+     50191,
+     46651,
+     44816,
+     39953
+    ]
+   ],
+   "stars": {
+    "42913": {
+     "hip": 42913,
+     "ra_deg": 131.1759,
+     "dec_deg": -54.7088,
+     "mag": 1.93,
+     "name": "돛자리 델타",
+     "item_id": "Q1048396",
+     "distance_ly": 79.74,
+     "distance_basis": "parallax"
+    },
+    "45941": {
+     "hip": 45941,
+     "ra_deg": 140.5284,
+     "dec_deg": -55.0107,
+     "mag": 2.47,
+     "name": "돛자리 카파",
+     "item_id": "Q14259",
+     "distance_ly": 570.78,
+     "distance_basis": "wikidata"
+    },
+    "48774": {
+     "hip": 48774,
+     "ra_deg": 149.2156,
+     "dec_deg": -54.5678,
+     "mag": 3.52,
+     "name": "φ 돛자리",
+     "item_id": null,
+     "distance_ly": 1591.01,
+     "distance_basis": "parallax"
+    },
+    "52727": {
+     "hip": 52727,
+     "ra_deg": 161.6924,
+     "dec_deg": -49.4203,
+     "mag": 2.69,
+     "name": "μ 돛자리",
+     "item_id": null,
+     "distance_ly": 116.27,
+     "distance_basis": "wikidata"
+    },
+    "50191": {
+     "hip": 50191,
+     "ra_deg": 153.684,
+     "dec_deg": -42.1219,
+     "mag": 3.85,
+     "name": "q 돛자리",
+     "item_id": null,
+     "distance_ly": 101.37,
+     "distance_basis": "wikidata"
+    },
+    "46651": {
+     "hip": 46651,
+     "ra_deg": 142.675,
+     "dec_deg": -40.4668,
+     "mag": 3.6,
+     "name": "ψ 돛자리",
+     "item_id": null,
+     "distance_ly": 60.52,
+     "distance_basis": "parallax"
+    },
+    "44816": {
+     "hip": 44816,
+     "ra_deg": 136.999,
+     "dec_deg": -43.4326,
+     "mag": 2.23,
+     "name": "돛자리 람다",
+     "item_id": "Q14245",
+     "distance_ly": 544.5,
+     "distance_basis": "parallax"
+    },
+    "39953": {
+     "hip": 39953,
+     "ra_deg": 122.3831,
+     "dec_deg": -47.3366,
+     "mag": 1.75,
+     "name": "돛자리 감마",
+     "item_id": "Q14235",
+     "distance_ly": 507.36,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Vir": {
+   "item_id": "Q8842",
+   "name": "처녀자리",
+   "lines": [
+    [
+     57380,
+     57757,
+     60129,
+     61941,
+     64238,
+     65474,
+     69701,
+     71957
+    ],
+    [
+     63608,
+     63090,
+     61941
+    ],
+    [
+     64238,
+     66249,
+     68520,
+     72220
+    ]
+   ],
+   "stars": {
+    "57380": {
+     "hip": 57380,
+     "ra_deg": 176.4648,
+     "dec_deg": 6.5294,
+     "mag": 4.04,
+     "name": "ν 처녀자리",
+     "item_id": null,
+     "distance_ly": 329.26,
+     "distance_basis": "wikidata"
+    },
+    "57757": {
+     "hip": 57757,
+     "ra_deg": 177.6738,
+     "dec_deg": 1.7647,
+     "mag": 3.59,
+     "name": "Zavijava",
+     "item_id": null,
+     "distance_ly": 35.89,
+     "distance_basis": "wikidata"
+    },
+    "60129": {
+     "hip": 60129,
+     "ra_deg": 184.9765,
+     "dec_deg": -0.6668,
+     "mag": 3.89,
+     "name": "Zaniah",
+     "item_id": null,
+     "distance_ly": 249.98,
+     "distance_basis": "wikidata"
+    },
+    "61941": {
+     "hip": 61941,
+     "ra_deg": 190.4152,
+     "dec_deg": -1.4494,
+     "mag": 2.74,
+     "name": "Porrima",
+     "item_id": null,
+     "distance_ly": 38.58,
+     "distance_basis": "wikidata"
+    },
+    "64238": {
+     "hip": 64238,
+     "ra_deg": 197.4875,
+     "dec_deg": -5.539,
+     "mag": 4.38,
+     "name": "Apami-Atsa",
+     "item_id": null,
+     "distance_ly": 285.39,
+     "distance_basis": "wikidata"
+    },
+    "65474": {
+     "hip": 65474,
+     "ra_deg": 201.2982,
+     "dec_deg": -11.1613,
+     "mag": 0.98,
+     "name": "스피카",
+     "item_id": "Q13008",
+     "distance_ly": 306.53,
+     "distance_basis": "wikidata"
+    },
+    "69701": {
+     "hip": 69701,
+     "ra_deg": 214.0036,
+     "dec_deg": -6.0005,
+     "mag": 4.07,
+     "name": "Syrma",
+     "item_id": null,
+     "distance_ly": 71.77,
+     "distance_basis": "wikidata"
+    },
+    "71957": {
+     "hip": 71957,
+     "ra_deg": 220.7651,
+     "dec_deg": -5.6582,
+     "mag": 3.87,
+     "name": "Rijl al Awwa",
+     "item_id": null,
+     "distance_ly": 60.99,
+     "distance_basis": "wikidata"
+    },
+    "63608": {
+     "hip": 63608,
+     "ra_deg": 195.5442,
+     "dec_deg": 10.9592,
+     "mag": 2.85,
+     "name": "Vindemiatrix",
+     "item_id": null,
+     "distance_ly": 107.34,
+     "distance_basis": "wikidata"
+    },
+    "63090": {
+     "hip": 63090,
+     "ra_deg": 193.9009,
+     "dec_deg": 3.3975,
+     "mag": 3.39,
+     "name": "Minelauva",
+     "item_id": null,
+     "distance_ly": 198.34,
+     "distance_basis": "wikidata"
+    },
+    "66249": {
+     "hip": 66249,
+     "ra_deg": 203.6733,
+     "dec_deg": -0.5958,
+     "mag": 3.38,
+     "name": "Heze",
+     "item_id": null,
+     "distance_ly": 74.04,
+     "distance_basis": "wikidata"
+    },
+    "68520": {
+     "hip": 68520,
+     "ra_deg": 210.4116,
+     "dec_deg": 1.5445,
+     "mag": 4.23,
+     "name": "τ 처녀자리",
+     "item_id": null,
+     "distance_ly": 227.26,
+     "distance_basis": "wikidata"
+    },
+    "72220": {
+     "hip": 72220,
+     "ra_deg": 221.5622,
+     "dec_deg": 1.8929,
+     "mag": 3.73,
+     "name": "HIP 72220",
+     "item_id": null,
+     "distance_ly": 132.13,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Vol": {
+   "item_id": "Q10437",
+   "name": "날치자리",
+   "lines": [
+    [
+     44382,
+     41312,
+     39794,
+     35228,
+     34481,
+     39794,
+     44382
+    ]
+   ],
+   "stars": {
+    "44382": {
+     "hip": 44382,
+     "ra_deg": 135.6116,
+     "dec_deg": -66.3961,
+     "mag": 4,
+     "name": "α 날치자리",
+     "item_id": null,
+     "distance_ly": 124.09,
+     "distance_basis": "wikidata"
+    },
+    "41312": {
+     "hip": 41312,
+     "ra_deg": 126.4341,
+     "dec_deg": -66.1369,
+     "mag": 3.77,
+     "name": "β 날치자리",
+     "item_id": null,
+     "distance_ly": 108.61,
+     "distance_basis": "wikidata"
+    },
+    "39794": {
+     "hip": 39794,
+     "ra_deg": 121.9825,
+     "dec_deg": -68.6171,
+     "mag": 4.35,
+     "name": "ε 날치자리",
+     "item_id": null,
+     "distance_ly": 692.34,
+     "distance_basis": "wikidata"
+    },
+    "35228": {
+     "hip": 35228,
+     "ra_deg": 109.2076,
+     "dec_deg": -67.9572,
+     "mag": 3.97,
+     "name": "δ 날치자리",
+     "item_id": null,
+     "distance_ly": 634.2,
+     "distance_basis": "wikidata"
+    },
+    "34481": {
+     "hip": 34481,
+     "ra_deg": 107.1869,
+     "dec_deg": -70.4989,
+     "mag": 3.78,
+     "name": "γ2 날치자리",
+     "item_id": null,
+     "distance_ly": 132.13,
+     "distance_basis": "wikidata"
+    }
+   }
+  },
+  "Vul": {
+   "item_id": "Q10519",
+   "name": "여우자리",
+   "lines": [
+    [
+     94703,
+     95771,
+     97886,
+     98543,
+     99874
+    ]
+   ],
+   "stars": {
+    "94703": {
+     "hip": 94703,
+     "ra_deg": 289.0543,
+     "dec_deg": 21.3904,
+     "mag": 4.76,
+     "name": "HIP 94703",
+     "item_id": null,
+     "distance_ly": 697.62,
+     "distance_basis": "wikidata"
+    },
+    "95771": {
+     "hip": 95771,
+     "ra_deg": 292.1764,
+     "dec_deg": 24.6649,
+     "mag": 4.44,
+     "name": "Anser",
+     "item_id": null,
+     "distance_ly": 308.12,
+     "distance_basis": "wikidata"
+    },
+    "97886": {
+     "hip": 97886,
+     "ra_deg": 298.3654,
+     "dec_deg": 24.0796,
+     "mag": 4.57,
+     "name": "HIP 97886",
+     "item_id": null,
+     "distance_ly": 359.2,
+     "distance_basis": "parallax"
+    },
+    "98543": {
+     "hip": 98543,
+     "ra_deg": 300.2752,
+     "dec_deg": 27.7536,
+     "mag": 4.66,
+     "name": "HIP 98543",
+     "item_id": null,
+     "distance_ly": 244.7,
+     "distance_basis": "wikidata"
+    },
+    "99874": {
+     "hip": 99874,
+     "ra_deg": 303.9422,
+     "dec_deg": 27.8142,
+     "mag": 4.5,
+     "name": "HIP 99874",
+     "item_id": null,
+     "distance_ly": 332.96,
+     "distance_basis": "wikidata"
+    }
+   }
+  }
+ },
+ "unmatched_vertices": 1,
+ "licenses": {
+  "d3-celestial": "BSD-3-Clause (© 2015 Olaf Frohn)",
+  "Wikidata": "CC0 1.0"
+ }
+}

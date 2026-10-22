@@ -186,3 +186,42 @@ def letter_messages(item: dict, light: str, evidences: list) -> list:
     """light = 빛의 여정 요약 (출발 연도 · 범위 · 걸린 시간) — 코드가 계산한 값."""
     return [SystemMessage(LETTER_SYSTEM),
             HumanMessage(f"천체: {item_brief(item)}\n빛의 여정(계산값): {light}\n\n[근거]\n{format_evidence(evidences)}")]
+
+
+# ── 별자리 펼치기 (F2010) ──────────────────────────────────────────────────
+
+UNFOLD_SYSTEM = f"""{ANSWER_PERSONA}
+
+할 일: 별자리가 '지구에서만 보이는 모양'이라는 것을, 별자리를 이루는 별들의 실제 거리로 설명한다.
+화면에서는 지금 이 별자리의 별들이 실제 거리 위치로 펼쳐지고 있다.
+
+규칙 — 반드시 지킨다
+1. [근거]에 적힌 사실 · 수치만 쓴다. 근거에 없는 별 이름 · 거리 · 신화를 지어내지 않는다.
+2. 사실을 말하는 문장마다 [근거 N]을 붙인다. 근거 목록에 없는 번호는 쓰지 않는다.
+3. 가장 가까운 별과 가장 먼 별, 이름이 알려진 밝은 별 한두 개의 거리를 들어 차이를 보여준다.
+4. 거리는 출처 값을 바탕으로 한 근삿값이다. "약"을 붙인다.
+5. 따뜻하고 차분한 말투로 4~6문장. 근거 목록 · 이 규칙을 다시 쓰지 않는다."""
+
+
+def unfold_messages(item: dict, evidences: list) -> list:
+    return [SystemMessage(UNFOLD_SYSTEM),
+            HumanMessage(f"별자리: {item_brief(item)}\n\n[근거]\n{format_evidence(evidences)}")]
+
+
+# ── 오늘 밤 나의 하늘 (F2010) ──────────────────────────────────────────────
+
+SKY_SYSTEM = f"""{ANSWER_PERSONA}
+
+할 일: 사용자가 있는 곳의 하늘에 지금 떠 있는 별자리 · 행성을 찾아보도록 짧게 안내한다.
+
+규칙 — 반드시 지킨다
+1. 방향 · 높이는 [근거]의 계산표에 있는 값만 쓴다. 어느 방향을 보면 되는지 구체적으로 말한다.
+2. 별자리 설명(가장 밝은 별 · 관측 계절 등)은 [근거]의 별자리 정보에 적힌 것만 쓴다.
+3. 사실을 말하는 문장마다 [근거 N]을 붙인다. 근거 목록에 없는 번호는 쓰지 않는다.
+4. 별자리는 2~4개만 고르고 높이 뜬 것을 먼저 소개한다. 계산표에 행성이 있으면 함께 알린다.
+   계산표에 별자리가 없으면 행성만 안내한다.
+5. 따뜻하고 차분한 말투로 4~6문장. 날씨 · 빛 공해처럼 근거에 없는 조건은 말하지 않는다."""
+
+
+def sky_messages(place: str, evidences: list) -> list:
+    return [SystemMessage(SKY_SYSTEM), HumanMessage(f"관측 조건: {place}\n\n[근거]\n{format_evidence(evidences)}")]

@@ -14,6 +14,9 @@
 | DELETE /api/history/{item_id}         | 항목별 대화 기록 지우기                          |
 | POST /api/explore                     | 자연어 조건으로 항목 찾기 (F2011)                |
 | POST /api/light-letter                | 빛의 편지 — 천체 또는 나이로 (F2010)             |
+| GET  /api/constellations/{id}/figure  | 별자리 선과 별들의 실제 거리 (3D 펼치기용)       |
+| POST /api/constellations/{id}/unfold  | 별자리 펼치기 설명 — 근거 인용 (F2010)           |
+| POST /api/sky                         | 오늘 밤 나의 하늘 — 위치 계산 + 안내 (F2010)     |
 
 오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다. (NF2004)
 
@@ -39,14 +42,18 @@ from fastapi.staticfiles import StaticFiles
 
 from vasthorizon.api.schemas import (
     AnswerResponse, AskRequest, CitedEvidence, DepartureOut, ErrorResponse, ExploreCardOut, ExploreRequest,
-    ExploreResponse, HealthResponse, HistoryResponse, HistoryTurn, ItemDetail, ItemSummary, LetterRequest,
-    LetterResponse, SourceRef, StageInfo,
+    ExploreResponse, FigureResponse, FigureStar, FigureStats, HealthResponse, HistoryResponse, HistoryTurn,
+    ItemDetail, ItemSummary, LetterRequest, LetterResponse, SkyObjectOut, SkyRequest, SkyResponse, SourceRef,
+    StageInfo, UnfoldResponse,
 )
-from vasthorizon.features.light_letter import LetterUnavailableError, star_for_age
 from vasthorizon.api.services import ItemNotFoundError, Services, default_services
 from vasthorizon.api.sessions import ConversationBusyError, Ticket
 from vasthorizon.config import PROJECT_ROOT
+from vasthorizon.data.constellation_figures import LICENSES, figure_stats
 from vasthorizon.data.items.common import GROUPS
+from vasthorizon.features.constellation import FigureUnavailableError, figure_for
+from vasthorizon.features.light_letter import LetterUnavailableError, star_for_age
+from vasthorizon.features.sky import SkyInputError, compute_sky
 from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.rag.retrieval import IndexMissingError
 from vasthorizon.store.chroma import EmbeddingMismatchError
@@ -68,6 +75,10 @@ def error_payload(error: Exception) -> tuple[int, ErrorResponse]:
         return 404, ErrorResponse(code="item_not_found", message="선택한 항목을 찾을 수 없습니다.")
     if isinstance(error, LetterUnavailableError):
         return 422, ErrorResponse(code="letter_unavailable", message=str(error))
+    if isinstance(error, FigureUnavailableError):
+        return 422, ErrorResponse(code="figure_unavailable", message=str(error))
+    if isinstance(error, SkyInputError):
+        return 422, ErrorResponse(code="invalid_request", message=str(error))
     if isinstance(error, ConversationBusyError):
         return 409, ErrorResponse(code="conversation_busy",
                                   message="이 항목의 이전 질문에 아직 답하는 중입니다. 답변이 끝난 뒤 다시 질문해 주세요.")
@@ -103,6 +114,25 @@ def cited_evidence(ev) -> CitedEvidence:
     body = ev.text.split("\n", 1)[1] if ev.text.startswith("[") and "\n" in ev.text else ev.text
     return CitedEvidence(number=ev.number, kind=ev.kind, source_type=ev.source_type, title=ev.title,
                          section=ev.section, url=ev.url, excerpt=body.strip()[:EXCERPT_CHARS])
+
+
+def stats_out(stats: dict) -> FigureStats:
+    return FigureStats(stars=stats["stars"], known=stats["known"],
+                       nearest_hip=stats["nearest"]["hip"] if stats.get("nearest") else None,
+                       farthest_hip=stats["farthest"]["hip"] if stats.get("farthest") else None,
+                       spread_ly=stats.get("spread_ly"), ratio=stats.get("ratio"))
+
+
+def generated_notice(status: str, cited: list) -> str | None:
+    """특화 기능(편지 · 펼치기 · 하늘 안내)의 생성 결과 안내."""
+    if status == "rejected":
+        return REJECTED_NOTICE
+    return None if cited else NO_CITATION
+
+
+def sky_object(obj) -> SkyObjectOut:
+    return SkyObjectOut(name=obj.name, item_id=obj.item_id, group=obj.group, alt_deg=obj.alt_deg,
+                        az_deg=obj.az_deg, direction=obj.direction)
 
 
 def answer_response(item: dict, result) -> AnswerResponse:
@@ -141,8 +171,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         return JSONResponse(status_code=status, content=body.model_dump())
 
     # 예상한 오류는 개별 처리기로, 그 밖의 오류는 최상위 처리기로 (500 · 일반 안내 문구)
-    for known in (ItemNotFoundError, ConversationBusyError, LetterUnavailableError, MissingApiKeyError,
-                  IndexMissingError, EmbeddingMismatchError):
+    for known in (ItemNotFoundError, ConversationBusyError, LetterUnavailableError, FigureUnavailableError,
+                  SkyInputError, MissingApiKeyError, IndexMissingError, EmbeddingMismatchError):
         app.add_exception_handler(known, handle_error)
     app.add_exception_handler(Exception, handle_error)
 
@@ -267,7 +297,7 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
             item = services.item(req.item_id)
         result = services.letter(item)
         d = result.departure
-        notice = REJECTED_NOTICE if result.status == "rejected" else (NO_CITATION if not result.cited else None)
+        notice = generated_notice(result.status, result.cited)
         return LetterResponse(
             item_id=item["id"], item_name=item["name"], letter=result.letter, status=result.status,
             cited=[cited_evidence(ev) for ev in result.cited], notice=notice, warnings=result.warnings,
@@ -275,6 +305,42 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
             departure=DepartureOut(light_years=d.light_years, light_time=d.light_time, year=d.year,
                                    year_label=d.year_label, era=d.era,
                                    year_range=list(d.year_range) if d.year_range else None, summary=d.summary()))
+
+    @app.get("/api/constellations/{item_id}/figure", response_model=FigureResponse, responses=errors)
+    def constellation_figure(item_id: str) -> FigureResponse:
+        services = svc()
+        figure = figure_for(services.item(item_id), services.figures)
+        stars = sorted(figure["stars"].values(), key=lambda s: s["mag"])
+        return FigureResponse(
+            item_id=item_id, name=figure["name"], lines=figure["lines"], stats=stats_out(figure_stats(figure)),
+            stars=[FigureStar(**{k: s.get(k) for k in FigureStar.model_fields}) for s in stars],
+            licenses=LICENSES)
+
+    @app.post("/api/constellations/{item_id}/unfold", response_model=UnfoldResponse, responses=errors)
+    def constellation_unfold(item_id: str) -> UnfoldResponse:
+        services = svc()
+        item = services.item(item_id)
+        result = services.unfold(item, figure_for(item, services.figures))
+        return UnfoldResponse(
+            item_id=item_id, name=item["name"], stats=stats_out(result.stats), explanation=result.explanation,
+            status=result.status, cited=[cited_evidence(ev) for ev in result.cited],
+            notice=generated_notice(result.status, result.cited), warnings=result.warnings)
+
+    @app.post("/api/sky", response_model=SkyResponse, responses=errors,
+              description="위치 · 시각의 하늘에 뜬 별자리와 행성. guide=false면 계산만 (LLM 호출 없음)")
+    def sky(req: SkyRequest) -> SkyResponse:
+        services = svc()
+        view = compute_sky(services.items, services.figures, req.lat, req.lon, req.at)
+        body = dict(lat=view.lat, lon=view.lon, at=view.at, sun_alt_deg=view.sun_alt_deg, is_night=view.is_night,
+                    constellations=[sky_object(o) for o in view.constellations],
+                    planets=[sky_object(o) for o in view.planets])
+        if not req.guide:
+            return SkyResponse(**body, status="skipped", warnings=view.notes)
+        result = services.sky_guide(view)
+        notice = generated_notice(result.status, result.cited) if result.guide is not None else None
+        return SkyResponse(**body, guide=result.guide, status=result.status,
+                           cited=[cited_evidence(ev) for ev in result.cited], notice=notice,
+                           warnings=result.warnings)
 
     if web_dir and web_dir.exists():                    # 3D 프론트엔드 (9번 작업에서 추가)
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")

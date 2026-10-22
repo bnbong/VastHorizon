@@ -285,3 +285,100 @@ class RedirectTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ── 8b 데이터 품질 — 등급 파장대 · 거리 검증 ───────────────────────────────
+
+class MagnitudeBandTest(unittest.TestCase):
+    V = "http://www.wikidata.org/entity/Q4892529"
+    K = "http://www.wikidata.org/entity/Q6346"
+
+    def test_prefers_v_band_over_brighter_infrared(self):
+        from vasthorizon.data.items.messier import visual_magnitude
+        # M60 — K 5.7(적외선)을 고르면 맨눈 관측 가능으로 잘못 바뀐다
+        self.assertEqual(visual_magnitude({f"8.8|{self.V}", f"5.7|{self.K}"}), 8.8)
+
+    def test_unbanded_value_used_when_no_v_band(self):
+        from vasthorizon.data.items.messier import visual_magnitude
+        self.assertEqual(visual_magnitude({"6.3|", f"4.0|{self.K}"}), 6.3)
+
+    def test_only_infrared_or_blank_is_unknown(self):
+        from vasthorizon.data.items.messier import visual_magnitude
+        self.assertIsNone(visual_magnitude({f"5.7|{self.K}"}))
+        self.assertIsNone(visual_magnitude({"t123abc|", f"bad|{self.V}"}))      # 값 미상(빈 노드)은 건너뛴다
+
+
+class ParallaxCheckTest(unittest.TestCase):
+    PC_KM = 3.261563777 * 9_460_730_472_580.8
+
+    def test_drops_values_that_disagree_with_parallax(self):
+        from vasthorizon.data.items.common import distance_with_parallax
+        # 타비트 — 8파섹 값 3개 + 39,533파섹(자릿수 오류) 값 3개, 연주시차 124.6 밀리각초
+        values = [8.0 * self.PC_KM, 8.03 * self.PC_KM, 8.05 * self.PC_KM] + [39_533 * self.PC_KM] * 3
+        dist = distance_with_parallax(values, 124.6)
+        self.assertAlmostEqual(dist.ly, 8.03 * 3.261563777, delta=0.1)
+        self.assertIn("어긋난 값 3개 제외", dist.method)
+
+    def test_falls_back_to_parallax_when_nothing_agrees(self):
+        from vasthorizon.data.items.common import distance_with_parallax
+        dist = distance_with_parallax([1000 * self.PC_KM], 100.0)
+        self.assertEqual(dist.basis, "parallax")
+        self.assertAlmostEqual(dist.ly, 10 * 3.261563777, delta=0.01)
+
+    def test_small_parallax_is_not_an_anchor(self):
+        from vasthorizon.data.items.common import distance_with_parallax
+        # 알니타크 — 연주시차 4.43 밀리각초는 오차가 커서 출처 값(약 1,260광년)을 그대로 쓴다
+        dist = distance_with_parallax([386 * self.PC_KM], 4.43)
+        self.assertEqual(dist.basis, "wikidata")
+        self.assertAlmostEqual(dist.ly, 386 * 3.261563777, delta=0.1)
+
+    def test_no_values_uses_parallax(self):
+        from vasthorizon.data.items.common import distance_with_parallax
+        self.assertEqual(distance_with_parallax([], 2.0).basis, "parallax")
+        self.assertIsNone(distance_with_parallax([], None))
+
+
+class ParallaxRangeTest(unittest.TestCase):
+    """8b 리뷰 — 중앙값이 맞아도 범위 · 개수에 이상값이 남지 않아야 한다."""
+    PC_KM = ParallaxCheckTest.PC_KM
+
+    def check(self, factors, plx=100.0):
+        from vasthorizon.data.items.common import distance_with_parallax
+        a = 10 * self.PC_KM                                  # 연주시차 100 밀리각초 = 10파섹
+        return distance_with_parallax([f * a for f in factors], plx), a
+
+    def test_outlier_removed_from_range_when_median_agrees(self):
+        dist, a = self.check([1.0, 1.01, 1.02, 1000.0])
+        self.assertEqual(dist.n_values, 3)
+        self.assertAlmostEqual(dist.km_max, 1.02 * a)
+        self.assertAlmostEqual(dist.km_min, a)
+        self.assertIn("어긋난 값 1개 제외", dist.method)
+
+    def test_wrong_median(self):
+        dist, a = self.check([1.0, 1.01, 1000.0, 1000.0, 1000.0])
+        self.assertEqual((dist.n_values, dist.km_max), (2, 1.01 * a))
+
+    def test_all_values_agree_keeps_original(self):
+        dist, a = self.check([0.9, 1.0, 1.1])
+        self.assertEqual((dist.n_values, dist.km_min, dist.km_max), (3, 0.9 * a, 1.1 * a))
+        self.assertEqual(dist.method, "출처 3개 값의 중앙값")
+
+    def test_parallax_only(self):
+        dist, a = self.check([])
+        self.assertEqual((dist.basis, dist.n_values), ("parallax", 1))
+        self.assertAlmostEqual(dist.km, a)
+
+    def test_small_parallax_keeps_source_range(self):
+        # 먼 별(연주시차 < 5 밀리각초)은 검증 기준이 아니다 — 출처 값 범위를 그대로 둔다
+        from vasthorizon.data.items.common import distance_with_parallax
+        dist = distance_with_parallax([300 * self.PC_KM, 400 * self.PC_KM], 1.0)
+        self.assertEqual((dist.basis, dist.n_values), ("wikidata", 2))
+
+    def test_outlier_not_in_light_letter_year_range(self):
+        from dataclasses import asdict
+        from vasthorizon.features.light_letter import compute_departure
+        dist, _ = self.check([1.0, 1.01, 1.02, 1000.0])
+        star = {"name": "검증 별", "distance": {**asdict(dist), "ly": dist.ly}}
+        far, near = compute_departure(star, 2026).year_range
+        self.assertLess(near - far, 2)                       # 이상값(약 3.3만 광년)이 범위에 들어가지 않는다
+        self.assertGreater(far, 1980)

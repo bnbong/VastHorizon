@@ -15,7 +15,7 @@ import logging
 from collections import defaultdict
 
 from vasthorizon.data import sources
-from vasthorizon.data.items.common import Distance, Item, distance_from_values, parallax_to_km
+from vasthorizon.data.items.common import Item, distance_with_parallax
 
 log = logging.getLogger(__name__)
 
@@ -108,12 +108,10 @@ def collect(refresh: bool = False) -> list[Item]:
         qid, rec = max(entities.items(), key=lambda kv: (bool(kv[1].get("distM") or kv[1].get("plx")), -len(kv[0])))
         title = min(rec["title"])
 
-        dist = distance_from_values([float(v) / 1000 for v in rec.get("distM", [])], "wikidata")
-        if dist is None and rec.get("plx"):
-            plx = max(float(v) for v in rec["plx"])
-            if plx > 0:
-                dist = Distance(km=parallax_to_km(plx), basis="parallax",
-                                method=f"연주시차 {plx} 밀리각초로 계산")
+        plx_values = sorted(float(v) for v in rec.get("plx", []) if float(v) > 0)
+        plx = plx_values[len(plx_values) // 2] if plx_values else None
+        # 출처 거리 값을 연주시차로 검증한다 (common.distance_with_parallax 설명)
+        dist = distance_with_parallax([float(v) / 1000 for v in rec.get("distM", [])], plx)
 
         feature = picked.get(hip)
         if feature:

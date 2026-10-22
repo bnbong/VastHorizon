@@ -6,7 +6,7 @@
 [llm]
 # SSAFY GMS — OpenAI 호환 엔드포인트. GPT 모델만 사용한다.
 base_url = "https://gms.ssafy.io/gmsapi/api.openai.com/v1/"
-chat_model = "gpt-5.4-nano"
+chat_model = "gpt-6-luna"
 embedding_model = "text-embedding-3-small"
 timeout_sec = 60
 

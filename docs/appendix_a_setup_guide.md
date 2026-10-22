@@ -83,6 +83,22 @@ python -m scripts.collect_items --epoch 2026-10-21  # Horizons 위치 기준일 
 | 저장 조건 | 최소 100건 · 5개 그룹 · QID 중복 없음 · 좌표 · 거리 · 출처 검증 통과 |
 | 실패 시 | 종료 코드 1, 기존 `data/items.json`은 그대로 유지 |
 
+### 별자리 모양 데이터
+
+별자리 펼치기 · 하늘 안내 · 3D 화면이 쓰는 별자리 선과 별들의 실제 거리다. 카탈로그를 만든 뒤 실행한다.
+
+```bash
+python -m scripts.collect_constellations            # data/raw 캐시가 있으면 재사용
+python -m scripts.collect_constellations --refresh
+```
+
+| 동작 | 설명 |
+|---|---|
+| 결과 | `data/constellations.json` (커밋 대상) — 별자리 88개 · 선을 이루는 별 766개 |
+| 별 연결 | d3-celestial 별자리 선의 꼭짓점 → 0.02도 안의 별 → 히파르코스 번호 |
+| 거리 | Wikidata 거리 값을 연주시차로 검증 (단위가 틀린 값 제외) |
+| 없을 때 | 서버는 동작하고, 상태 점검에 `figures_missing` 안내 · 펼치기는 `422 figure_unavailable` |
+
 ---
 
 ## 6. 항목 메타데이터 색인 (RAG 1)
@@ -205,6 +221,18 @@ uvicorn vasthorizon.api.app:app --port 8000
 | `GET` · `DELETE /api/history/{id}?session_id=` | 항목별 대화 기록 조회 · 삭제 |
 | `POST /api/explore` | 자연어 조건으로 항목 찾기 — 적용한 필터와 조건에 맞는 항목 카드 |
 | `POST /api/light-letter` | 빛의 편지 — `{"item_id": "Q13423"}` 또는 `{"age": 25}` (나이만큼 먼 별) |
+| `GET /api/constellations/{id}/figure` | 별자리 선과 별들의 좌표 · 실제 거리 (LLM 호출 없음) |
+| `POST /api/constellations/{id}/unfold` | 별자리 펼치기 설명 — 별 거리표를 근거로 인용 |
+| `POST /api/sky` | 오늘 밤 나의 하늘 — `{"lat": 37.57, "lon": 126.98, "at": "2026-10-22T21:00:00"}` |
+
+`/api/sky` 메모
+
+| 항목 | 동작 |
+|---|---|
+| 시각 | 비우면 지금 · 시간대가 없으면 한국 시간(UTC+9) |
+| `guide: false` | 별자리 · 행성 위치만 계산 (LLM 호출 없음) |
+| 낮 · 박명 | 태양 고도 −6도 이상이면 안내 문장을 만들지 않음 (`status: daytime`) |
+| 행성 | 카탈로그 위치 기준일 ±3일 안에서만 표시 · 달은 표시하지 않음 |
 
 ```bash
 curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: application/json" \
@@ -217,6 +245,8 @@ curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: applicati
 | `index_missing` (503) | 항목 색인 없음 |
 | `index_incompatible` (503) | 색인과 임베딩 설정 불일치 — 재구축 필요 |
 | `item_not_found` (404) · `invalid_request` (422) | 잘못된 항목 · 요청 |
+| `letter_unavailable` (422) | 빛의 편지를 쓸 수 없는 항목 (거리 없음 · 지구 궤도 위성) |
+| `figure_unavailable` (422) | 별자리가 아니거나 별자리 모양 데이터 없음 |
 | `internal` (500) | 그 밖의 오류 — 자세한 내용은 서버 로그에만 |
 
 대화 기록은 서버 메모리에 (세션, 항목)별로 둔다. 서버를 다시 시작하면 지워진다.
@@ -259,7 +289,7 @@ python -m unittest discover -s tests -t .
 
 | 섹션 | 키 | 기본값 | 의미 |
 |---|---|---|---|
-| `llm` | `chat_model` | `gpt-5.4-nano` | 답변 · 프롬프트용 GPT 모델 |
+| `llm` | `chat_model` | `gpt-6-luna` | 답변 · 프롬프트용 GPT 모델 |
 | `llm` | `embedding_model` | `text-embedding-3-small` | 임베딩 모델 |
 | `chunking` | `chunk_size` / `chunk_overlap` | 1000 / 200 | 문서 청크 크기 · 중복 길이 |
 | `retrieval` | `search_type` | `similarity` | `similarity` 또는 `mmr` |

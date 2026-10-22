@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -167,4 +168,79 @@ class LetterResponse(BaseModel):
     notice: str | None = None
     matched_age: int | None = Field(None, description="나이로 찾은 경우 입력한 나이")
     age_gap_ly: float | None = Field(None, description="나이와 별까지 거리(광년)의 차이")
+    warnings: list[str] = []
+
+
+# ── 별자리 펼치기 (F2010) ──────────────────────────────────────────────────
+
+class FigureStar(BaseModel):
+    hip: int = Field(description="히파르코스 번호")
+    name: str
+    item_id: str | None = Field(None, description="카탈로그 항목이면 그 ID")
+    ra_deg: float
+    dec_deg: float
+    mag: float = Field(description="겉보기 등급")
+    distance_ly: float | None = Field(None, description="실제 거리 — 화면에서 별을 펼칠 위치")
+    distance_basis: str | None = None
+
+
+class FigureStats(BaseModel):
+    stars: int
+    known: int = Field(description="거리가 알려진 별 수")
+    nearest_hip: int | None = None
+    farthest_hip: int | None = None
+    spread_ly: float | None = None
+    ratio: float | None = Field(None, description="가장 먼 별 거리 ÷ 가장 가까운 별 거리")
+
+
+class FigureResponse(BaseModel):
+    item_id: str
+    name: str
+    lines: list[list[int]] = Field(description="별자리 선 — 히파르코스 번호를 잇는 순서")
+    stars: list[FigureStar]
+    stats: FigureStats
+    licenses: dict[str, str]
+
+
+class UnfoldResponse(BaseModel):
+    item_id: str
+    name: str
+    stats: FigureStats
+    explanation: str
+    status: AnswerStatus
+    cited: list[CitedEvidence]
+    notice: str | None = None
+    warnings: list[str] = []
+
+
+# ── 오늘 밤 나의 하늘 (F2010) ──────────────────────────────────────────────
+
+class SkyRequest(BaseModel):
+    lat: float = Field(ge=-90, le=90, description="위도 (북위 +)")
+    lon: float = Field(ge=-180, le=180, description="경도 (동경 +)")
+    at: datetime | None = Field(None, description="관측 시각 — 비우면 지금, 시간대가 없으면 한국 시간")
+    guide: bool = Field(True, description="false면 위치 계산만 (LLM 호출 없음)")
+
+
+class SkyObjectOut(BaseModel):
+    name: str
+    item_id: str | None = None
+    group: str
+    alt_deg: float = Field(description="고도 — 지평선 0도, 머리 위 90도")
+    az_deg: float = Field(description="방위 — 북 0도, 동 90도")
+    direction: str
+
+
+class SkyResponse(BaseModel):
+    lat: float
+    lon: float
+    at: datetime
+    sun_alt_deg: float
+    is_night: bool
+    constellations: list[SkyObjectOut]
+    planets: list[SkyObjectOut]
+    guide: str | None = None
+    status: Literal["cited", "not_found", "rejected", "daytime", "empty", "skipped"]
+    cited: list[CitedEvidence] = []
+    notice: str | None = None
     warnings: list[str] = []

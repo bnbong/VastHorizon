@@ -30,14 +30,12 @@ from dataclasses import dataclass, field
 from langchain_core.language_models import BaseChatModel
 
 from vasthorizon.collect.collector import Collector, StepFailure
-from vasthorizon.data.item_text import SOURCE_TYPE as ITEM_SOURCE
-from vasthorizon.data.item_text import (
-    build_item_text, departure_year, korean_era, korean_number, light_time_text, year_text,
-)
+from vasthorizon.data.item_text import departure_year, korean_era, korean_number, light_time_text, year_text
 from vasthorizon.data.items.common import LY_KM, REF_SURFACE_ALTITUDE
 from vasthorizon.rag.graph import default_chat_model, generate_validated
 from vasthorizon.rag.prompts import letter_messages
-from vasthorizon.rag.retrieval import KIND_DOC, KIND_ITEM, Evidence
+from vasthorizon.features.evidence import catalog_evidence
+from vasthorizon.rag.retrieval import KIND_DOC, Evidence
 
 HISTORY_LIMIT_LY = 100_000          # 이보다 멀면 연도가 아니라 "몇 만 년 전"으로 쓴다
 YEAR_DOC_CHARS = 2500               # 현대 연도 문서는 1만 자가 넘어서 앞부분만 쓴다
@@ -105,18 +103,6 @@ def year_evidence(year_label: str, collector: Collector, failures: list[StepFail
         return None
     return Evidence(number=0, chunk_id=f"year:{doc.doc_id}", kind=KIND_DOC, source_type=doc.source_type,
                     title=doc.title, section="", url=doc.url, text=f"[{doc.title}]\n{doc.text[:YEAR_DOC_CHARS]}")
-
-
-def catalog_evidence(item: dict, ref_year: int) -> Evidence:
-    """근거 1 — 출발 연도를 계산한 바로 그 카탈로그 항목 · 기준 연도로 만든 항목 텍스트.
-
-    색인(cosmos_items)에서 가져오지 않는다. 카탈로그가 갱신됐는데 색인이 아직이거나 기준 연도가
-    다르면, 계산한 출발 연도와 근거 텍스트가 어긋난 채 한 프롬프트에 들어가기 때문이다.
-    텍스트는 색인과 같은 함수(build_item_text)로 만들어 질의응답 근거와 표현이 같다.
-    """
-    wikidata = next((s["url"] for s in item.get("sources", []) if s["name"] == "Wikidata"), "")
-    return Evidence(number=1, chunk_id=item["id"], kind=KIND_ITEM, source_type=ITEM_SOURCE,
-                    title=item["name"], section="", url=wikidata, text=build_item_text(item, ref_year))
 
 
 def write_letter(item: dict, ref_year: int, llm: BaseChatModel | None = None,

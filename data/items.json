@@ -1,6 +1,6 @@
 {
  "meta": {
-  "collected_at": "2026-10-21",
+  "collected_at": "2026-10-22",
   "horizons_epoch": "2026-10-21",
   "counts": {
    "태양계": 32,
@@ -267,8 +267,8 @@
     "fetched_at": "2026-10-21T05:38:34+00:00",
     "estimated": false
    },
-   "messier_wikidata": {
-    "fetched_at": "2026-10-21T05:39:04+00:00",
+   "messier_wikidata_v2": {
+    "fetched_at": "2026-10-22T00:56:19+00:00",
     "estimated": false
    },
    "satcat": {
@@ -7209,15 +7209,15 @@
    "name_en": "Beta Ceti",
    "kind": "항성",
    "distance": {
-    "km": 555977942582515.94,
+    "km": 906485775949754.2,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 55.5 밀리각초로 계산",
+    "method": "연주시차 34.04 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 58.76691490090091
+    "ly": 95.81562212103408
    },
    "ra_deg": 10.8974,
    "dec_deg": -17.9866,
@@ -7737,15 +7737,15 @@
    "name_en": "Bellatrix",
    "kind": "항성",
    "distance": {
-    "km": 3700000000000000.0,
-    "basis": "wikidata",
+    "km": 2299312653750345.5,
+    "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": null,
+    "method": "출처 거리 값 1개가 연주시차와 크게 달라 연주시차 13.42 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 391.0903085891077
+    "ly": 243.03753926974667
    },
    "ra_deg": 81.2828,
    "dec_deg": 6.3497,
@@ -8704,15 +8704,15 @@
    "name_en": "Lambda Velorum",
    "kind": "항성",
    "distance": {
-    "km": 1535162975787543.8,
+    "km": 5151381604896433.0,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 20.1 밀리각초로 계산",
+    "method": "연주시차 5.99 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 162.26685457711443
+    "ly": 544.5014652754592
    },
    "ra_deg": 136.999,
    "dec_deg": -43.4326,
@@ -8792,15 +8792,15 @@
    "name_en": "Iota Carinae",
    "kind": "항성",
    "distance": {
-    "km": 2016782732897361.5,
+    "km": 6551332444443659.0,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 15.3 밀리각초로 계산",
+    "method": "연주시차 4.71 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 213.17410307189542
+    "ly": 692.476385774947
    },
    "ra_deg": 139.2725,
    "dec_deg": -59.2752,
@@ -8880,15 +8880,15 @@
    "name_en": "Alphard",
    "kind": "항성",
    "distance": {
-    "km": 1462406436650693.2,
+    "km": 1676998685507045.2,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 21.1 밀리각초로 계산",
+    "method": "연주시차 18.4 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 154.57648232227487
+    "ly": 177.25890092391305
    },
    "ra_deg": 141.8968,
    "dec_deg": -8.6586,
@@ -9582,15 +9582,15 @@
    "name_en": "Beta Centauri",
    "kind": "항성",
    "distance": {
-    "km": 2706734720467511.5,
+    "km": 3708747092948273.0,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 11.4 밀리각초로 계산",
+    "method": "연주시차 8.32 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 286.1020857017544
+    "ly": 392.0148770432692
    },
    "ra_deg": 210.9559,
    "dec_deg": -60.373,
@@ -10019,15 +10019,15 @@
    "name_en": "Delta Scorpii",
    "kind": "항성",
    "distance": {
-    "km": 6900000000000000.0,
-    "basis": "wikidata",
+    "km": 3800095543513502.0,
+    "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": null,
+    "method": "출처 거리 값 1개가 연주시차와 크게 달라 연주시차 8.12 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 729.3305754769846
+    "ly": 401.6704158866996
    },
    "ra_deg": 240.08339999999998,
    "dec_deg": -22.6217,
@@ -10107,15 +10107,15 @@
    "name_en": "Alpha Trianguli Australis",
    "kind": "항성",
    "distance": {
-    "km": 1042458642342217.2,
+    "km": 3695422253093369.5,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 29.6 밀리각초로 계산",
+    "method": "연주시차 8.35 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 110.18796543918918
+    "ly": 390.60644035928146
    },
    "ra_deg": 252.1662,
    "dec_deg": -69.0277,
@@ -10281,15 +10281,15 @@
    "name_en": "Alpha Ophiuchi",
    "kind": "항성",
    "distance": {
-    "km": 441820959526483.8,
+    "km": 459657020904657.1,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 69.84 밀리각초로 계산",
+    "method": "연주시차 67.13 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 46.70051227090492
+    "ly": 48.585785446149266
    },
    "ra_deg": 263.7336,
    "dec_deg": 12.56,
@@ -10413,15 +10413,15 @@
    "name_en": "Gamma Draconis",
    "kind": "항성",
    "distance": {
-    "km": 1324325142202988.5,
+    "km": 1396234199698173.2,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 23.3 밀리각초로 계산",
+    "method": "연주시차 22.1 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 139.9812779828326
+    "ly": 147.58207135746605
    },
    "ra_deg": 269.1515,
    "dec_deg": 51.4889,
@@ -10498,15 +10498,15 @@
    "name_en": "Epsilon Sagittarii",
    "kind": "항성",
    "distance": {
-    "km": 1355745861745590.2,
+    "km": 1368371432963620.0,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 22.76 밀리각초로 계산",
+    "method": "연주시차 22.55 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 143.30245065905098
+    "ly": 144.63697458980045
    },
    "ra_deg": 276.043,
    "dec_deg": -34.3846,
@@ -10982,15 +10982,15 @@
    "name_en": "Beta Gruis",
    "kind": "항성",
    "distance": {
-    "km": 1609638800903997.2,
+    "km": 1674268899258254.8,
     "basis": "parallax",
     "reference": "지구에서 천체까지",
     "approximate": false,
-    "method": "연주시차 19.17 밀리각초로 계산",
+    "method": "연주시차 18.43 밀리각초로 계산",
     "km_min": null,
     "km_max": null,
     "n_values": 1,
-    "ly": 170.1389555033907
+    "ly": 176.970362289745
    },
    "ra_deg": 340.6669,
    "dec_deg": -46.8846,
@@ -11692,8 +11692,8 @@
    "attrs": {
     "메시에 번호": "M15",
     "별자리": "페가수스자리",
-    "겉보기 등급": 3.0,
-    "맨눈 관측": true,
+    "겉보기 등급": 6.2,
+    "맨눈 관측": false,
     "분류": "구상 성단"
    },
    "sources": [
@@ -12173,8 +12173,8 @@
    "attrs": {
     "메시에 번호": "M28",
     "별자리": "궁수자리",
-    "겉보기 등급": 3.03,
-    "맨눈 관측": true,
+    "겉보기 등급": 6.8,
+    "맨눈 관측": false,
     "분류": "구상 성단"
    },
    "sources": [
@@ -12876,7 +12876,7 @@
    "attrs": {
     "메시에 번호": "M47",
     "별자리": "고물자리",
-    "겉보기 등급": 4.42,
+    "겉보기 등급": 4.4,
     "맨눈 관측": true,
     "분류": "산개 성단"
    },
@@ -13135,8 +13135,8 @@
    "attrs": {
     "메시에 번호": "M54",
     "별자리": "궁수자리",
-    "겉보기 등급": 4.78,
-    "맨눈 관측": true,
+    "겉보기 등급": 7.6,
+    "맨눈 관측": false,
     "분류": "구상 성단"
    },
    "sources": [
@@ -13209,8 +13209,8 @@
    "attrs": {
     "메시에 번호": "M56",
     "별자리": "거문고자리",
-    "겉보기 등급": 5.58,
-    "맨눈 관측": true,
+    "겉보기 등급": 8.27,
+    "맨눈 관측": false,
     "분류": "구상 성단"
    },
    "sources": [
@@ -13357,8 +13357,8 @@
    "attrs": {
     "메시에 번호": "M60",
     "별자리": "처녀자리",
-    "겉보기 등급": 5.739,
-    "맨눈 관측": true,
+    "겉보기 등급": 8.8,
+    "맨눈 관측": false,
     "분류": "전파원, 천체물리학적 엑스선원, 타원 은하"
    },
    "sources": [
@@ -14013,7 +14013,7 @@
    "attrs": {
     "메시에 번호": "M78",
     "별자리": "오리온자리",
-    "겉보기 등급": 8.0,
+    "겉보기 등급": 8.3,
     "맨눈 관측": false,
     "분류": "반사성운"
    },
@@ -14087,8 +14087,8 @@
    "attrs": {
     "메시에 번호": "M80",
     "별자리": "전갈자리",
-    "겉보기 등급": 4.85,
-    "맨눈 관측": true,
+    "겉보기 등급": 7.33,
+    "맨눈 관측": false,
     "분류": "구상 성단"
    },
    "sources": [
@@ -15123,7 +15123,7 @@
    "attrs": {
     "메시에 번호": "M108",
     "별자리": "큰곰자리",
-    "겉보기 등급": 7.041,
+    "겉보기 등급": 9.9,
     "맨눈 관측": false,
     "분류": "폭발적 항성 생성 은하"
    },
@@ -15160,7 +15160,7 @@
    "attrs": {
     "메시에 번호": "M109",
     "별자리": "큰곰자리",
-    "겉보기 등급": 6.937,
+    "겉보기 등급": 9.8,
     "맨눈 관측": false,
     "분류": "막대나선은하"
    },

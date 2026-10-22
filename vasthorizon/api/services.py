@@ -1,4 +1,4 @@
-"""API가 쓰는 서비스 묶음 — 항목 목록 · 질의 함수 · 대화 기록 · 상태 점검.
+"""API가 쓰는 서비스 묶음 — 항목 목록 · 질의 함수 · 대화 기록 · 상태 점검 · 특화 기능.
 
 테스트는 가짜 질의 함수와 항목을 넣은 Services로 앱을 만든다 (외부 호출 없음).
 """
@@ -25,6 +25,9 @@ class Services:
     explore: Callable | None = None             # features.explore.explore(query) 와 같은 서명
     letter: Callable | None = None              # (item) → features.light_letter.LetterResult
     ref_year: int = 2026                        # 카탈로그 수집 연도 — 빛의 출발 연도 기준
+    figures: dict = field(default_factory=dict)  # 항목 ID → 별자리 모양 (data/constellations.json)
+    unfold: Callable | None = None              # (item, figure) → features.constellation.UnfoldResult
+    sky_guide: Callable | None = None           # (view) → features.sky.SkyGuide
 
     def __post_init__(self) -> None:
         self._by_id = {it["id"]: it for it in self.items}
@@ -43,6 +46,7 @@ def check_health(items: list[dict], ref_year: int) -> HealthResponse:
     색인에 저장된 text_hash를 비교한다 (임베딩 호출 없음).
     """
     from vasthorizon.config import get_gms_key, get_settings
+    from vasthorizon.data.constellation_figures import figures_path
     from vasthorizon.store import chroma
     from vasthorizon.store.item_index import index_drift
 
@@ -69,6 +73,10 @@ def check_health(items: list[dict], ref_year: int) -> HealthResponse:
                 code="index_outdated", level="warning",
                 message=f"항목 색인이 카탈로그와 다릅니다 (누락 {len(drift.missing)} · 변경 {len(drift.stale)} · "
                         f"초과 {len(drift.extra)}건). python -m scripts.index_items 로 다시 맞춰 주세요."))
+    if not figures_path().exists():
+        notices.append(Notice(code="figures_missing", level="info",
+                              message="별자리 모양 데이터가 없어 별자리 펼치기 · 하늘 안내가 일부 제한됩니다. "
+                                      "python -m scripts.collect_constellations 를 실행해 주세요."))
     if docs_indexed == 0:
         notices.append(Notice(code="docs_index_empty", level="info",
                               message="문서 색인이 비어 있습니다. 첫 질문은 문서 수집 · 색인 때문에 오래 걸릴 수 있습니다."))
@@ -81,8 +89,11 @@ def default_services() -> Services:
     from datetime import date
 
     from vasthorizon.data.catalog import load_catalog
+    from vasthorizon.data.constellation_figures import load_figures
+    from vasthorizon.features.constellation import unfold
     from vasthorizon.features.explore import explore
     from vasthorizon.features.light_letter import write_letter
+    from vasthorizon.features.sky import sky_guide
     from vasthorizon.rag.pipeline import ask
 
     try:
@@ -91,4 +102,6 @@ def default_services() -> Services:
     except FileNotFoundError:
         items, ref_year = [], date.today().year
     return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year), explore=explore,
-                    letter=lambda item: write_letter(item, ref_year), ref_year=ref_year)
+                    letter=lambda item: write_letter(item, ref_year), ref_year=ref_year, figures=load_figures(),
+                    unfold=lambda item, figure: unfold(item, figure, ref_year),
+                    sky_guide=lambda view: sky_guide(view, items, ref_year))
