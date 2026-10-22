@@ -10,6 +10,8 @@ venv/
 
 # 실행 중 생성되는 데이터 — 스크립트로 다시 만들 수 있다
 data/chroma/
+data/chroma_legacy_*/
+data/chroma_migrating/
 data/cache/
 data/raw/
 

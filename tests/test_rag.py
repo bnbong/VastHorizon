@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import dataclasses
+import tempfile
 import unittest
 from unittest import mock
 
@@ -62,10 +63,21 @@ def OutageEmbedding(query_down: bool = False) -> FakeEmbedding:
 
 
 class IsolatedRagTest(unittest.TestCase):
-    """운영과 같은 컬렉션 이름을 메모리 전용 Chroma에 만든다 — 실제 data/chroma는 건드리지 않는다."""
+    """운영과 같은 구조 — 컬렉션마다 다른 저장소(임시 폴더의 영속 클라이언트)를 쓴다.
+
+    chroma.client를 바꿔 끼워 실제 data/chroma는 건드리지 않는다. db=None으로 넘겨
+    컬렉션 이름에 따라 저장소를 고르는 라우팅(chroma.db_for)까지 함께 검증한다.
+    """
 
     def setUp(self):
-        self.db = chromadb.EphemeralClient()
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)    # Windows 파일 잠금 대비
+        self.stores: dict[str, chromadb.ClientAPI] = {}
+        patcher = mock.patch.object(chroma, "client", side_effect=lambda store: self.stores.setdefault(
+            store, chromadb.PersistentClient(path=f"{self.tmp.name}/{store}")))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(self.tmp.cleanup)
+        self.db = None
         self.emb = FakeEmbedding()
         items = chroma.open_collection(ITEMS, self.emb, self.db)
         texts = {"Q48469": "[인류의 발자취] 보이저 1호\n지금은 태양계를 벗어나는 궤도를 날고 있다.",
@@ -149,6 +161,12 @@ class RetrievalTest(IsolatedRagTest):
         found = self.retrieve()
         self.assertEqual(([e.kind for e in found.evidences], found.doc_search), (["항목 메타데이터"], "empty"))
 
+    def test_collections_live_in_separate_stores(self):
+        """cosmos_items · cosmos_docs는 서로 다른 저장소에 있다 (chroma.py '컬렉션별 저장소 분리')."""
+        self.assertEqual(set(self.stores), {ITEMS, DOCS})
+        self.assertEqual([c.name for c in self.stores[ITEMS].list_collections()], [ITEMS])
+        self.assertEqual([c.name for c in self.stores[DOCS].list_collections()], [DOCS])
+
     def test_doc_search_runs_before_item_read(self):
         """로컬 Chroma 경쟁 조건 회피 — 다른 컬렉션을 읽은 직후 검색하지 않는다 (retrieval.py 설명 참고)."""
         order = []
@@ -209,6 +227,10 @@ class CitationTest(unittest.TestCase):
         result = resolve_citations("사실 [근거 1, 2].", [ev(1), ev(2)])
         self.assertIn("[근거 1][근거 2]", result.text)
         self.assertEqual(len(result.cited), 2)
+
+    def test_repeated_citation_collapsed(self):
+        result = resolve_citations("사실 [근거 1] [근거 2]  [근거 2].", [ev(1), ev(2)])
+        self.assertEqual(result.text, "사실 [근거 1] [근거 2].")
 
     def test_not_found_detection(self):
         self.assertTrue(is_not_found("제공된 문서에서는 개발비가 정확히 얼마인지 확인되지 않습니다. 다만 …"))

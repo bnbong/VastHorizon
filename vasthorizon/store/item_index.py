@@ -50,6 +50,30 @@ def prepare(items: list[dict], ref_year: int) -> list[tuple[str, str, dict]]:
     return prepared
 
 
+@dataclass
+class IndexDrift:
+    """카탈로그와 항목 색인의 차이 — 임베딩 없이 텍스트 해시로 비교한다."""
+
+    missing: list[str] = field(default_factory=list)     # 카탈로그에 있지만 색인에 없음
+    stale: list[str] = field(default_factory=list)       # 텍스트가 달라짐 (거리 · 기준 연도 변경 등)
+    extra: list[str] = field(default_factory=list)       # 색인에만 있음
+
+    @property
+    def consistent(self) -> bool:
+        return not (self.missing or self.stale or self.extra)
+
+
+def index_drift(items: list[dict], ref_year: int, name: str, db=None) -> IndexDrift:
+    stored = chroma.raw_metadatas(name, db)
+    by_id = {m["item_id"]: m.get("text_hash") for m in stored if m and m.get("item_id")}
+    expected = {cid: meta["text_hash"] for cid, _, meta in prepare(items, ref_year)}
+    return IndexDrift(
+        missing=sorted(set(expected) - set(by_id)),
+        stale=sorted(cid for cid in expected if cid in by_id and by_id[cid] != expected[cid]),
+        extra=sorted(set(by_id) - set(expected)),
+    )
+
+
 def sync_items(items: list[dict], collection, embedding: Embeddings, ref_year: int) -> IndexReport:
     """카탈로그와 컬렉션을 맞춘다. collection은 chroma.open_collection으로 연 원본 컬렉션."""
     if not items:
@@ -70,7 +94,7 @@ def rebuild_items(items: list[dict], name: str, embedding: Embeddings, ref_year:
 
     색인 · 검증 중 어떤 단계가 실패해도 활성 컬렉션은 그대로 남는다.
     """
-    db = db or chroma.client()
+    db = chroma.db_for(name, db)
     staging = chroma.staging_name(name)
     chroma.drop_collection(staging, db)                 # 지난번 실패로 남은 임시 컬렉션 정리
     try:

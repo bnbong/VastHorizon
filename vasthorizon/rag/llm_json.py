@@ -54,6 +54,18 @@ def invoke_json(llm: BaseChatModel, messages: list) -> dict:
     return data
 
 
+def optional_field(data: dict, field: str, types: tuple[type, ...]):
+    """선택 필드 — 없거나 null이면 None, 있으면 지정한 타입이어야 한다 (bool은 숫자로 보지 않는다)."""
+    value = data.get(field)
+    if value is None:
+        return None
+    if isinstance(value, bool) and bool not in types:
+        raise JsonReplyError(f"'{field}'의 타입이 올바르지 않습니다 (bool).")
+    if not isinstance(value, types):
+        raise JsonReplyError(f"'{field}'의 타입이 올바르지 않습니다 ({type(value).__name__}).")
+    return value
+
+
 def string_list(data: dict, field: str, max_items: int) -> list[str]:
     """필드가 문자열 배열인지 검증한다. 앞뒤 공백 · 빈 문자열 · 중복을 정리하고 max_items개로 자른다.
 

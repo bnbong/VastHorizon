@@ -142,7 +142,7 @@ def rebuild_docs(targets: list[tuple[dict, list[Document], dict[str, dict], list
     targets = (항목, 문서, 연결 정보, 누락 문서 ID). 누락 · 유효하지 않은 문서가 하나라도 있으면
     새 컬렉션에서 그 문서가 빠지므로 재구축을 멈춘다. 어떤 실패에도 활성 컬렉션은 그대로 남는다.
     """
-    db = db or chroma.client()
+    db = chroma.db_for(name, db)
     staging = chroma.staging_name(name)
     chroma.drop_collection(staging, db)
     try:
@@ -177,7 +177,7 @@ class DocIndex:
         self.name = name or settings.collections.docs
         self.chunking = settings.chunking
         self.embedding = embedding or chroma.default_embedding()
-        self.db = db or chroma.client()
+        self.db = chroma.db_for(self.name, db)
         self.collection = chroma.open_collection(self.name, self.embedding, self.db)
 
     def ensure(self, item: dict, docs: list[Document], links: dict[str, dict],

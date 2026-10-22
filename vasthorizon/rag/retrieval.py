@@ -34,6 +34,7 @@ from vasthorizon.config import RetrievalConfig, get_settings
 from vasthorizon.data.item_text import SOURCE_TYPE as ITEM_SOURCE
 from vasthorizon.llm import TRANSIENT_API_ERRORS, describe_api_error
 from vasthorizon.store import chroma
+from vasthorizon.store.search import search
 
 SEARCH_OUTAGE_ERRORS = (*TRANSIENT_API_ERRORS, chromadb.errors.InternalError)
 
@@ -71,10 +72,10 @@ def _body_key(text: str) -> str:
     return hashlib.sha256(re.sub(r"\s+", " ", body).strip().encode("utf-8")).hexdigest()
 
 
-def item_evidence(item_id: str, db: chromadb.ClientAPI, name: str) -> Evidence:
+def item_evidence(item_id: str, db: chromadb.ClientAPI | None, name: str) -> Evidence:
     if chroma.collection_count(name, db) == 0:
         raise IndexMissingError(f"항목 색인({name})이 없습니다. python -m scripts.index_items 를 실행하세요.")
-    got = db.get_collection(name).get(ids=[item_id], include=["documents", "metadatas"])
+    got = chroma.db_for(name, db).get_collection(name).get(ids=[item_id], include=["documents", "metadatas"])
     if not got["ids"]:
         raise IndexMissingError(f"항목 {item_id}의 메타데이터 청크가 색인에 없습니다. 항목 색인을 다시 실행하세요.")
     meta = got["metadatas"][0]
@@ -84,25 +85,18 @@ def item_evidence(item_id: str, db: chromadb.ClientAPI, name: str) -> Evidence:
 
 def search_docs(item_id: str, question: str, embedding: Embeddings, db: chromadb.ClientAPI, name: str,
                 cfg: RetrievalConfig, search_type: str | None = None) -> list[Evidence]:
-    """항목 범위의 외부 문서 청크 검색. 문서 색인이 아직 없으면 빈 목록."""
-    if chroma.collection_count(name, db) == 0:
-        return []
-    store = chroma.vector_store(name, embedding, db)
-    where = {"item_id": item_id}
-    if (search_type or cfg.search_type) == "mmr":
-        pairs = [(d, None) for d in store.max_marginal_relevance_search(
-            question, k=cfg.top_k_docs, fetch_k=cfg.mmr_fetch_k, lambda_mult=cfg.mmr_lambda, filter=where)]
-    else:
-        pairs = store.similarity_search_with_relevance_scores(question, k=cfg.top_k_docs, filter=where)
-    found = []
-    for doc, score in pairs:
-        m = doc.metadata
-        found.append(Evidence(
-            number=0, chunk_id=doc.id or f"{m['item_id']}:{m['doc_id']}:{m['seq']}", kind=KIND_DOC,
-            source_type=m["source_type"], title=m["title"], section=m.get("section", ""),
-            url=m.get("source_url", ""), text=doc.page_content, score=score,
-        ))
-    return found
+    """항목 범위의 외부 문서 청크 검색. 문서 색인이 아직 없으면 빈 목록.
+
+    store/search.py의 검증된 검색을 쓴다 — Chroma 검색 결과가 모자라면 정확 비교로 다시 계산한다.
+    """
+    outcome = search(name, question, embedding, db, k=cfg.top_k_docs, where={"item_id": item_id},
+                     search_type=search_type or cfg.search_type, fetch_k=cfg.mmr_fetch_k, lambda_mult=cfg.mmr_lambda)
+    return [Evidence(
+        number=0, chunk_id=hit.id or f"{hit.metadata['item_id']}:{hit.metadata['doc_id']}:{hit.metadata['seq']}",
+        kind=KIND_DOC, source_type=hit.metadata["source_type"], title=hit.metadata["title"],
+        section=hit.metadata.get("section", ""), url=hit.metadata.get("source_url", ""), text=hit.text,
+        score=hit.score,
+    ) for hit in outcome.hits]
 
 
 def merge(item_ev: Evidence, doc_evs: list[Evidence]) -> list[Evidence]:
@@ -132,7 +126,6 @@ def retrieve_evidence(item: dict, question: str, embedding: Embeddings | None = 
                       cfg: RetrievalConfig | None = None) -> Retrieval:
     settings = get_settings()
     cfg = cfg or settings.retrieval
-    db = db or chroma.client()
     embedding = embedding or chroma.default_embedding()
     warnings: list[str] = []
 

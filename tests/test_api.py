@@ -198,7 +198,7 @@ class StreamAndErrorTest(ApiTestBase):
         from vasthorizon.api import services as svc_module
         with mock.patch("vasthorizon.config.get_gms_key", return_value=None), \
                 mock.patch("vasthorizon.store.chroma.collection_count", return_value=0):
-            health = svc_module.check_health(items_loaded=424)
+            health = svc_module.check_health(ITEMS, ref_year=2026)
         codes = {n.code for n in health.notices}
         self.assertEqual(codes, {"missing_key", "index_missing", "docs_index_empty"})
         self.assertFalse(health.ready)

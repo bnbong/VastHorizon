@@ -48,6 +48,7 @@ def resolve_citations(answer: str, evidences: list) -> CitedAnswer:
         return "".join(f"[근거 {n}]" for n in nums)
 
     text = _CITE.sub(rewrite, answer).strip()
+    text = re.sub(r"(\[근거 \d+\])(?:\s*\1)+", r"\1", text)       # '[근거 2] [근거 2]' → '[근거 2]'
     return CitedAnswer(text=text, cited=[by_number[n] for n in sorted(used)], invalid_numbers=sorted(invalid))
 
 

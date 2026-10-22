@@ -12,6 +12,8 @@
 | POST /api/ask/stream                  | 같은 질문을 진행 상태와 함께 SSE로 (F2012)       |
 | GET  /api/history/{item_id}           | 항목별 대화 기록 (F2009)                         |
 | DELETE /api/history/{item_id}         | 항목별 대화 기록 지우기                          |
+| POST /api/explore                     | 자연어 조건으로 항목 찾기 (F2011)                |
+| POST /api/light-letter                | 빛의 편지 — 천체 또는 나이로 (F2010)             |
 
 오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다. (NF2004)
 
@@ -36,9 +38,11 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from vasthorizon.api.schemas import (
-    AnswerResponse, AskRequest, CitedEvidence, ErrorResponse, HealthResponse, HistoryResponse, HistoryTurn,
-    ItemDetail, ItemSummary, SourceRef, StageInfo,
+    AnswerResponse, AskRequest, CitedEvidence, DepartureOut, ErrorResponse, ExploreCardOut, ExploreRequest,
+    ExploreResponse, HealthResponse, HistoryResponse, HistoryTurn, ItemDetail, ItemSummary, LetterRequest,
+    LetterResponse, SourceRef, StageInfo,
 )
+from vasthorizon.features.light_letter import LetterUnavailableError, star_for_age
 from vasthorizon.api.services import ItemNotFoundError, Services, default_services
 from vasthorizon.api.sessions import ConversationBusyError, Ticket
 from vasthorizon.config import PROJECT_ROOT
@@ -62,6 +66,8 @@ NOT_RECORDED_NOTICE = "답변하는 동안 대화 기록이 지워져, 이 답�
 def error_payload(error: Exception) -> tuple[int, ErrorResponse]:
     if isinstance(error, ItemNotFoundError):
         return 404, ErrorResponse(code="item_not_found", message="선택한 항목을 찾을 수 없습니다.")
+    if isinstance(error, LetterUnavailableError):
+        return 422, ErrorResponse(code="letter_unavailable", message=str(error))
     if isinstance(error, ConversationBusyError):
         return 409, ErrorResponse(code="conversation_busy",
                                   message="이 항목의 이전 질문에 아직 답하는 중입니다. 답변이 끝난 뒤 다시 질문해 주세요.")
@@ -135,8 +141,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         return JSONResponse(status_code=status, content=body.model_dump())
 
     # 예상한 오류는 개별 처리기로, 그 밖의 오류는 최상위 처리기로 (500 · 일반 안내 문구)
-    for known in (ItemNotFoundError, ConversationBusyError, MissingApiKeyError, IndexMissingError,
-                  EmbeddingMismatchError):
+    for known in (ItemNotFoundError, ConversationBusyError, LetterUnavailableError, MissingApiKeyError,
+                  IndexMissingError, EmbeddingMismatchError):
         app.add_exception_handler(known, handle_error)
     app.add_exception_handler(Exception, handle_error)
 
@@ -236,6 +242,39 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
     def clear_history(item_id: str, session_id: str = Query(min_length=8, max_length=64)) -> None:
         svc().item(item_id)
         svc().sessions.clear(session_id, item_id)
+
+    @app.post("/api/explore", response_model=ExploreResponse, responses=errors)
+    def explore(req: ExploreRequest) -> ExploreResponse:
+        result = svc().explore(req.query)
+        notice = {"no_match": "조건에 맞는 항목을 찾지 못했습니다. 조건을 조금 넓혀 보세요.",
+                  "failed": "조건과 대조하지 못했습니다. 잠시 뒤 다시 시도해 주세요."}.get(result.status)
+        return ExploreResponse(
+            query=result.query, applied=result.applied, candidates=result.candidates, status=result.status,
+            notice=notice, warnings=result.warnings,
+            cards=[ExploreCardOut(item_id=c.item_id, name=c.name, group=c.group, kind=c.kind, reason=c.reason)
+                   for c in result.cards])
+
+    @app.post("/api/light-letter", response_model=LetterResponse, responses=errors,
+              description="item_id 또는 age 중 하나만 보낸다. age면 나이(광년)와 거리가 가장 가까운 별의 편지")
+    def light_letter(req: LetterRequest) -> LetterResponse:
+        if (req.item_id is None) == (req.age is None):
+            raise LetterUnavailableError("천체(item_id)나 나이(age) 중 하나만 보내 주세요.")
+        services = svc()
+        gap = None
+        if req.age is not None:
+            item, gap = star_for_age(services.items, req.age)
+        else:
+            item = services.item(req.item_id)
+        result = services.letter(item)
+        d = result.departure
+        notice = REJECTED_NOTICE if result.status == "rejected" else (NO_CITATION if not result.cited else None)
+        return LetterResponse(
+            item_id=item["id"], item_name=item["name"], letter=result.letter, status=result.status,
+            cited=[cited_evidence(ev) for ev in result.cited], notice=notice, warnings=result.warnings,
+            matched_age=req.age, age_gap_ly=round(gap, 2) if gap is not None else None,
+            departure=DepartureOut(light_years=d.light_years, light_time=d.light_time, year=d.year,
+                                   year_label=d.year_label, era=d.era,
+                                   year_range=list(d.year_range) if d.year_range else None, summary=d.summary()))
 
     if web_dir and web_dir.exists():                    # 3D 프론트엔드 (9번 작업에서 추가)
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")

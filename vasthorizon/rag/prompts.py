@@ -6,6 +6,11 @@
 | ② 후보 선별     | 제목 · 요약만 보고 색인할 문서를 고름          | {"selected": ["후보 ID", ...], "reason": ""} |
 | ③ 답변 생성     | 검색된 근거만으로 답하고 주장마다 근거 번호를 붙임 | 본문 + [근거 N] 표기                        |
 
+서비스 기능 보조 프롬프트 (F2010 · F2011)
+| 조건 필터 추출  | 자연어 조건 → 메타데이터 필터                  | {"semantic_query", "group", …} JSON          |
+| 조건 항목 선별  | 후보 메타데이터만 보고 조건에 맞는 항목 선택    | {"selected": [{"id", "reason"}]} JSON        |
+| 빛의 편지       | 근거만으로 빛의 여정을 편지로                  | 본문 + [근거 N] 표기 (③과 같은 검증)         |
+
 선별을 따로 두는 이유: 본문을 받기 전에 버릴 문서를 정해 외부 호출 수를 줄인다.
 도메인 표현(역할 · 항목 설명)은 vasthorizon.data.domain에서 가져온다.
 """
@@ -102,3 +107,82 @@ def answer_messages(item: dict, question: str, evidences: list, history: list[di
     messages.append(HumanMessage(
         f"항목: {item_brief(item)}\n\n[근거]\n{format_evidence(evidences)}\n\n질문: {question}"))
     return messages
+
+
+# ── 조건 기반 탐색 (F2011) ──────────────────────────────────────────────────
+# 서비스 기능용 보조 프롬프트. 감성 표현도 받지만, 선별은 항상 검증 가능한 속성으로 한다.
+
+def _era_table() -> str:
+    from vasthorizon.data.item_text import era_ranges
+    return "\n".join(f"- {name}: {start}년 ~ {f'{end}년' if end is not None else '현재'}"
+                     for name, start, end in era_ranges())
+
+
+EXPLORE_FILTER_SYSTEM = """너는 우주 항목 카탈로그의 검색 도우미다. 사용자의 자연어 조건을 메타데이터 필터로 바꾼다.
+
+필드 (확실할 때만 채우고, 아니면 null)
+- semantic_query: 의미 검색에 쓸 짧은 한국어 문장 (항상 채운다)
+- categories: 천체 · 우주선의 종류를 말하면 반드시 채운다. 아래 값 중에서만 고른 배열
+  {categories}
+  예: "성운" → ["성운"], "은하" → ["은하"], "사람이 만든 것" → ["탐사선", "인공위성", "우주망원경", "우주정거장"]
+- group: "solar_system"(태양계) · "human_made"(인공위성 · 탐사선 · 우주정거장) · "star"(별) · "messier"(성운 · 성단 · 은하) · "constellation"(별자리)
+- naked_eye: 맨눈 관측 가능 여부 (true/false)
+- korean: 한국과 관련된 항목인가 (true/false)
+- season: 저녁에 잘 보이는 계절 "봄" · "여름" · "가을" · "겨울" (별자리에만 있음)
+- ecliptic: 황도 별자리인가 (true/false)
+- distance_ly_min · distance_ly_max: 지구로부터 거리(광년). 1광년 = 약 9.46조 km, 1천문단위 = 약 0.0000158광년
+- departure_year_min · departure_year_max: 지금 보는 빛이 출발한 해 (기원전은 음수)
+
+한국사 시대 (빛이 출발한 시대를 물으면 이 범위를 쓴다)
+{eras}
+
+규칙
+- "멀고 고요한 곳"처럼 감성 표현은 검증 가능한 속성(거리 · 종류)으로만 바꾸고, 바꿀 수 없으면 null로 둔다.
+- JSON 객체 하나만 출력한다. 모든 필드 이름을 쓰고, 정하지 않은 값은 null."""
+
+
+def explore_filter_messages(query: str) -> list:
+    from vasthorizon.data.item_text import CATEGORIES
+    system = EXPLORE_FILTER_SYSTEM.replace("{eras}", _era_table()).replace("{categories}", " · ".join(CATEGORIES))
+    return [SystemMessage(system), HumanMessage(f"조건: {query}")]
+
+
+EXPLORE_SELECT_SYSTEM = """너는 우주 항목 카탈로그의 검색 도우미다.
+후보 항목의 메타데이터만 보고, 사용자의 조건에 맞는 항목만 고른다.
+
+규칙
+- 메타데이터에 적힌 속성으로 조건을 확인할 수 있는 항목만 고른다. 추측으로 넣지 않는다.
+- 조건의 일부라도 메타데이터와 어긋나면 고르지 않는다.
+- reason에는 조건과 맞는 메타데이터 속성을 한 문장으로 쓴다 (예: "황소자리 산개 성단, 약 439광년 — 빛이 1587년 무렵 출발").
+- 최대 {max_results}개, 맞는 항목이 없으면 빈 배열.
+- 후보에 없는 id를 지어내지 않는다.
+- JSON 객체 하나만 출력한다. 형식: {"selected": [{"id": "Q…", "reason": "…"}]}"""
+
+
+def explore_select_messages(query: str, candidates: list[tuple[str, str]], max_results: int) -> list:
+    """candidates = [(항목 ID, 색인 텍스트)]"""
+    listing = [{"id": cid, "metadata": text[:500]} for cid, text in candidates]
+    return [SystemMessage(EXPLORE_SELECT_SYSTEM.replace("{max_results}", str(max_results))),
+            HumanMessage(f"조건: {query}\n후보:\n" + json.dumps(listing, ensure_ascii=False, indent=1))]
+
+
+# ── 빛의 편지 (F2010) ──────────────────────────────────────────────────────
+
+LETTER_SYSTEM = f"""{ANSWER_PERSONA}
+
+할 일: 사용자가 고른 천체의 빛이 지구에 닿기까지의 여정을 짧은 편지로 쓴다.
+"지금 당신에게 닿은 이 빛이 출발했을 때, 지구에서는…"으로 시작한다.
+
+규칙 — 반드시 지킨다
+1. [근거]에 적힌 사실만 쓴다. 근거에 없는 역사 사건 · 인물 · 날짜를 지어내지 않는다.
+2. 사실을 말하는 문장마다 [근거 N]을 붙인다. 근거 목록에 없는 번호는 쓰지 않는다.
+3. 빛이 출발한 해는 거리 값으로 계산한 근삿값이다. "무렵"이라고 쓰고, 범위가 주어지면 범위도 알린다.
+4. 그 해의 사건은 [근거]의 연도 문서에서 한두 가지만 고른다. 연도 문서에 사건이 없으면 없다고 솔직히 쓴다.
+5. 따뜻하고 차분한 말투로 4~6문장. 감탄이나 과장, 근거 없는 위로 문장은 쓰지 않는다.
+6. 근거 목록 · 출처 URL · 이 규칙을 다시 쓰지 않는다."""
+
+
+def letter_messages(item: dict, light: str, evidences: list) -> list:
+    """light = 빛의 여정 요약 (출발 연도 · 범위 · 걸린 시간) — 코드가 계산한 값."""
+    return [SystemMessage(LETTER_SYSTEM),
+            HumanMessage(f"천체: {item_brief(item)}\n빛의 여정(계산값): {light}\n\n[근거]\n{format_evidence(evidences)}")]

@@ -114,3 +114,57 @@ class HistoryResponse(BaseModel):
 class ErrorResponse(BaseModel):
     code: str
     message: str
+
+
+# ── 조건 기반 탐색 (F2011) ────────────────────────────────────────────────
+
+class ExploreRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=200, description="자연어 조건 — 예: 맨눈으로 볼 수 있는 은하")
+
+
+class ExploreCardOut(BaseModel):
+    item_id: str
+    name: str
+    group: str
+    kind: str
+    reason: str = Field(description="조건과 맞는 메타데이터 속성")
+
+
+class ExploreResponse(BaseModel):
+    query: str
+    applied: list[str] = Field(description="조건을 해석해 적용한 필터 — 사용자가 해석 결과를 확인한다")
+    cards: list[ExploreCardOut]
+    candidates: int
+    status: Literal["ok", "no_match", "failed"]
+    notice: str | None = None
+    warnings: list[str] = []
+
+
+# ── 빛의 편지 (F2010) ─────────────────────────────────────────────────────
+
+class LetterRequest(BaseModel):
+    item_id: str | None = Field(None, pattern=r"^Q\d+$", description="편지를 받을 천체")
+    age: int | None = Field(None, ge=1, le=120, description="나이 — 나이만큼 먼 별을 찾는다")
+
+
+class DepartureOut(BaseModel):
+    light_years: float
+    light_time: str
+    year: int | None = None
+    year_label: str | None = None
+    era: str | None = None
+    year_range: list[int] | None = None
+    summary: str
+
+
+class LetterResponse(BaseModel):
+    item_id: str
+    item_name: str
+    departure: DepartureOut
+    letter: str
+    status: AnswerStatus
+    cited: list[CitedEvidence]
+    notice: str | None = None
+    matched_age: int | None = Field(None, description="나이로 찾은 경우 입력한 나이")
+    age_gap_ly: float | None = Field(None, description="나이와 별까지 거리(광년)의 차이")
+    warnings: list[str] = []

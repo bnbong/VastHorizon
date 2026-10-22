@@ -76,17 +76,29 @@ def year_text(year: int) -> str:
     return f"기원전 {-year}년" if year < 0 else f"{year}년"
 
 
+# 한국사 시대 — (시작 연도, 이름), 최근 순. 색인 텍스트와 조건 탐색 프롬프트가 같은 표를 쓴다.
+KOREAN_ERAS = [
+    (1948, "대한민국 시대"), (1945, "광복 직후"), (1910, "일제 강점기"), (1897, "대한제국 시대"),
+    (1392, "조선 시대"), (918, "고려 시대"), (676, "통일 신라 시대"), (-57, "삼국 시대"),
+    (-2333, "고조선 시대"),
+]
+
+
 def korean_era(year: int) -> str:
     """빛이 출발한 해의 한국사 시대 — '조선 시대에 출발한 빛' 같은 조건 검색용."""
-    eras = [
-        (1948, "대한민국 시대"), (1945, "광복 직후"), (1910, "일제 강점기"), (1897, "대한제국 시대"),
-        (1392, "조선 시대"), (918, "고려 시대"), (676, "통일 신라 시대"), (-57, "삼국 시대"),
-        (-2333, "고조선 시대"),
-    ]
-    for start, name in eras:
+    for start, name in KOREAN_ERAS:
         if year >= start:
             return name
     return "인류 문명 이전"
+
+
+def era_ranges() -> list[tuple[str, int, int | None]]:
+    """(시대 이름, 시작 연도, 끝 연도 — 지금까지면 None)."""
+    ranges, end = [], None
+    for start, name in KOREAN_ERAS:
+        ranges.append((name, start, end))
+        end = start - 1
+    return ranges
 
 
 def distance_text(dist: dict) -> str:
@@ -227,6 +239,54 @@ def _attr_value(value) -> str:
     return str(value)
 
 
+# ── 정규화 범주 (조건 탐색 필터용) ────────────────────────────────────────────
+# Wikidata의 세부 종류는 "LINER" · "적외선원" · "우주선"처럼 제각각이라, 조건 탐색에서
+# "은하" · "성운" · "탐사선" 같은 말로 거를 수 있게 범주 하나로 모은다.
+
+CATEGORIES = ("은하", "성운", "성단", "별", "별자리", "행성", "왜행성", "위성", "소천체",
+              "탐사선", "인공위성", "우주망원경", "우주정거장", "기타")
+_GALAXY = ("은하", "LINER")
+_NEBULA = ("성운", "전리수소영역", "초신성잔해")
+_PROBE = ("탐사선", "궤도선", "착륙선", "샘플 리턴")
+
+
+def _deep_sky_category(text: str) -> str | None:
+    if any(k in text for k in _GALAXY):
+        return "은하"
+    if any(k in text for k in _NEBULA):
+        return "성운"
+    if "성단" in text:
+        return "성단"
+    return None
+
+
+def item_category(item: dict) -> str:
+    group, kind, attrs = item["group"], item.get("kind") or "", item.get("attrs", {})
+    if group == "messier":      # 종류 → 분류 목록 → 이름 순서로 본다 (예: 보데 은하는 종류가 '적외선원')
+        return (_deep_sky_category(kind) or _deep_sky_category(attrs.get("분류", ""))
+                or _deep_sky_category(item["name"]) or "기타")
+    if group == "star":
+        return "별"
+    if group == "constellation":
+        return "별자리"
+    if group == "solar_system":
+        if kind == "항성":
+            return "별"
+        if kind in ("행성", "왜행성", "위성"):
+            return kind
+        return "소천체"                      # 소행성 · 혜성 · 카이퍼대 천체
+    labels = f"{kind} {attrs.get('분류', '')} {item['name']}"     # 분류가 비면 이름도 본다 (국제우주정거장)
+    for category in ("우주망원경", "우주정거장"):
+        if category in labels:
+            return category
+    if any(k in labels for k in _PROBE):
+        return "탐사선"
+    if kind == "우주선":                    # 분류 정보가 없는 항목 — 현재 위치로 판단한다
+        where = attrs.get("현재 위치", "")
+        return "인공위성" if where.startswith(("지구 궤도", "대기권 재진입")) else "탐사선"
+    return "인공위성"
+
+
 # ── 색인 텍스트 · 메타데이터 ────────────────────────────────────────────────
 
 def build_item_text(item: dict, ref_year: int) -> str:
@@ -267,6 +327,7 @@ def build_item_metadata(item: dict, ref_year: int, text: str) -> dict:
         "name": item["name"],
         "name_en": item.get("name_en") or "",
         "kind": item.get("kind") or "",
+        "category": item_category(item),
         "wiki_title": item["wiki_title"],
         "title": f"{item['name']} · {SOURCE_TYPE}",
         "source_url": wikidata,

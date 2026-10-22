@@ -203,6 +203,8 @@ uvicorn vasthorizon.api.app:app --port 8000
 | `POST /api/ask` | 질문 → 근거 기반 답변 |
 | `POST /api/ask/stream` | 같은 질문을 진행 상태와 함께 (Server-Sent Events) |
 | `GET` · `DELETE /api/history/{id}?session_id=` | 항목별 대화 기록 조회 · 삭제 |
+| `POST /api/explore` | 자연어 조건으로 항목 찾기 — 적용한 필터와 조건에 맞는 항목 카드 |
+| `POST /api/light-letter` | 빛의 편지 — `{"item_id": "Q13423"}` 또는 `{"age": 25}` (나이만큼 먼 별) |
 
 ```bash
 curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: application/json" \
@@ -226,6 +228,18 @@ curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: applicati
 | 다른 대화 | 서로 기다리지 않고 독립 처리 |
 | 실패한 질문 | 처리 중 표시를 풀어 다음 질문이 바로 가능 |
 | 처리 중 기록 삭제 | 그 질문의 답변은 돌려주되 `recorded: false` — 지운 기록에 다시 섞이지 않음. 삭제 직후 새 질문 가능 |
+
+### Chroma 저장소 구조와 이전
+
+색인은 컬렉션마다 다른 저장소에 둔다 — `data/chroma/cosmos_items/`, `data/chroma/cosmos_docs/`.
+한 저장소에 두 컬렉션을 함께 두면 로컬 Chroma에서 검색 오류가 간헐적으로 생겼기 때문이다.
+
+예전 구조(`data/chroma/chroma.sqlite3`)라면 한 번 이전한다. 재임베딩 없이 벡터를 그대로 옮긴다.
+
+```bash
+python -m scripts.migrate_chroma --dry-run   # 옮길 컬렉션 · 건수 확인
+python -m scripts.migrate_chroma             # 이전 — 기존 저장소는 data/chroma_legacy_<시각>/ 에 보관
+```
 
 ---
 

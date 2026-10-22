@@ -234,6 +234,10 @@ class Collector:
         linked.failures = failures
         return linked
 
+    def fetch_wiki(self, title: str, failures: list[StepFailure]) -> Document | None:
+        """제목으로 위키 문서 하나를 받는다 (캐시 우선). 항목에 연결하지 않는다 — 빛의 편지 연도 문서 등."""
+        return self._wiki_by_title(title, "문서", failures)
+
     def unlink(self, item_id: str, doc_id: str) -> bool:
         """문서 연결을 명시적으로 푼다. 다음 색인 동기화에서 이 문서의 청크가 지워진다."""
         manifest = self.cache.get_manifest(item_id)

@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None, embedding=None, db=None) -> int:
     except MissingApiKeyError as e:
         print(f"[FAIL] {e} — 색인을 변경하지 않습니다.")
         return 1
-    db = db or chroma.client()
+    db = chroma.db_for(name, db)
 
     # 3. 색인
     try:

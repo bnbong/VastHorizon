@@ -72,6 +72,34 @@ def retry_message(issue: str) -> HumanMessage:
         f"근거로 답할 수 없으면 \"{NOT_FOUND_SENTENCE}\"로 시작하라.")
 
 
+def generate_validated(model: BaseChatModel, messages: list, evidences: list[Evidence]) -> dict:
+    """답변 생성 + 인용 검증 + 1회 재생성 (모듈 설명의 '답변 검증 정책').
+
+    질의응답과 특화 기능(빛의 편지 등)이 같은 정책을 쓴다.
+    돌려주는 값: answer · status · cited · attempts · issues
+    """
+    issues: list[str] = []
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        reply = model.invoke(messages)
+        cited = resolve_citations(reply.content, evidences)
+        not_found = is_not_found(cited.text)
+        issue = citation_issue(cited, not_found)
+        if issue is None:
+            return {"answer": cited.text, "status": "not_found" if not_found else "cited",
+                    "cited": cited.cited, "attempts": attempt, "issues": issues}
+        issues.append(issue)
+        messages = [*messages, AIMessage(reply.content), retry_message(issue)]
+    # 재생성도 규칙을 어겼다 — 근거 없는 본문을 내보내지 않는다
+    return {"answer": REJECTED_ANSWER, "status": "rejected", "cited": [], "attempts": MAX_ATTEMPTS, "issues": issues}
+
+
+def default_chat_model(llm: BaseChatModel | None) -> BaseChatModel:
+    if llm is not None:
+        return llm
+    from vasthorizon.llm import chat_model
+    return chat_model()
+
+
 def build_graph(llm: BaseChatModel | None = None, embedding: Embeddings | None = None,
                 db: chromadb.ClientAPI | None = None):
     """llm · embedding · db를 넘기지 않으면 실행할 때 GMS · 기본 Chroma를 쓴다 (테스트는 가짜를 넣는다)."""
@@ -83,25 +111,8 @@ def build_graph(llm: BaseChatModel | None = None, embedding: Embeddings | None =
                 "warnings": state.get("warnings", []) + found.warnings}
 
     def generate(state: RagState) -> dict:
-        model = llm
-        if model is None:
-            from vasthorizon.llm import chat_model
-            model = chat_model()
         messages = answer_messages(state["item"], state["question"], state["evidences"], state.get("history"))
-        issues: list[str] = []
-        for attempt in range(1, MAX_ATTEMPTS + 1):
-            reply = model.invoke(messages)
-            cited = resolve_citations(reply.content, state["evidences"])
-            not_found = is_not_found(cited.text)
-            issue = citation_issue(cited, not_found)
-            if issue is None:
-                return {"answer": cited.text, "status": "not_found" if not_found else "cited",
-                        "cited": cited.cited, "attempts": attempt, "issues": issues}
-            issues.append(issue)
-            messages = [*messages, AIMessage(reply.content), retry_message(issue)]
-        # 재생성도 규칙을 어겼다 — 근거 없는 본문을 내보내지 않는다
-        return {"answer": REJECTED_ANSWER, "status": "rejected", "cited": [],
-                "attempts": MAX_ATTEMPTS, "issues": issues}
+        return generate_validated(default_chat_model(llm), messages, state["evidences"])
 
     graph = StateGraph(RagState)
     graph.add_node("retrieve", retrieve)

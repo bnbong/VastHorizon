@@ -26,6 +26,7 @@ from vasthorizon.data.items.common import LY_KM
 from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.store import chroma, item_index
 from vasthorizon.store.item_index import IndexingError, rebuild_items, sync_items
+from vasthorizon.store.search import search
 
 REF_YEAR = 2026
 
@@ -221,8 +222,8 @@ class RebuildTest(IsolatedChromaTest):
         self.assertIn(self.name, names)
         self.assertNotIn(chroma.staging_name(self.name), names)
         self.assertEqual(sorted(self.db.get_collection(self.name).get(include=[])["ids"]), self.before)
-        store = chroma.vector_store(self.name, FakeEmbedding(), db=self.db)
-        self.assertTrue(store.similarity_search("항목", k=1))           # 계속 조회할 수 있다
+        # 계속 조회할 수 있다 — 서비스가 쓰는 검증된 검색으로 확인 (store/search.py)
+        self.assertTrue(search(self.name, "항목", FakeEmbedding(), self.db, k=1).hits)
 
     def test_first_embedding_failure_keeps_active(self):
         with self.assertRaises(RuntimeError):
