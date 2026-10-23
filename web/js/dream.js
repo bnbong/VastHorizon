@@ -1,147 +1,20 @@
-// 몽환적인 표현 — 이미지 파일 없이 색감 · 질감을 코드로 그린다.
+// 몽환적인 표현 — 이미지 파일 없이 색감 · 질감을 코드로 그린다. (알아간 천체의 표식은 scene.js knownMark — 살구색 채운 원)
 //
 // | 대상            | 느낌                                                         | 구현                         |
 // |-----------------|--------------------------------------------------------------|------------------------------|
-// | 발견한 천체     | 네온 분필 스펙트럼 띠가 천체를 감싸고 흐른다 (분홍 · 주황 · 노랑 · 연두 · 파랑) | ChalkMarks — 캔버스 무늬 + 회전 셰이더 |
-// | 그 둘레         | 청록 → 보라 → 분홍 성운 빛무리와 반짝이                         | 같은 층의 빛무리 무늬        |
 // | 발견하는 순간   | 그 천체가 환하게 켜진다 — 빛이 차오르고 빛무리 · 빛살이 번진다   | igniteBurst — 화면 위 2D 캔버스 |
-// | 내 세상의 영역  | 내가 알게 된 천체 둘레의 청록 · 보라 · 분홍 성운 (닿은 가장 먼 곳은 옅은 테두리만) | DreamSphere — 셰이더 구 |
+// | 내 세상의 영역  | 내가 알게 된 천체 둘레의 청록 · 흐린 보라 · 살구 성운 (닿은 가장 먼 곳은 옅은 테두리만) | DreamSphere — 셰이더 구 |
 
 import { THREE } from "./scene.js";
 
-const NEON = ["#ff4fa8", "#ff9f43", "#ffe066", "#7dffb3", "#3d7bff", "#a77bff"];
-const DREAM = ["#6fd8e8", "#7d8cff", "#a77bff", "#ff8fd2"];
+// 네온 대신 시안 팔레트의 파스텔 — 살구 · 장밋빛 · 흐린 보라 · 자주 · 청록 · 옅은 청록 (web/tokens/colors.css)
+const PASTEL = ["#f3dad5", "#e7bccb", "#b9a0cf", "#9970af", "#63a9c9", "#a9d6e8"];
+const DREAM = ["#63a9c9", "#8a91cf", "#b9a0cf", "#f3dad5"];
 
 // 결정적인 난수 — 같은 무늬가 매번 같게
 function rng(seed) {
   let s = seed >>> 0;
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-}
-
-// 분필 오로라 — 가운데는 비고(천체 자리), 둘레를 네온 획이 감싼다. 획은 각도에 따라 스펙트럼 색이 바뀐다
-let chalkTex;
-export function chalkTexture() {
-  if (chalkTex) return chalkTex;
-  const S = 256, c = document.createElement("canvas");
-  c.width = c.height = S;
-  const g = c.getContext("2d"), r = rng(7);
-  g.globalCompositeOperation = "lighter";
-  g.lineCap = "round";
-  for (let i = 0; i < 260; i++) {
-    const a = r() * Math.PI * 2, len = 0.25 + r() * 0.6;
-    const rad = S * (0.2 + 0.17 * r() + 0.06 * Math.sin(a * 2));
-    g.strokeStyle = NEON[Math.floor(((a / (Math.PI * 2)) * NEON.length + r() * 0.8)) % NEON.length];
-    g.globalAlpha = 0.18 + r() * 0.42;
-    g.lineWidth = 1 + r() * 3.4;
-    g.beginPath();
-    g.arc(S / 2, S / 2, rad, a, a + len);
-    g.stroke();
-  }
-  for (let i = 0; i < 18; i++) {                         // 바깥으로 튀는 분필 빛줄기
-    const a = r() * Math.PI * 2, r0 = S * 0.3, r1 = S * (0.38 + r() * 0.1);
-    g.strokeStyle = NEON[i % NEON.length];
-    g.globalAlpha = 0.35;
-    g.lineWidth = 1;
-    g.beginPath();
-    g.moveTo(S / 2 + Math.cos(a) * r0, S / 2 + Math.sin(a) * r0);
-    g.lineTo(S / 2 + Math.cos(a) * r1, S / 2 + Math.sin(a) * r1);
-    g.stroke();
-  }
-  for (let i = 0; i < 160; i++) {                        // 분필 가루
-    const a = r() * Math.PI * 2, d = S * (0.15 + r() * 0.33);
-    g.fillStyle = NEON[Math.floor(r() * NEON.length)];
-    g.globalAlpha = 0.25 + r() * 0.5;
-    g.fillRect(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, 1.4, 1.4);
-  }
-  chalkTex = new THREE.CanvasTexture(c);
-  chalkTex.colorSpace = THREE.SRGBColorSpace;
-  return chalkTex;
-}
-
-// 성운 빛무리 — 청록 → 보라 → 분홍, 흰 반짝이
-let haloTex;
-export function haloTexture() {
-  if (haloTex) return haloTex;
-  const S = 256, c = document.createElement("canvas");
-  c.width = c.height = S;
-  const g = c.getContext("2d"), r = rng(11);
-  const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-  grad.addColorStop(0, "rgba(255,179,220,.55)");
-  grad.addColorStop(0.35, "rgba(167,123,255,.38)");
-  grad.addColorStop(0.65, "rgba(111,216,232,.16)");
-  grad.addColorStop(1, "rgba(111,216,232,0)");
-  g.fillStyle = grad;
-  g.fillRect(0, 0, S, S);
-  for (let i = 0; i < 70; i++) {
-    const a = r() * Math.PI * 2, d = S * 0.45 * Math.sqrt(r());
-    g.fillStyle = `rgba(255,255,255,${0.3 + r() * 0.6})`;
-    g.fillRect(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, r() < 0.15 ? 2 : 1, r() < 0.15 ? 2 : 1);
-  }
-  haloTex = new THREE.CanvasTexture(c);
-  haloTex.colorSpace = THREE.SRGBColorSpace;
-  return haloTex;
-}
-
-const MARK_VERT = /* glsl */ `
-  attribute float seed;
-  uniform float uSize, uPixel;
-  varying float vSeed;
-  void main() {
-    vSeed = seed;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = uSize * uPixel;
-  }`;
-
-const MARK_FRAG = /* glsl */ `
-  uniform sampler2D uMap;
-  uniform float uTime, uSpin, uAlpha;
-  varying float vSeed;
-  void main() {
-    vec2 q = gl_PointCoord - 0.5;
-    float a = uTime * uSpin * (vSeed > 0.5 ? 1.0 : -0.8) + vSeed * 6.2831;
-    vec2 p = mat2(cos(a), -sin(a), sin(a), cos(a)) * q + 0.5;
-    vec4 c = texture2D(uMap, p);
-    float breathe = 0.85 + 0.15 * sin(uTime * 1.3 + vSeed * 20.0);
-    gl_FragColor = vec4(c.rgb * c.a * uAlpha * breathe, c.a * uAlpha);
-  }`;
-
-// 발견한 천체 표시 — 성운 빛무리 + 분필 오로라 (화면 크기 고정, 천천히 돈다)
-export class ChalkMarks {
-  constructor({ size = 46, haloSize = 120, alpha = 1 } = {}) {
-    this.group = new THREE.Group();
-    const pixel = Math.min(window.devicePixelRatio || 1, 2);
-    const layer = (map, sz, spin, a) => {
-      const mat = new THREE.ShaderMaterial({
-        uniforms: { uMap: { value: map }, uSize: { value: sz }, uPixel: { value: pixel }, uTime: { value: 0 }, uSpin: { value: spin }, uAlpha: { value: a } },
-        vertexShader: MARK_VERT, fragmentShader: MARK_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-      });
-      const pts = new THREE.Points(new THREE.BufferGeometry(), mat);
-      pts.frustumCulled = false;
-      pts.renderOrder = 5;
-      this.group.add(pts);
-      return pts;
-    };
-    this.halo = layer(haloTexture(), haloSize, 0.05, 0.55 * alpha);
-    this.chalk = layer(chalkTexture(), size, 0.35, alpha);
-  }
-
-  // positions: [x, y, z, x, y, z, …]
-  setPositions(positions) {
-    const n = positions.length / 3;
-    const seeds = Float32Array.from({ length: n }, (_, i) => ((i * 0.618034) % 1));
-    for (const pts of [this.halo, this.chalk]) {
-      pts.geometry.dispose();
-      pts.geometry = new THREE.BufferGeometry()
-        .setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
-        .setAttribute("seed", new THREE.Float32BufferAttribute(seeds, 1));
-    }
-    this.count = n;
-  }
-
-  update(t) {
-    this.halo.material.uniforms.uTime.value = t;
-    this.chalk.material.uniforms.uTime.value = t;
-  }
 }
 
 // 내 세상의 범위 — 그라데이션 성운 구. 가장자리(시선과 비스듬한 곳)가 밝고, 안은 은은하다. 안쪽 반짝이는 구와 함께 커진다
@@ -167,7 +40,7 @@ export class DreamSphere {
         void main() {
           float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), 2.4);
           float k = clamp(0.5 + 0.5 * vLocal.y + 0.18 * sin(vLocal.x * 3.0 + uTime * 0.25) + 0.12 * sin(vLocal.z * 5.0 - uTime * 0.18), 0.0, 1.0);
-          vec3 teal = vec3(0.44, 0.85, 0.91), blue = vec3(0.49, 0.55, 1.0), violet = vec3(0.65, 0.48, 1.0), pink = vec3(1.0, 0.56, 0.82);
+          vec3 teal = vec3(0.39, 0.66, 0.79), blue = vec3(0.54, 0.57, 0.81), violet = vec3(0.73, 0.63, 0.81), pink = vec3(0.95, 0.85, 0.84);
           vec3 c = k < 0.33 ? mix(teal, blue, k / 0.33) : k < 0.66 ? mix(blue, violet, (k - 0.33) / 0.33) : mix(violet, pink, (k - 0.66) / 0.34);
           float a = (0.05 + 0.6 * fres) * uStrength;
           gl_FragColor = vec4(c * a, a);
@@ -205,8 +78,8 @@ export function cometBurst(x, y, { reducedMotion = false } = {}) {
   g.scale(dpr, dpr);
   const r = rng(Math.floor(x * 31 + y * 17));
   const from = { x: x - Math.min(520, innerWidth * 0.4), y: y - Math.min(380, innerHeight * 0.4) };
-  const strokes = Array.from({ length: 26 }, () => ({ off: (r() - 0.5) * 34, w: 1 + r() * 3.5, col: ["#7d8cff", "#3d7bff", "#ff9f43", "#ffe066", "#ff4fa8", "#ffffff"][Math.floor(r() * 6)], lag: r() * 0.25 }));
-  const sparks = Array.from({ length: 46 }, () => ({ a: r() * Math.PI * 2, v: 40 + r() * 140, s: 1 + r() * 2.6, col: NEON[Math.floor(r() * NEON.length)] }));
+  const strokes = Array.from({ length: 26 }, () => ({ off: (r() - 0.5) * 34, w: 1 + r() * 3.5, col: ["#8a91cf", "#63a9c9", "#f3dad5", "#e7bccb", "#b9a0cf", "#ffffff"][Math.floor(r() * 6)], lag: r() * 0.25 }));
+  const sparks = Array.from({ length: 46 }, () => ({ a: r() * Math.PI * 2, v: 40 + r() * 140, s: 1 + r() * 2.6, col: PASTEL[Math.floor(r() * PASTEL.length)] }));
   const dur = reducedMotion ? 600 : 1400, t0 = performance.now();
   const nx = -(y - from.y), ny = x - from.x, nl = Math.hypot(nx, ny) || 1;
   const frame = (now) => {
@@ -238,8 +111,8 @@ export function cometBurst(x, y, { reducedMotion = false } = {}) {
     }
     if (k > 0) {
       const glow = g.createRadialGradient(x, y, 0, x, y, 70);
-      glow.addColorStop(0, `rgba(255,236,250,${0.8 * (1 - k)})`);
-      glow.addColorStop(1, "rgba(167,123,255,0)");
+      glow.addColorStop(0, `rgba(255,240,236,${0.8 * (1 - k)})`);
+      glow.addColorStop(1, "rgba(185,160,207,0)");
       g.globalAlpha = 1;
       g.fillStyle = glow;
       g.fillRect(x - 70, y - 70, 140, 140);
@@ -274,9 +147,9 @@ export function igniteBurst(x, y, { reducedMotion = false } = {}) {
     const R = 26 + 120 * (reducedMotion ? 0.5 : rise) ;
     const glow = g.createRadialGradient(x, y, 0, x, y, R);
     glow.addColorStop(0, `rgba(255,255,255,${0.95 * light})`);
-    glow.addColorStop(0.18, `rgba(255,214,240,${0.7 * light})`);
-    glow.addColorStop(0.5, `rgba(167,123,255,${0.32 * light})`);
-    glow.addColorStop(1, "rgba(111,216,232,0)");
+    glow.addColorStop(0.18, `rgba(243,218,213,${0.7 * light})`);
+    glow.addColorStop(0.5, `rgba(185,160,207,${0.32 * light})`);
+    glow.addColorStop(1, "rgba(99,169,201,0)");
     g.globalAlpha = 1;
     g.fillStyle = glow;
     g.fillRect(x - R, y - R, R * 2, R * 2);
@@ -284,8 +157,8 @@ export function igniteBurst(x, y, { reducedMotion = false } = {}) {
       for (const ray of rays) {                               // 은은한 빛살
         const len = ray.len * rise;
         const grad = g.createLinearGradient(x, y, x + Math.cos(ray.a) * len, y + Math.sin(ray.a) * len);
-        grad.addColorStop(0, `rgba(255,236,250,${0.5 * light})`);
-        grad.addColorStop(1, "rgba(255,236,250,0)");
+        grad.addColorStop(0, `rgba(255,240,236,${0.5 * light})`);
+        grad.addColorStop(1, "rgba(255,240,236,0)");
         g.strokeStyle = grad;
         g.lineWidth = 1.2;
         g.beginPath();

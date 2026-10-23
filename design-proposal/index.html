@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>VastHorizon — 디자인 시안</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="board">
+    <header class="board-head">
+      <div class="board-mark"><span class="mark-star">✦</span> VASTHORIZON <span class="slash">/</span> DESIGN STUDY</div>
+      <span class="board-date">CONCEPT 01 · 2026.10</span>
+    </header>
+
+    <section class="intro" aria-labelledby="intro-title">
+      <div>
+        <p class="eyebrow">A quieter universe, closer to you</p>
+        <h1 id="intro-title">세상이 좁아 보이는 날,<br><em>빛 하나에서<span class="mobile-break"><br></span> 다시 시작합니다.</em></h1>
+      </div>
+      <p class="intro-copy">첨부해 주신 보랏빛 밤하늘과 살구색 여백에서 출발한 메인 화면 시안입니다. 프롤로그 뒤에 이어지는 발견, 읽기, 기록의 세 장면을 볼 수 있습니다.</p>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="시안 장면">
+      <button class="tab is-active" id="tab-discover" role="tab" aria-selected="true" aria-controls="panel-discover" data-panel="discover"><span>01</span> 첫 하늘</button>
+      <button class="tab" id="tab-read" role="tab" aria-selected="false" aria-controls="panel-read" data-panel="read"><span>02</span> 빛을 읽다</button>
+      <button class="tab" id="tab-collect" role="tab" aria-selected="false" aria-controls="panel-collect" data-panel="collect"><span>03</span> 내 세계</button>
+      <span class="tabs-note">클릭해서 장면을 바꿔 보세요</span>
+    </div>
+
+    <div class="mockup" id="mockup">
+      <section class="app-panel is-active" id="panel-discover" role="tabpanel" aria-labelledby="tab-discover">
+        <div class="sky-surface starfield">
+          <div class="mock-nav"><div class="logo">Vast<span>Horizon</span><small>당신의 세상은 생각보다 넓다</small></div><div class="nav-links"><span>오늘의 하늘</span><span>내 세계</span><span class="nav-round" aria-hidden="true">☰</span></div></div>
+          <div class="discover-copy">
+            <p class="kicker"><span class="kicker-line"></span> 오늘 밤, 여기서 보이는 빛</p>
+            <h2>당신이 아직<br>만나지 못한 빛이<br><i>이토록 많아요.</i></h2>
+            <p>마음이 머무는 곳에서 시작하세요.<br>별 하나를 알아갈 때, 세계도 조금 넓어집니다.</p>
+            <button class="primary-button" type="button" data-go="read">첫 번째 빛 만나기 <span>↗</span></button>
+          </div>
+          <div class="sky-orbit orbit-one"></div><div class="sky-orbit orbit-two"></div>
+          <button class="sky-point point-moon" type="button" data-go="read"><span class="point"></span><span class="point-label">달 <small>384,400 km</small></span></button>
+          <button class="sky-point point-vega" type="button" data-go="read"><span class="point"></span><span class="point-label">베가 <small>약 25 광년</small></span></button>
+          <button class="sky-point point-m31" type="button" data-go="read"><span class="point"></span><span class="point-label">안드로메다 은하 <small>약 250만 광년</small></span></button>
+          <div class="little-hint">하늘의 빛을 눌러 살펴보세요 <span>↗</span></div>
+          <div class="bottom-ribbon"><div class="ribbon-left"><small>내가 지금까지 알아간 거리</small><strong>4.7 <span>km</span></strong><em>지평선에서 시작하는 중</em></div><div class="ribbon-right">아직 모르는 빛은<br>가능성으로 남겨 둡니다.<span class="ribbon-arrow">↗</span></div></div>
+        </div>
+      </section>
+
+      <section class="app-panel" id="panel-read" role="tabpanel" aria-labelledby="tab-read" hidden>
+        <div class="read-surface starfield">
+          <div class="mock-nav"><div class="logo">Vast<span>Horizon</span><small>빛을 읽는 시간</small></div><div class="nav-links"><span>오늘의 하늘</span><span>내 세계</span><span class="nav-round" aria-hidden="true">☰</span></div></div>
+          <div class="read-context"><span class="thin-rule"></span> 오늘 당신이 고른 빛 <b>01 / 03</b></div>
+          <div class="galaxy-view"><div class="galaxy-caption"><span class="galaxy-cross">✳</span><span>ANDROMEDA<br>GALAXY</span></div><div class="galaxy-line"></div><div class="galaxy-circle"></div></div>
+          <article class="reading-card">
+            <p class="card-overline">멀리서 도착한 이야기 <span>01</span></p>
+            <h2>안드로메다 은하</h2>
+            <div class="card-meta">M31 <span>·</span> 우리 은하의 이웃</div>
+            <p class="hero-fact">지금 눈에 닿은 빛은<br><em>약 250만 년</em>을 건너왔어요.</p>
+            <p class="fact-detail">이 은하까지의 거리가 약 250만 광년이기 때문입니다. 오늘 밤 보이는 것은 아주 오래전 출발한 빛입니다.</p>
+            <div class="evidence"><span>근거 있는 이야기</span><a href="https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-31/" target="_blank" rel="noopener noreferrer">NASA · Messier 31 ↗</a></div>
+            <div class="card-actions"><button class="save-button" type="button" data-go="collect">이 빛을 내 세계에 담기 <span>＋</span></button><span>궁금한 것을 물어보세요 ↗</span></div>
+          </article>
+          <div class="read-foot">하나의 사실에서 시작해, 더 궁금한 곳으로 나아갑니다.</div>
+        </div>
+      </section>
+
+      <section class="app-panel" id="panel-collect" role="tabpanel" aria-labelledby="tab-collect" hidden>
+        <div class="collect-surface starfield">
+          <div class="mock-nav"><div class="logo">Vast<span>Horizon</span><small>내 세계</small></div><div class="nav-links"><span>오늘의 하늘</span><span>내 세계</span><span class="nav-round" aria-hidden="true">☰</span></div></div>
+          <div class="collect-heading"><p class="kicker"><span class="kicker-line"></span> 오늘 새로 알아간 빛 1</p><h2>내 세계는 오늘,<br><em>여기까지 닿았습니다.</em></h2></div>
+          <div class="map-legend" aria-label="지도 표시 설명"><span><i class="legend-known" aria-hidden="true"></i> 알아간 빛 3개</span><span><i class="legend-unknown" aria-hidden="true"></i> 아직 만나지 않은 빛</span></div>
+          <div class="world-map">
+            <div class="world-ring ring-a"></div><div class="world-ring ring-b"></div><div class="world-ring ring-c"></div>
+            <svg class="world-paths" viewBox="0 0 100 100" aria-hidden="true"><line x1="50" y1="50" x2="44" y2="41"/><line x1="50" y1="50" x2="66" y2="61"/><line x1="50" y1="50" x2="80" y2="24"/></svg>
+            <div class="world-center">나</div>
+            <div class="world-star star-a"><span class="world-star-icon" aria-hidden="true">✦</span><span class="star-name">달</span></div>
+            <div class="world-star star-b"><span class="world-star-icon" aria-hidden="true">✦</span><span class="star-name">베가</span></div>
+            <div class="world-star star-c is-selected"><span class="world-star-icon" aria-hidden="true">✦</span><span class="star-name">안드로메다 은하</span></div>
+            <div class="world-unknown unknown-a" aria-hidden="true"></div><div class="world-unknown unknown-b" aria-hidden="true"></div>
+          </div>
+          <aside class="world-note"><p>나의 가장 먼 빛</p><strong>약 250만 <span>광년</span></strong><hr><p class="note-name">안드로메다 은하</p><p class="note-copy">알아간 빛 3개가 내 세계에 남아 있어요. 아직 닿지 않은 점들도 언제든 만나볼 수 있습니다.</p><button type="button" data-go="discover">다른 빛 만나러 가기 ↗</button></aside>
+          <div class="collect-foot">알아간 사실이 쌓이는 지도 · 실제 우주의 경계가 아닙니다</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="under-mock"><span>DESKTOP CONCEPT · 1440 × 900 기준</span><span>화면은 시각 시안이며 실제 데이터와 연결되지 않습니다.</span></div>
+
+    <section class="design-notes" aria-labelledby="notes-title">
+      <div><p class="eyebrow">Visual language</p><h2 id="notes-title">우주를 설명하기 전에,<br>먼저 머물 수 있게.</h2></div>
+      <div class="notes-grid">
+        <div class="note"><span class="note-index">01 / COLOR</span><p>푸른 보라에서 연분홍으로 번지는 밤하늘. 살구색은 발견한 빛과 안심되는 문장에만 씁니다.</p><div class="swatches"><i style="--swatch:#222454"></i><i style="--swatch:#555da3"></i><i style="--swatch:#9970af"></i><i style="--swatch:#63a9c9"></i><i style="--swatch:#f3dad5"></i></div></div>
+        <div class="note"><span class="note-index">02 / TYPE</span><p>큰 명조 제목은 감정의 입구, 짧은 고딕 본문은 정보의 길잡이. 출처와 숫자는 작아도 읽히게 둡니다.</p><span class="type-example">빛 하나를 알아갈 때<br><em>세계도 조금 넓어집니다.</em></span></div>
+        <div class="note"><span class="note-index">03 / RHYTHM</span><p>첫 화면에는 선택지를 줄이고, 읽을 때만 정보의 깊이를 엽니다. 작은 별의 밀도와 넓은 여백이 번갈아 나옵니다.</p><div class="rhythm"><span></span><span></span><span></span></div></div>
+      </div>
+    </section>
+    <footer class="board-foot"><span>VASTHORIZON · VISUAL CONCEPT</span><span>사용자 제공 이미지의 색감에서 출발한 독립 시안</span></footer>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,22 +1,31 @@
 // ✨ 하늘 — 첫 화면. 내가 있는 곳 · 시각에 올려다본 실제 하늘.
 // 히파르코스 별 11만 개(확대할수록 어두운 별까지) · 은하수 · 성운 · 성단 · 은하 · 별자리 선과 이름 · 지평선과 방위.
 // 태양 · 달 · 행성은 그날의 위치를 브라우저에서 계산해 실제 시지름 · 실제 태양 방향의 빛으로 그린다 (solar.js — 달의 위상도 저절로).
+// 목성의 갈릴레이 위성 · 토성의 타이탄은 모행성을 확대하면 작은 점으로 (원 궤도 근사, solarbodies.js).
+// 왜행성 · 소행성 · 혜성 · 아로코트는 수집 기준일의 위치로 계산한 자리에 점선 원과 흐린 이름표 (맨눈으로는 보이지 않는 천체).
 //
-// 화면의 모든 점은 실제 천체다. 카탈로그 천체(별 · 메시에)는 아직 관측하지 않았으면 옅은 고리로만 표시하고,
-// 이야기를 읽고 '내 세상에 담기'를 누르면 금빛 고리와 이름이 생긴다. 아무 별이나 누르면 그 별(hip:…)의 서랍이 열린다.
+// 화면의 모든 점은 실제 천체다. 카탈로그 천체(별 · 메시에)는 아직 만나지 않았으면 흐린 빈 점선 원으로만 표시하고,
+// 이야기를 읽고 '내 세계에 담기'를 누르면 살구색 표식(✦)과 이름표가 생긴다 (내 세계 지도 · 목록 · 서랍과 같은 모양). 아무 별이나 누르면 그 별(hip:…)의 서랍이 열린다.
 
-import { THREE, label, pointsMaterial, ring } from "./scene.js";
+import { SPACE_BG, THREE, dashedRing, knownMark, label, pointsMaterial, ring } from "./scene.js";
 import { altAzToScene, localSiderealDeg, radecToEq } from "./astro.js";
 import { applyMatrix, colorWord, eqToHorizonMatrix, limitingMag, pickSky, transpose } from "./skydata.js";
 import { DsoLayer, loadDsos, loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
 import { SolarLayer } from "./solar.js";
-import { ChalkMarks } from "./dream.js";
+import { BODIES } from "./ephemeris.js";
+import { epochDate, MOON_ORBITS, moonSky, skyFromHeliocentric } from "./solarbodies.js";
 
 const R = 100;
 const DIRECTIONS = [["북", 0], ["북동", 45], ["동", 90], ["남동", 135], ["남", 180], ["남서", 225], ["서", 270], ["북서", 315]];
 const PICK_PX = 12;
 const FAINT_FROM = 7.6;            // 한계 등급이 이보다 높아지면(확대) 어두운 별 묶음을 내려받는다
 const DEG = Math.PI / 180;
+// 하늘에 점선 원으로 두는 태양계 천체의 종류 (항목 kind) — 위성은 모행성 확대 때만, 행성 · 태양 · 달은 solar.js가 그린다
+const MINOR_KINDS = new Set(["왜행성", "소행성", "카이퍼대 천체", "혜성"]);
+const MOON_DOT_PX = 6;             // 모행성에서 이만큼(px) 떨어져 보일 만큼 확대하면 위성 점이 나타난다
+const MOON_LABEL_PX = 36;          // 이만큼 떨어지면 이름표도
+// 하늘 이름표용 짧은 이름 — "세레스 (왜행성)" → "세레스", "4 베스타" → "베스타" (소행성 번호는 서랍에서)
+const shortName = (name) => name.replace(/\s*\(.*\)$/, "").replace(/^\d+\s+/, "");
 
 // 사진 가장자리를 부드럽게 — 가운데는 그대로, 바깥으로 갈수록 투명
 let softDiscTexture;
@@ -56,6 +65,15 @@ export class SkyMode {
   constructor(constellations, catalog, solarItems = []) {
     this.constellations = constellations;
     this.solarIds = new Map(solarItems.map((p) => [p.name, p.id]));
+    // 왜행성 · 소행성 · 혜성 · 아로코트 — 태양 중심 위치(position_au)와 그 기준일이 있는 것만
+    this.minorBodies = solarItems.filter((p) => MINOR_KINDS.has(p.kind) && p.position_au && p.epoch);
+    // 큰 위성 — 기준 시각의 위상은 위성 · 모행성의 position_au (Horizons)
+    const byId = new Map(solarItems.map((p) => [p.id, p]));
+    this.moons = Object.entries(MOON_ORBITS).map(([id, orbit]) => {
+      const moon = byId.get(id), parent = byId.get(this.solarIds.get(BODIES[orbit.parent].name));
+      if (!moon?.position_au || !parent?.position_au || !moon.epoch) return null;
+      return { id, name: shortName(moon.name), orbit, moonAu: moon.position_au, parentAu: parent.position_au, epoch: epochDate(moon.epoch) };
+    }).filter(Boolean);
     this.catalog = catalog.map((p) => ({ ...p, eq: p.dir }));
     this.byCode = new Map(this.catalog.filter((p) => p.code).map((p) => [p.code.replace(/\s+/g, ""), p]));
     this.figureHips = new Set(constellations.flatMap((c) => c.stars.map((s) => s.hip)));
@@ -67,8 +85,6 @@ export class SkyMode {
     this.group.add(this.solar.group);
     this.solarLabels = new THREE.Group();      // 태양계 이름표 — 시야가 바뀔 때 이 그룹만 다시 만든다
     this.group.add(this.solarLabels);
-    this.chalk = new ChalkMarks({ size: 48, haloSize: 130 });   // 발견한(담은) 천체 — 네온 분필 오로라 + 성운 빛무리
-    this.group.add(this.chalk.group);
     this.place = { lat: 37.5665, lon: 126.978, name: "서울" };
     this.date = new Date();
     this.planets = [];
@@ -107,24 +123,33 @@ export class SkyMode {
   }
 
   buildStatic() {
-    // 땅 — 지평선 아래를 가린다
+    // 땅 — 지평선 바로 아래는 거의 투명, 아래로 갈수록 남보라가 짙어진다 (하늘 그라데이션이 비친다)
     this.group.add(new THREE.Mesh(
       new THREE.SphereGeometry(R * 0.98, 48, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: 0x060a09, side: THREE.BackSide })));
-    // 지평선 근처의 옅은 빛 — 남색 위에 아주 옅은 금빛
-    const glow = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.965, R * 0.965, 8, 96, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0x3a2782, transparent: true, opacity: 0.2, side: THREE.BackSide, depthWrite: false }));
-    glow.position.y = 4;
-    const warm = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.966, R * 0.966, 2.2, 96, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xff8fd2, transparent: true, opacity: 0.05, side: THREE.BackSide, depthWrite: false }));
-    warm.position.y = 1.1;
-    this.group.add(glow, warm);
+      new THREE.ShaderMaterial({
+        vertexShader: "varying float vY; void main() { vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+        fragmentShader: "varying float vY; void main() { float a = 0.92 * smoothstep(0.0, 0.32, -vY); gl_FragColor = vec4(0.102, 0.106, 0.267, a); }",
+        side: THREE.BackSide, transparent: true, depthWrite: false,
+      })));
+    // 지평선 근처의 옅은 빛 — 청록 번짐 위에 아주 옅은 살구빛. 지평선에서 가장 진하고 위로 갈수록 0으로 사라진다
+    // (예전에는 균일한 띠라 위쪽 경계가 '옅은 보라 띠'로 보였다)
+    const haze = (radius, height, color, alpha) => {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 96, 1, true), new THREE.ShaderMaterial({
+        uniforms: { uColor: { value: new THREE.Color(color) }, uAlpha: { value: alpha } },
+        vertexShader: "varying float vK; void main() { vK = uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+        fragmentShader: "uniform vec3 uColor; uniform float uAlpha; varying float vK; void main() { float k = 1.0 - vK; gl_FragColor = vec4(uColor, uAlpha * k * k); }",
+        side: THREE.BackSide, transparent: true, depthWrite: false,
+      }));
+      mesh.position.y = height / 2;
+      return mesh;
+    };
+    this.group.add(haze(R * 0.965, 10, 0x63a9c9, 0.2), haze(R * 0.966, 3, 0xf3dad5, 0.14));
     const horizon = Array.from({ length: 181 }, (_, i) => {
       const a = (i / 180) * Math.PI * 2;
       return new THREE.Vector3(Math.cos(a) * R * 0.97, 0, Math.sin(a) * R * 0.97);
     });
     this.group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(horizon),
-      new THREE.LineBasicMaterial({ color: 0x2f4a3a, transparent: true, opacity: 0.8 })));
+      new THREE.LineBasicMaterial({ color: 0xf3dad5, transparent: true, opacity: 0.22 })));
     for (const [name, az] of DIRECTIONS) {
       const tag = label(name, name.length === 1 ? "label compass" : "label compass minor");
       tag.position.fromArray(altAzToScene(1.2, az)).multiplyScalar(R * 0.9);      // 지평선 바로 위 — 아래쪽은 발 크롬과 겹친다
@@ -132,7 +157,7 @@ export class SkyMode {
     }
   }
 
-  // visited: [{ id, name, ra, dec }] — 카탈로그 밖의 별(hip:…)도 담은 자리에 금빛 고리와 이름을 남긴다
+  // visited: [{ id, name, ra, dec }] — 카탈로그 밖의 별(hip:…)도 담은 자리에 살구색 표식과 이름표를 남긴다
   setObserved(visited) {
     this.observedAt = new Map(visited.filter((v) => v.ra != null).map((v) => [v.id, v]));
     const next = new Set(visited.map((v) => v.id));
@@ -141,7 +166,7 @@ export class SkyMode {
     if (changed && this.stage?.mode === this) this.rebuild();
   }
 
-  // 담기 — 옅은 고리가 금빛 고리와 이름으로. obj: { id, name, ra_deg, dec_deg }
+  // 담기 — 빈 점선 원이 살구색 표식과 이름표로. obj: { id, name, ra_deg, dec_deg }
   observe(obj) {
     const id = obj.id;
     if (this.observed.has(id)) return;
@@ -158,7 +183,7 @@ export class SkyMode {
   // 위치 · 시각에 맞춰 회전 행렬 · 이름표 · 표시를 다시 놓는다 (별 자체는 GPU가 행렬로 옮긴다)
   rebuild() {
     this.dynamic.clear();
-    this.gold = [];
+    this.marks = new Map();              // 담은 천체 ID → 살구색 표식 (선택하면 흰 고리)
     this.matrix = eqToHorizonMatrix(this.place.lat, localSiderealDeg(this.date, this.place.lon));
     this.targets = [];
     this.applyView();                    // 태양 · 달 · 행성의 위치 · 이름표 · 선택 대상도 여기서 (syncSolar)
@@ -195,10 +220,10 @@ export class SkyMode {
     }
     this.dynamic.add(new THREE.LineSegments(
       new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(linePos, 3)),
-      new THREE.LineBasicMaterial({ color: 0x7a6ac8, transparent: true, opacity: 0.42 })));
+      new THREE.LineBasicMaterial({ color: 0xffe1dd, transparent: true, opacity: 0.3 })));      // 밝은 보라 하늘 위 — 옅은 살구빛 선
 
-    // 카탈로그 천체 — 관측 전에는 옅은 고리, 담은 뒤에는 금빛 고리와 이름. 천체 자체는 실제 별 · 성운으로 이미 그려져 있다
-    const faint = [], faintCol = [];
+    // 카탈로그 천체 — 아직 만나지 않았으면 흐린 빈 점선 원, 담은 뒤에는 살구색 표식과 이름표. 천체 자체는 실제 별 · 성운으로 이미 그려져 있다
+    const faint = [];
     for (const p of this.catalog) {
       const v = this.scenePos(p.eq, R * 0.99);
       if (v.y < 0) continue;
@@ -207,14 +232,28 @@ export class SkyMode {
       if (seen) this.addMark(v, p.name, p.id);
       else {
         faint.push(...v.toArray());
-        faintCol.push(...(p.group === "messier" ? [0.62, 0.5, 0.85] : [0.6, 0.66, 0.8]));
+      }
+    }
+    // 왜행성 · 소행성 · 혜성 · 아로코트 — 기준일 위치(태양 중심)에서 그날의 지구 위치를 뺀 방향. 기준일에서 멀어질수록 그 천체가 움직인 만큼 어긋난다
+    for (const p of this.minorBodies) {
+      const sky = skyFromHeliocentric(p.position_au, this.date);
+      const v = this.scenePos(sky.dir, R * 0.99);
+      if (v.y < 0) continue;
+      const seen = this.observed.has(p.id);
+      this.targets.push({ position: v, data: { id: p.id, name: p.name, kind: "minor", bodyKind: p.kind, epoch: p.epoch,
+        distanceAu: sky.distanceAu, unobserved: !seen } });
+      if (seen) this.addMark(v, p.name, p.id);
+      else {
+        faint.push(...v.toArray());
+        const tag = label(shortName(p.name), "label minor");
+        tag.position.copy(v);
+        this.dynamic.add(tag);
       }
     }
     if (faint.length) {
       this.dynamic.add(new THREE.Points(
-        new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(faint, 3))
-          .setAttribute("color", new THREE.Float32BufferAttribute(faintCol, 3)),
-        pointsMaterial({ map: ring(), size: 15, vertexColors: true, opacity: 0.32 * this.dim })));
+        new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(faint, 3)),
+        pointsMaterial({ map: dashedRing(), size: this.stage?.container.clientWidth <= 650 ? 13 : 16, color: 0xffffff, opacity: 0.42 * this.dim })));
     }
     // 그 밖에 담은 별 (아무 별이나 눌러 담은 hip:…)
     const marked = new Set(this.targets.map((x) => x.data.id));
@@ -225,7 +264,6 @@ export class SkyMode {
       this.addMark(pos, v.name, v.id);
       this.targets.push({ position: pos, data: { id: v.id, name: v.name, kind: "sky-star-seen" } });
     }
-    this.chalk.setPositions(this.gold);
     this.justObserved.clear();
 
 
@@ -245,16 +283,18 @@ export class SkyMode {
     this.selectMark?.removeFromParent();
     this.selectMark = null;
     const sel = this.selected;
-    if (!sel || this.stage?.mode !== this) return;
+    // 담은 천체를 고르면 표식 바깥의 흰 1px 고리 — 맥박 고리 대신
+    for (const [id, mark] of this.marks ?? []) mark.element.classList.toggle("is-selected", id === sel?.id);
+    if (!sel || this.stage?.mode !== this || this.marks?.has(sel.id)) return;
     const target = this.targets?.find((x) => x.data.id === sel.id);
     const pos = target?.position.clone()
       ?? (sel.ra_deg != null ? this.scenePos(radecToEq(sel.ra_deg, sel.dec_deg), R * 0.99) : sel.position?.clone());
     if (!pos || pos.y < 0) return;
     const mark = new THREE.Group();
     const ringPts = new THREE.Points(new THREE.BufferGeometry().setFromPoints([pos]),
-      pointsMaterial({ map: ring(), size: 30, color: 0xd7c4ff, opacity: 0.95 }));
+      pointsMaterial({ map: ring(), size: 30, color: 0xffffff, opacity: 0.95 }));
     mark.add(ringPts);
-    if (sel.name && !this.observed.has(sel.id)) {           // 담은 천체는 이미 이름이 있다
+    if (sel.name && !this.observed.has(sel.id) && target?.data.kind !== "minor") {   // 담은 천체 · 왜행성 등은 이미 이름이 있다
       const tag = label(sel.name, "label selected");
       tag.position.copy(pos);
       mark.add(tag);
@@ -302,9 +342,12 @@ export class SkyMode {
   // 태양 · 달 · 행성의 이름표와 선택 대상 — 위치 · 시야(한계 등급 · 원반 크기)가 바뀔 때마다 이 부분만 다시 만든다.
   // 지평선 위이고 지금 한계 등급으로 보이는 것만. 확대하면 해왕성처럼 어두운 행성이 나타나고, 축소하면 빠진다 (12-2 리뷰 P2)
   syncSolar() {
-    this.solarLabels.traverse((o) => { if (o.isCSS2DObject) o.element.remove(); });
+    this.solarLabels.traverse((o) => {
+      if (o.isCSS2DObject) o.element.remove();
+      if (o.isPoints) { o.geometry.dispose(); o.material.dispose(); }
+    });
     this.solarLabels.clear();
-    this.targets = (this.targets ?? []).filter((t) => t.data.kind !== "planet");
+    this.targets = (this.targets ?? []).filter((t) => t.data.kind !== "planet" && t.data.kind !== "moon");
     for (const b of this.solar.placed ?? []) {
       if (!b.above || b.mag > this.limit) continue;
       const tag = label(b.key === "sun" || b.key === "moon" ? b.name : `● ${b.name}`, "label planet");
@@ -313,16 +356,50 @@ export class SkyMode {
       if (b.diskPx > 10) tag.element.style.marginTop = `${Math.round(b.diskPx / 2 + 12)}px`;
       this.solarLabels.add(tag);
       this.targets.push({ position: b.position, pickRadius: b.diskPx / 2, data: { id: this.solarIds.get(b.name), name: b.name,
-        kind: "planet", body: b.key, illum: b.illum, angularRadiusDeg: b.angularRadiusDeg, distanceKm: b.distanceKm } });
+        kind: "planet", body: b.key, mag: b.mag, illum: b.illum, angularRadiusDeg: b.angularRadiusDeg, distanceKm: b.distanceKm } });
     }
+    this.syncMoons();
   }
 
-  // 담은 천체 — 이름표와 금빛 고리 (고리는 rebuild 끝에서 한 번에 그린다)
+  // 큰 위성 — 모행성을 확대해 위성이 모행성에서 MOON_DOT_PX 이상 떨어져 보일 때만 작은 점으로.
+  // 위치는 원 궤도 근사 (solarbodies.js moonSky — 기준 위상은 Horizons, 이심률 · 섭동은 넣지 않는다). 모행성 뒤로 숨으면 그리지 않는다.
+  // 모행성과 같은 관측자 보정을 받도록, 모행성의 화면 방향에 '위성 − 모행성' 방향 차이를 더한다
+  syncMoons() {
+    const placed = new Map((this.solar.placed ?? []).map((b) => [b.key, b]));
+    const pts = [];
+    for (const m of this.moons ?? []) {
+      const parent = placed.get(m.orbit.parent);
+      if (!parent?.above || parent.mag > this.limit) continue;
+      const s = moonSky(m.orbit, m.moonAu, m.parentAu, m.epoch, this.date, parent.dir.map((v) => v * parent.distanceAu));
+      const toScene = (v) => new THREE.Vector3(...applyMatrix(this.matrix, v));
+      const dir = parent.position.clone().normalize().add(toScene(s.dir).sub(toScene(parent.dir))).normalize();
+      const sepDeg = Math.acos(THREE.MathUtils.clamp(dir.dot(parent.position.clone().normalize()), -1, 1)) / DEG;
+      const sepPx = sepDeg * this.pxPerDeg;
+      if (sepPx < MOON_DOT_PX || (s.behind && sepDeg < parent.angularRadiusDeg) || dir.y < 0) continue;
+      const dist = parent.position.length() - parent.diskPx / this.pxPerDeg * DEG * parent.position.length();   // 원반 앞쪽으로 (통과할 때 가려지지 않게)
+      const pos = dir.multiplyScalar(dist);
+      pts.push(pos);
+      if (sepPx > MOON_LABEL_PX) {
+        const tag = label(m.name, "label moon");
+        tag.position.copy(pos);
+        this.solarLabels.add(tag);
+      }
+      this.targets.push({ position: pos, data: { id: m.id, name: m.name, kind: "moon", parent: BODIES[m.orbit.parent].name,
+        unobserved: !this.observed.has(m.id) } });
+    }
+    if (!pts.length) return;
+    const dots = new THREE.Points(new THREE.BufferGeometry().setFromPoints(pts),
+      pointsMaterial({ size: 8, color: 0xfff6ec, opacity: this.dim, depthTest: false }));   // 모행성 뒤로 숨는 것은 위에서 뺐다
+    dots.renderOrder = 5;
+    this.solarLabels.add(dots);
+  }
+
+  // 담은 천체 — 살구색 채운 원 안의 ✦와 이름표 (내 세계 지도와 같은 표식, scene.js knownMark)
   addMark(v, name, id) {
-    const tag = label(name, `label star ${this.justObserved.has(id) ? "observed" : ""}`);
-    tag.position.copy(v);
-    this.dynamic.add(tag);
-    this.gold.push(...v.toArray());
+    const mark = knownMark(name, { fresh: this.justObserved.has(id) });
+    mark.position.copy(v);
+    this.dynamic.add(mark);
+    this.marks.set(id, mark);
   }
 
   // 회전 · 한계 등급 · 밝기를 층마다 반영
@@ -331,6 +408,7 @@ export class SkyMode {
     const height = this.stage?.container.clientHeight ?? 800;
     const limit = limitingMag(fov);
     this.limit = limit;
+    this.pxPerDeg = height / fov;
     if (this.stars) {
       this.stars.setRotation(this.matrix);
       this.stars.setLimit(limit);
@@ -354,7 +432,7 @@ export class SkyMode {
     if (this.stage?.mode !== this || !this.stars) return;
     this.stars.uniforms.uTime.value += dt;
     pulse(this.selectMark?.userData.ring, this.stars.uniforms.uTime.value, this.stars.uniforms.uTwinkle.value > 0);
-    this.chalk.update(this.stars.uniforms.uTime.value);
+    if ((this.hushTick = (this.hushTick ?? 0) + 1) % 8 === 0) this.applyHush();
     if (this.stage.camera.fov !== this.lastFov) {
       this.lastFov = this.stage.camera.fov;
       this.stage.controls.rotateSpeed = skyRotateSpeed(this.lastFov);
@@ -362,14 +440,38 @@ export class SkyMode {
     }
   }
 
+  // 화면 크롬과 겹치는 이름표 숨기기 — hushZones: [{ x0, y0, x1, y1, only? }] (무대 기준 픽셀, main.js가 정한다)
+  //   only: "constellation"이면 별자리 이름 · 방위 글자만 (첫 하늘 문장 뒤), 없으면 모든 이름표 (상단 워드마크 · 메뉴 둘레)
+  applyHush() {
+    const zones = this.hushZones ?? [];
+    const cam = this.stage.camera, w = this.stage.container.clientWidth, h = this.stage.container.clientHeight;
+    const v = new THREE.Vector3();
+    this.group.traverse((o) => {
+      if (!o.isCSS2DObject) return;
+      let hush = false;
+      if (zones.length) {
+        o.getWorldPosition(v).project(cam);
+        const x = ((v.x + 1) / 2) * w, y = ((1 - v.y) / 2) * h - 14;     // 이름표는 점보다 14px 위 (style.css .label)
+        const con = o.element.classList.contains("constellation") || o.element.classList.contains("compass");   // 첫 하늘 문장 뒤의 방위 글자도
+        hush = v.z < 1 && zones.some((z) => (!z.only || con) && x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1);
+      }
+      if (o.element.classList.contains("hushed") !== hush) o.element.classList.toggle("hushed", hush);
+    });
+  }
+
   // 낮 · 박명이면 하늘을 밝게, 별 · 은하수는 흐리게 — 태양 고도는 서버(/api/sky)가 계산한다
   setDaylight(sunAltDeg) {
-    const night = new THREE.Color(0x06041a), day = new THREE.Color(0x2b4f7e);
-    const k = THREE.MathUtils.clamp((sunAltDeg + 12) / 18, 0, 1);      // −12도 이하 밤 → +6도 이상 낮
-    this.background = night.lerp(day, k);
-    this.dim = 1 - 0.9 * k;
-    if (this.stage?.mode === this) this.stage.scene.background = this.background;
+    this.daylight = THREE.MathUtils.clamp((sunAltDeg + 12) / 18, 0, 1);      // −12도 이하 밤 → +6도 이상 낮
+    this.dim = 1 - 0.9 * this.daylight;
+    if (this.stage?.mode === this) this.applyBackdrop();
     this.applyView();
+  }
+
+  // 하늘의 바탕 — 밤에는 캔버스를 비워 그 뒤의 CSS 하늘 그라데이션(.stage, --gradient-sky)이 보이게,
+  // 낮 · 박명이면 그 위에 푸른 낮빛을 태양 고도만큼 덮는다
+  applyBackdrop() {
+    this.stage.scene.background = null;
+    this.stage.renderer.setClearColor(0x5d7fb3, 0.85 * (this.daylight ?? 0));
   }
 
   setView({ place, date, planets }) {
@@ -400,7 +502,7 @@ export class SkyMode {
     stage.camera.position.copy(south.multiplyScalar(-0.01));
     stage.camera.fov = 75;
     stage.camera.updateProjectionMatrix();
-    stage.scene.background = this.background ?? new THREE.Color(0x06041a);
+    this.applyBackdrop();
     const twinkle = !(matchMedia("(prefers-reduced-motion: reduce)").matches
       || new URLSearchParams(location.search).get("motion") === "off");
     this.stars.uniforms.uTwinkle.value = twinkle ? 1 : 0;
@@ -409,7 +511,8 @@ export class SkyMode {
 
   exit() {
     delete this.stage.controls._rotateLeft;          // 다른 보기는 원래 회전으로
-    this.stage.scene.background = new THREE.Color(0x06041a);
+    this.stage.renderer.setClearColor(0x000000, 0);
+    this.stage.scene.background = new THREE.Color(SPACE_BG);
   }
 
   // 그 천체의 화면 좌표 (보이지 않으면 null) — 발견하는 순간의 연출 자리
@@ -435,6 +538,14 @@ export class SkyMode {
 
   pickables() {
     return this.targets ?? [];
+  }
+
+  // 첫 번째 빛 후보 — 지금 지평선 위의 달 · 행성(태양 제외) · 카탈로그 별 · 메시에 천체와 그 고도 · 겉보기 등급.
+  // 고르는 규칙은 skydata.pickFirstLight. 별자리 · 별자리 선의 별(카탈로그 밖)은 후보가 아니다
+  brightCandidates() {
+    return this.pickables().filter((t) => t.data.id && (t.data.kind === "planet" ? t.data.body !== "sun" : t.data.kind === "star" || t.data.kind === "messier"))
+      .map((t) => ({ id: t.data.id, name: t.data.name, mag: t.data.mag, kind: t.data.body ?? t.data.kind,
+                     alt: Math.asin(THREE.MathUtils.clamp(t.position.y / t.position.length(), -1, 1)) / DEG }));
   }
 
   // 이름 있는 대상(pickables)이 없을 때 — 누른 방향에서 가장 가까운 실제 별 · 성운 · 은하
@@ -472,6 +583,8 @@ export class SkyMode {
   describe(p) {
     if (p.kind === "sky-star") return `HIP ${p.hip}: ${p.mag.toFixed(1)}등급 ${colorWord(p.bv)} 별 · 눌러서 알아보기`;
     if (p.kind === "dso") return this.dsos.describe(p.index);
+    if (p.kind === "minor") return `${shortName(p.name)} (${p.bodyKind}): ${p.epoch} 기준 위치 · 지구에서 약 ${p.distanceAu.toFixed(1)} AU · 눌러서 알아보기`;
+    if (p.kind === "moon") return `${p.name}: ${p.parent}의 위성 · 위치는 원 궤도 근사 · 눌러서 알아보기`;
     if (p.unobserved) return `${p.name}: 아직 관측 전 · 눌러서 알아보기`;
     if (p.kind === "constellation") return `${p.name}: 별자리`;
     if (p.kind === "planet") {

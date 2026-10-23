@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { altAz, altAzToScene, localSiderealDeg, radecToEq } from "../../web/js/astro.js";
 import {
-  angularDeg, applyMatrix, decodeMilkyway, decodeStars, eqToHorizonMatrix, limitingMag, pickSky, pickStar, SkyGrid, transpose,
+  angularDeg, applyMatrix, decodeMilkyway, decodeStars, eqToHorizonMatrix, limitingMag, pickFirstLight, pickSky, pickStar, SkyGrid, transpose,
 } from "../../web/js/skydata.js";
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≉ ${b}`);
@@ -154,4 +154,22 @@ test("분광형 → 별의 색 — 첫 글자로, 모르면 해와 비슷한 흰
   assert.deepEqual(spectralColor("B8IV-VHgMn"), starColor(-0.16));  // 푸른 흰빛
   assert.deepEqual(spectralColor(null), starColor(0.6));
   assert.ok(spectralColor("O9")[2] > spectralColor("M2")[2]);        // 뜨거운 별일수록 푸르다
+});
+
+test("첫 번째 빛 — 지평선 위 15도 이상 · 태양 제외 · 아직 알아가지 않은 것 중 가장 밝은 것", () => {
+  const sky = [
+    { id: "sun", name: "태양", mag: -26.7, alt: 40, kind: "sun" },
+    { id: "moon", name: "달", mag: -12, alt: 8, kind: "moon" },          // 너무 낮다
+    { id: "jupiter", name: "목성", mag: -2.4, alt: 35, kind: "jupiter" },
+    { id: "vega", name: "베가", mag: 0.03, alt: 60, kind: "star" },
+    { id: "m31", name: "안드로메다 은하", mag: null, alt: 50, kind: "messier" },
+    { id: null, name: "이름만", mag: -5, alt: 70, kind: "planet" },
+  ];
+  assert.equal(pickFirstLight(sky).id, "jupiter");
+  assert.equal(pickFirstLight(sky, (id) => id === "jupiter").id, "vega");
+  assert.equal(pickFirstLight(sky, (id) => id === "jupiter" || id === "vega").id, "m31");     // 등급을 모르면 맨 뒤
+  // 15도 위에 남은 것이 없으면 지평선 위 전체에서
+  assert.equal(pickFirstLight(sky, (id) => ["jupiter", "vega", "m31"].includes(id)).id, "moon");
+  assert.equal(pickFirstLight(sky, () => true), null);
+  assert.equal(pickFirstLight([{ id: "x", name: "x", mag: 1, alt: -3 }]), null);              // 지평선 아래
 });

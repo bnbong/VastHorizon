@@ -64,7 +64,10 @@ def _from_earth(position_au: list[float] | None, earth: list[float] | None) -> l
 
 def _point(item: dict, direction: list[float] | None, km: float, placement: str) -> dict:
     attrs = item.get("attrs", {})
-    return {"id": item["id"], "name": item["name"], "group": item["group"], "kind": item.get("kind"),
+    # 태양계 천체 — 하늘 보기가 그날의 지구 위치를 빼 방향을 다시 계산하도록 태양 중심 위치(ICRF 적도, AU)와 그 기준일을 함께 준다
+    extra = {"position_au": item["position_au"], "epoch": attrs.get("Horizons 위치 기준일")} \
+        if item["group"] == "solar_system" and item.get("position_au") else {}
+    return {**extra, "id": item["id"], "name": item["name"], "group": item["group"], "kind": item.get("kind"),
             "dir": [round(c, 6) for c in direction] if direction else [0.0, 0.0, 0.0],
             "km": km, "ly": km / LY_KM, "placement": placement,
             "mag": attrs.get("겉보기 등급"), "naked_eye": attrs.get("맨눈 관측"),

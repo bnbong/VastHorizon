@@ -73,6 +73,11 @@ class MapPointsTest(unittest.TestCase):
         # 모천체가 지구인 근삿값은 지구 − 지구 = 0 — 예시 방향으로 둔다 (9번 작업 중 발견)
         self.assertEqual(self.points["국제우주정거장"]["dir"], [round(c, 6) for c in illustrative_direction("Q25271")])
 
+    def test_solar_points_carry_heliocentric_position(self):
+        # 하늘 보기가 그날의 지구 위치를 빼 방향을 다시 계산한다 (왜행성 · 소행성 · 혜성 표식, 위성 위상)
+        self.assertEqual(self.points["화성"]["position_au"], [2.0, 0.0, 0.0])
+        self.assertNotIn("position_au", self.points["시리우스"])
+
     def test_unplaced_keeps_reason(self):
         self.assertIn("재진입", self.unplaced["재진입한 위성"]["reason"])
 

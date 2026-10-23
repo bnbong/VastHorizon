@@ -144,15 +144,24 @@ export function mountBlackHole(canvas, { still = false } = {}) {
   };
   size();
   const t0 = performance.now();
-  let raf = 0;
+  let raf = 0, done = false;
+  // 정리할 때 컨텍스트까지 놓아 준다 — 서랍을 여러 번 열어도 WebGL 컨텍스트가 쌓이지 않게
+  const stop = () => {
+    if (done) return;
+    done = true;
+    cancelAnimationFrame(raf);
+    renderer.dispose();
+    renderer.forceContextLoss();
+    material.dispose();
+  };
   const frame = () => {
-    if (!canvas.isConnected) { renderer.dispose(); material.dispose(); return; }
+    if (!canvas.isConnected) { stop(); return; }
     material.uniforms.uTime.value = still ? 2 : (performance.now() - t0) / 1000;
     renderer.render(scene, camera);
     if (!still) raf = requestAnimationFrame(frame);
   };
   frame();
-  return { stop: () => { cancelAnimationFrame(raf); renderer.dispose(); material.dispose(); } };
+  return { stop };
 }
 
 let listPromise;

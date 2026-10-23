@@ -10,6 +10,7 @@
 // 움직임 줄이기 설정(또는 ?motion=off)이면 입자는 멈춘 채, 글은 한 번에 나타난다.
 
 import { measure } from "./astro.js";
+import { icon } from "./icons.js";
 
 const WIKI = (title) => `https://ko.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`;
 const LY_KM = 9460730472580.8;
@@ -58,6 +59,8 @@ export function playPrologue({ reducedMotion = false } = {}) {
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-label", "프롤로그");
     root.innerHTML = `
+      <div class="pl-sky pl-sky-deep" aria-hidden="true"></div>
+      <div class="pl-sky pl-sky-first" aria-hidden="true"></div>
       <canvas class="pl-canvas" aria-hidden="true"></canvas>
       <div class="pl-veil"></div>
       <div class="pl-stage" aria-live="polite"></div>
@@ -78,6 +81,7 @@ export function playPrologue({ reducedMotion = false } = {}) {
       window.removeEventListener("keydown", onKey);
       try { localStorage.setItem(STORAGE_KEY, "1"); } catch { /* 저장소를 못 쓰면 다음에도 보인다 */ }
       fx.set("rise");
+      root.style.setProperty("--pl-progress", "1");          // 건너뛰어도 첫 하늘의 색으로 물러난다
       root.classList.add("leaving");
       setTimeout(() => { fx.stop(); root.remove(); resolve(); }, reducedMotion ? 0 : 1400);
     };
@@ -87,6 +91,8 @@ export function playPrologue({ reducedMotion = false } = {}) {
       index = i;
       const beat = BEATS[i];
       clearTimeout(timer);
+      // 하늘이 장면마다 조금씩 밝아진다 — 깊은 남보라(0)에서 마지막 장면의 첫 하늘 그라데이션(1)까지
+      root.style.setProperty("--pl-progress", (i / (BEATS.length - 1)).toFixed(3));
       // 지금 보이는 장면은 모두 물러난다 — 빠르게 두 번 넘기면 물러나는 중인 장면만 골라 지금 장면이 남던 문제
       stage.querySelectorAll(".pl-beat:not(.out)").forEach((old) => {
         old.classList.add("out");
@@ -104,7 +110,7 @@ export function playPrologue({ reducedMotion = false } = {}) {
         ${beat.sources ? `<p class="pl-src">근거 · ${beat.sources.map((s) => s.url
           ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>` : `<span>${esc(s.label)}</span>`).join(" · ")}</p>` : ""}
         ${beat.note ? `<p class="pl-note">${esc(beat.note)}</p>` : ""}
-        ${beat.final ? `<button type="button" class="pl-start">시작하기</button>` : ""}`;
+        ${beat.final ? `<button type="button" class="pl-start"><span>시작하기</span>${icon("arrow-up-right", 18)}</button>` : ""}`;
       stage.appendChild(el);
       root.querySelectorAll(".pl-dot").forEach((d, k) => {
         d.classList.toggle("on", k === i);
@@ -160,6 +166,9 @@ function rollCounter(el, { from, to }, ms, delay) {
 // ── 입자 모션그래픽 ─────────────────────────────────────────────────────────
 
 const N = 520;
+// 별빛 — 종이색 #FFFAF5 · 살구 #F3DAD5 · 옅은 청록(#63A9C9를 종이색 쪽으로 낮춘 채도)
+const TONES = ["#fffaf5", "#f3dad5", "#a9cfdf"];
+const TONES_RGB = ["255,250,245", "243,218,213", "169,207,223"];
 
 class Particles {
   constructor(canvas, still) {
@@ -169,10 +178,14 @@ class Particles {
     this.mode = "dust";
     this.t0 = performance.now();
     this.px = 0; this.py = 0; this.tx = 0; this.ty = 0;
-    this.p = Array.from({ length: N }, (_, i) => ({
-      x: Math.random(), y: Math.random(), seed: Math.random(), k: i / N,
-      size: 0.6 + Math.random() * 1.6, warm: Math.random() < 0.18,
-    }));
+    this.p = Array.from({ length: N }, (_, i) => {
+      const big = Math.random() < 0.03, r = Math.random();
+      return {
+        x: Math.random(), y: Math.random(), seed: Math.random(), k: i / N, big,
+        size: big ? 1.8 + Math.random() * 1.0 : 0.5 + Math.random() * 1.0,
+        tone: r < 0.68 ? 0 : r < 0.9 ? 1 : 2,                  // 종이색 · 살구 · 옅은 청록
+      };
+    });
     this.resize = () => {
       const r = Math.min(devicePixelRatio || 1, 2);
       canvas.width = innerWidth * r;
@@ -230,8 +243,8 @@ class Particles {
       }
       case "rise":                                            // 끝 — 하늘로 떠올라 실제 하늘에 녹아든다
         return [p.x, p.y - 0.4, 0];
-      case "finale":
-        return [p.x + 0.002 * Math.sin(t / 1300 + p.seed * 9), p.y - 0.0004 * (t % 9000) / 9, 0.55 + 0.45 * Math.sin(t / (700 + p.seed * 900) + p.seed * 9)];
+      case "finale":                                          // 천천히 떠오르며 위로 돌아 나온다 (예전 식은 매 프레임 크게 빼서 곧 모두 화면 밖으로 사라졌다)
+        return [p.x + 0.00004 * Math.sin(t / 1300 + p.seed * 9), (p.y - 0.00003 * (0.5 + p.seed) + 1) % 1, 0.55 + 0.45 * Math.sin(t / (700 + p.seed * 900) + p.seed * 9)];
       default: {                                              // 먼지 — 천천히 떠다닌다
         return [((p.x + 0.00002 * (p.seed - 0.5) * 16) + 1) % 1, (p.y + 0.00004 * (0.5 - p.seed) + 1) % 1, 0.45];
       }
@@ -253,8 +266,17 @@ class Particles {
       const depth = 0.4 + p.seed;                              // 시차 — 가까운 입자일수록 마우스를 더 따라온다
       const sx = (p.x + this.px * 0.03 * depth) * w, sy = (p.y + this.py * 0.03 * depth) * h;
       const glow = p.size * (this.mode === "converge" || this.mode === "cloud" ? 1.4 : 1);
-      ctx.globalAlpha = Math.max(0, Math.min(1, p.a));
-      ctx.fillStyle = p.warm ? "#f0d396" : "#cfdcff";
+      const alpha = Math.max(0, Math.min(1, p.a));
+      if (p.big && alpha > 0.02) {                             // 큰 광원 — 낮은 불투명도의 번짐 하나 (네온처럼 빛나지 않게)
+        const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, glow * 5);
+        halo.addColorStop(0, `rgba(${TONES_RGB[p.tone]},${0.22 * alpha})`);
+        halo.addColorStop(1, `rgba(${TONES_RGB[p.tone]},0)`);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = halo;
+        ctx.fillRect(sx - glow * 5, sy - glow * 5, glow * 10, glow * 10);
+      }
+      ctx.globalAlpha = alpha * (p.tone === 2 ? 0.8 : 1);
+      ctx.fillStyle = TONES[p.tone];
       ctx.beginPath();
       ctx.arc(sx, sy, glow, 0, Math.PI * 2);
       ctx.fill();
@@ -265,8 +287,8 @@ class Particles {
     if (core > 0) {
       const cy = this.mode === "sphere" ? 0.46 : 0.2;
       const g = ctx.createRadialGradient(w / 2, cy * h, 0, w / 2, cy * h, 90 * core);
-      g.addColorStop(0, `rgba(255,244,214,${(this.mode === "sphere" ? 0.35 : 0.9) * core})`);   // 구의 중심(당신)은 글 뒤라 은은하게
-      g.addColorStop(1, "rgba(255,244,214,0)");
+      g.addColorStop(0, `rgba(243,218,213,${(this.mode === "sphere" ? 0.4 : 0.7) * core})`);   // 살구빛. 구의 중심(당신)은 글 뒤라 은은하게
+      g.addColorStop(1, "rgba(243,218,213,0)");
       ctx.globalAlpha = 1;
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);

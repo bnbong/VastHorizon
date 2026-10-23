@@ -16,10 +16,26 @@ import { pickScore } from "./skydata.js";
 
 export { THREE, CSS2DObject };
 
+// 하늘 밖의 보기(내 세상 · 펼치기)의 바탕 — 깊은 남보라 (web/tokens/colors.css --ink-1)
+export const SPACE_BG = 0x1c1d4a;
+
 export function label(text, className = "label") {
   const el = document.createElement("div");
   el.className = className;
   el.textContent = text;
+  return new CSS2DObject(el);
+}
+
+// 알아간 빛의 표식 — 살구색 채운 원 안의 ✦와 어두운 남보라 이름표. 하늘 · 내 세계 지도에서 같은 모양 (style.css .world-star,
+// 서랍 · 천체 목록의 .known-mark와 같은 원). 요소는 크기 0으로 그 천체 자리에 놓이고, 원은 가운데 · 이름표는 오른쪽에
+export function knownMark(name, { fresh = false } = {}) {
+  const el = document.createElement("div");
+  el.className = `world-star${fresh ? " observed" : ""}`;
+  el.innerHTML = '<span class="known-mark" aria-hidden="true">✦</span>';
+  const tag = document.createElement("span");
+  tag.className = "star-name";
+  tag.textContent = name;
+  el.appendChild(tag);
   return new CSS2DObject(el);
 }
 
@@ -56,6 +72,27 @@ export function ring() {
   return ringTexture;
 }
 
+// 아직 만나지 않은 빛 — 빈 점선 원 (design-proposal .world-unknown: 1.5px 점선, 안은 아주 옅게). 점 크기 = 원 지름
+let dashedTexture;
+export function dashedRing() {
+  if (dashedTexture) return dashedTexture;
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const g = c.getContext("2d");
+  g.fillStyle = "rgba(255,255,255,.07)";
+  g.beginPath();
+  g.arc(32, 32, 28, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = "rgba(255,255,255,1)";
+  g.lineWidth = 6;
+  g.setLineDash([11, 8]);
+  g.beginPath();
+  g.arc(32, 32, 28, 0, Math.PI * 2);
+  g.stroke();
+  dashedTexture = new THREE.CanvasTexture(c);
+  return dashedTexture;
+}
+
 export function pointsMaterial(options) {
   return new THREE.PointsMaterial({ map: dot(), transparent: true, depthWrite: false, sizeAttenuation: false, ...options });
 }
@@ -64,7 +101,8 @@ export function pointsMaterial(options) {
 export class Stage {
   constructor(container) {
     this.container = container;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    // alpha — 하늘 보기는 캔버스를 비워 두고 그 뒤의 CSS 하늘 그라데이션(.stage)을 보여 준다 (sky.js applyBackdrop)
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
 
@@ -73,7 +111,7 @@ export class Stage {
     container.appendChild(this.labels.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x06041a);
+    this.scene.background = new THREE.Color(SPACE_BG);
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.001, 5000);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
@@ -109,8 +147,16 @@ export class Stage {
     this.applyInset(this.container.clientWidth, this.container.clientHeight);
   }
 
+  // 아래쪽 카드가 덮으면 시야의 중심을 insetY의 절반만큼 위로 — 좁은 화면 내 세계의 요약 카드 (main.js fitMapView)
+  setInsetY(px) {
+    if ((this.insetY ?? 0) === px) return;
+    this.insetY = px;
+    this.applyInset(this.container.clientWidth, this.container.clientHeight);
+  }
+
   applyInset(w, h) {
-    if (this.inset && w > this.inset) this.camera.setViewOffset(w + this.inset, h, this.inset, 0, w, h);
+    const x = this.inset && w > this.inset ? this.inset : 0, y = this.insetY && h > this.insetY ? this.insetY : 0;
+    if (x || y) this.camera.setViewOffset(w + x, h + y, x, y, w, h);
     else {
       // setViewOffset은 가로세로 비를 전체 폭(화면 + 서랍) 기준으로 바꾸는데 clearViewOffset은 되돌리지 않는다.
       // 서랍을 닫은 뒤 하늘이 가로로 눌려 있던 문제 (원반이 타원 · 끌기가 77%만 따라옴) — 화면 폭 기준으로 되돌린다
@@ -140,7 +186,8 @@ export class Stage {
   }
 
   // 화면 좌표에서 가장 가까운 대상 (maxPx 안). 카메라 뒤쪽은 제외한다.
-  pick(clientX, clientY, maxPx = 14) {
+  // 모드가 pickPx를 정하면 그 반경 — 내 세계 지도는 표식의 터치 영역 44px 이상(반경 22px)
+  pick(clientX, clientY, maxPx = this.mode?.pickPx ?? 14) {
     if (!this.mode) return null;
     const rect = this.renderer.domElement.getBoundingClientRect();
     const facing = new THREE.Vector3();

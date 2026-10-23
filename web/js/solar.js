@@ -10,11 +10,11 @@ import { THREE, dot } from "./scene.js";
 import { applyMatrix } from "./skydata.js";
 import { solarSystem, topocentric } from "./ephemeris.js";
 
-const TYPES = { sun: 0, moon: 1, mercury: 2, venus: 3, mars: 4, jupiter: 5, saturn: 6, uranus: 7, neptune: 8 };
+export const TYPES = { sun: 0, moon: 1, mercury: 2, venus: 3, mars: 4, jupiter: 5, saturn: 6, uranus: 7, neptune: 8 };
 // 화면 반지름 비율 — 달이 행성 · 태양 앞을 가린다 (별 · 은하수보다 늘 안쪽)
 const DEPTH = { moon: 0.93, sun: 0.97 };
 
-const BODY_VERT = /* glsl */ `
+export const BODY_VERT = /* glsl */ `
   varying vec3 vLocal;
   varying vec3 vWorldN;
   varying vec3 vWorldPos;
@@ -33,7 +33,7 @@ const BODY_VERT = /* glsl */ `
   }`;
 
 // 표면 무늬는 사진이 아니라 실제 모습을 단순화한 그림이다 (목성 띠와 대적점, 토성 고리와 그림자, 화성 극관, 금성 구름, 수성 크레이터)
-const BODY_FRAG = /* glsl */ `
+export const BODY_FRAG = /* glsl */ `
   uniform int uType;
   uniform vec3 uSun;                                         // 태양 쪽 방향 (화면 좌표)
   uniform sampler2D uMap;
@@ -148,7 +148,7 @@ export class SolarLayer {
       const mesh = new THREE.Mesh(sphere, new THREE.ShaderMaterial({ uniforms, vertexShader: BODY_VERT, fragmentShader: BODY_FRAG }));
       mesh.renderOrder = 3;
       holder.add(mesh);
-      if (key === "saturn") holder.add(this.saturnRings(uniforms));
+      if (key === "saturn") holder.add(saturnRings(uniforms));
       // 빛점 — 시지름이 작을 때도 보이게 (밝기는 등급으로)
       const glow = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3()]),
         new THREE.PointsMaterial({ map: dot(), transparent: true, depthWrite: false, sizeAttenuation: false,
@@ -157,53 +157,6 @@ export class SolarLayer {
       this.group.add(holder, glow);
       this.bodies.set(key, { holder, mesh, uniforms, glow });
     }
-  }
-
-  // 토성 고리 — 적도면(자전축에 수직), 실제 반지름 비율. C · B · A 고리의 밝기 차이, 카시니 · 엥케 간극,
-  // 행성이 드리우는 그림자(고리 위의 점에서 태양 쪽으로 행성에 가려지는가)
-  saturnRings(bodyUniforms) {
-    const R = 58232, inner = 74500 / R, outer = 136780 / R;
-    const geom = new THREE.RingGeometry(inner, outer, 192, 1);
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { uSun: bodyUniforms.uSun, uDim: bodyUniforms.uDim },
-      vertexShader: /* glsl */ `
-        varying float vR;
-        varying vec3 vWorldPos;
-        varying vec3 vCenter;
-        varying float vScale;
-        void main() {
-          vR = length(position.xy);
-          vec4 wp = modelMatrix * vec4(position, 1.0);
-          vWorldPos = wp.xyz;
-          vCenter = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-          vScale = length(modelMatrix[0].xyz);
-          gl_Position = projectionMatrix * viewMatrix * wp;
-        }`,
-      fragmentShader: /* glsl */ `
-        uniform vec3 uSun;
-        uniform float uDim;
-        varying float vR;
-        varying vec3 vWorldPos;
-        varying vec3 vCenter;
-        varying float vScale;
-        float band(float r, float a, float b) { return smoothstep(a - 300.0, a + 300.0, r) * (1.0 - smoothstep(b - 300.0, b + 300.0, r)); }
-        void main() {
-          float r = vR * 58232.0;                            // km
-          float C = band(r, 74500.0, 92000.0) * 0.22;
-          float B = band(r, 92000.0, 117580.0) * (0.8 + 0.2 * smoothstep(95000.0, 110000.0, r));
-          float A = band(r, 122170.0, 136780.0) * 0.6 * (1.0 - band(r, 133420.0, 133745.0));   // 사이 = 카시니 간극, 엥케 간극
-          float a = (C + B + A) * (0.9 + 0.1 * sin(r * 0.00045));
-          vec3 col = mix(vec3(0.72, 0.64, 0.52), vec3(0.95, 0.88, 0.72), clamp(B + A * 0.6, 0.0, 1.0));
-          vec3 s = normalize(uSun), oc = vWorldPos - vCenter;     // 행성 그림자 — 태양 쪽으로 행성에 가려지면 어둡게
-          float bq = dot(oc, s), cq = dot(oc, oc) - vScale * vScale;
-          float shade = (bq < 0.0 && bq * bq - cq > 0.0) ? 0.12 : 1.0;
-          gl_FragColor = vec4(col * uDim * shade, a * 0.95);
-        }`,
-      transparent: true, side: THREE.DoubleSide, depthWrite: false,
-    });
-    const ring = new THREE.Mesh(geom, mat);
-    ring.renderOrder = 4;
-    return ring;
   }
 
   // 그 시각 · 회전 행렬(적도 → 화면)로 놓는다. 반환: 천체 목록 (화면 위치 · 이름 · 시지름 · 밝은 비율)
@@ -253,4 +206,51 @@ export class SolarLayer {
 function polarVector([ra, dec]) {
   const r = ra * Math.PI / 180, d = dec * Math.PI / 180;
   return [Math.cos(d) * Math.cos(r), Math.cos(d) * Math.sin(r), Math.sin(d)];
+}
+
+// 토성 고리 — 적도면(자전축에 수직), 실제 반지름 비율. C · B · A 고리의 밝기 차이, 카시니 · 엥케 간극,
+// 행성이 드리우는 그림자(고리 위의 점에서 태양 쪽으로 행성에 가려지는가). 서랍 안 근접 뷰(bodyview.js)도 같은 고리를 쓴다
+export function saturnRings(bodyUniforms) {
+  const R = 58232, inner = 74500 / R, outer = 136780 / R;
+  const geom = new THREE.RingGeometry(inner, outer, 192, 1);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uSun: bodyUniforms.uSun, uDim: bodyUniforms.uDim },
+    vertexShader: /* glsl */ `
+      varying float vR;
+      varying vec3 vWorldPos;
+      varying vec3 vCenter;
+      varying float vScale;
+      void main() {
+        vR = length(position.xy);
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldPos = wp.xyz;
+        vCenter = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+        vScale = length(modelMatrix[0].xyz);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uSun;
+      uniform float uDim;
+      varying float vR;
+      varying vec3 vWorldPos;
+      varying vec3 vCenter;
+      varying float vScale;
+      float band(float r, float a, float b) { return smoothstep(a - 300.0, a + 300.0, r) * (1.0 - smoothstep(b - 300.0, b + 300.0, r)); }
+      void main() {
+        float r = vR * 58232.0;                            // km
+        float C = band(r, 74500.0, 92000.0) * 0.22;
+        float B = band(r, 92000.0, 117580.0) * (0.8 + 0.2 * smoothstep(95000.0, 110000.0, r));
+        float A = band(r, 122170.0, 136780.0) * 0.6 * (1.0 - band(r, 133420.0, 133745.0));   // 사이 = 카시니 간극, 엥케 간극
+        float a = (C + B + A) * (0.9 + 0.1 * sin(r * 0.00045));
+        vec3 col = mix(vec3(0.72, 0.64, 0.52), vec3(0.95, 0.88, 0.72), clamp(B + A * 0.6, 0.0, 1.0));
+        vec3 s = normalize(uSun), oc = vWorldPos - vCenter;     // 행성 그림자 — 태양 쪽으로 행성에 가려지면 어둡게
+        float bq = dot(oc, s), cq = dot(oc, oc) - vScale * vScale;
+        float shade = (bq < 0.0 && bq * bq - cq > 0.0) ? 0.12 : 1.0;
+        gl_FragColor = vec4(col * uDim * shade, a * 0.95);
+      }`,
+    transparent: true, side: THREE.DoubleSide, depthWrite: false,
+  });
+  const ring = new THREE.Mesh(geom, mat);
+  ring.renderOrder = 4;
+  return ring;
 }

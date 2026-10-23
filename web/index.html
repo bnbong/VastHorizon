@@ -17,7 +17,6 @@
     <!-- 3D 무대 — 화면 전체 -->
     <section class="stage" id="stage" aria-label="3D 우주">
       <div class="tooltip" id="tooltip" hidden></div>
-      <div class="loading" id="loading">하늘을 불러오는 중…</div>
     </section>
 
     <!-- 색인 · 키 상태 안내 (F2012) -->
@@ -27,25 +26,63 @@
     <div class="chrome" id="chrome">
       <header class="chrome-top">
         <div class="wordmark">
-          <span class="wordmark-name">VastHorizon</span>
+          <span class="wordmark-name">Vast<i>Horizon</i></span>
           <span class="wordmark-tag">당신의 세상은 생각보다 넓다</span>
         </div>
-        <div class="chrome-top-right">
-          <span class="index-status" id="index-status" title="현재 색인 건수 (F2002)"><span class="dot"></span><span class="text">상태 확인 중…</span></span>
-          <button class="btn btn-secondary btn-sm" id="catalog-btn" type="button"></button>
-        </div>
+        <nav class="chrome-top-right" aria-label="주 메뉴">
+          <button class="nav-link" id="nav-sky" type="button">오늘의 하늘</button>
+          <button class="nav-link" id="nav-world" type="button">내 세계</button>
+          <div class="menu-wrap">
+            <button class="nav-round" id="menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu" aria-label="메뉴 열기"></button>
+            <div class="menu" id="menu" hidden>
+              <div class="menu-section menu-nav">
+                <button class="menu-item" id="menu-sky" type="button">오늘의 하늘</button>
+                <button class="menu-item" id="menu-world" type="button">내 세계</button>
+              </div>
+              <div class="menu-section">
+                <button class="menu-item" id="catalog-btn" type="button"></button>
+                <div class="launcher" id="launcher" role="group" aria-label="기능"></div>
+              </div>
+              <div class="menu-section">
+                <button class="menu-item" id="menu-locate" type="button"></button>
+                <button class="menu-item" id="menu-prologue" type="button"></button>
+              </div>
+              <div class="menu-foot">
+                <span class="index-status" id="index-status" title="현재 색인 건수 (F2002)"><span class="dot"></span><span class="text">상태 확인 중…</span></span>
+              </div>
+            </div>
+          </div>
+        </nav>
       </header>
+
+      <!-- 첫 하늘 — 문장 하나와 주 행동 하나 (하늘 보기 · 서랍이 닫혀 있을 때만) -->
+      <section class="first-sky" id="first-sky" aria-labelledby="first-sky-title">
+        <p class="first-kicker"><span class="kicker-line" aria-hidden="true"></span>오늘 밤, 여기서 보이는 빛</p>
+        <h1 class="first-title" id="first-sky-title"></h1>
+        <p class="first-copy">마음이 머무는 곳에서 시작하세요.<br>별 하나를 알아갈 때, 세계도 조금 넓어집니다.</p>
+        <div class="first-actions">
+          <button class="primary-button" id="first-light" type="button"></button>
+          <button class="quiet-link" id="first-prologue" type="button"></button>
+        </div>
+      </section>
+      <!-- 내 세계 — 지도 위의 머리글 · 범례 · 바닥 문구 (지도 보기에서만) -->
+      <section class="world-heading" id="world-heading" aria-labelledby="world-title">
+        <p class="first-kicker"><span class="kicker-line" aria-hidden="true"></span><span id="world-kicker"></span></p>
+        <h2 class="world-title" id="world-title"></h2>
+        <ul class="map-legend" id="map-legend"></ul>
+      </section>
+      <p class="world-foot" id="world-foot">알아간 사실이 쌓이는 지도 · 실제 우주의 경계가 아닙니다</p>
       <p class="stage-hint" id="stage-hint"></p>
 
       <div class="chrome-bottom" id="chrome-bottom">
-        <div class="chrome-row">
-          <div class="meter-group">
-            <button class="world-meter" id="world-meter" type="button" title="눌러서 내 세상 보기"></button>
-            <button class="btn btn-horizon btn-lg" id="journey-btn" type="button"></button>
-          </div>
-          <nav class="launcher" id="launcher" aria-label="기능"></nav>
-        </div>
         <nav class="horizon-scale" id="horizon-scale" aria-label="거리 — 지평선에서 우주의 끝까지"></nav>
+        <div class="ribbon">
+          <button class="world-meter" id="world-meter" type="button" title="눌러서 내 세계 보기"></button>
+          <div class="ribbon-right">
+            <p class="ribbon-copy">아직 모르는 빛은<br>가능성으로 남겨 둡니다.</p>
+            <button class="ribbon-arrow" id="journey-btn" type="button" aria-label="내 세계 보기"></button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -63,6 +100,17 @@
     <div class="scene" id="scene" hidden></div>
   </div>
 
+  <!-- 처음 켰을 때 — 하늘 데이터 · 모델을 받는 동안 로고가 그려진다. 다 받으면 main.js가 걷어 낸다 -->
+  <div class="loading" id="loading" role="status" aria-live="polite">
+    <div class="loading-logo" id="loading-logo"></div>
+    <p class="loading-text" id="loading-text">하늘을 불러오는 중…</p>
+  </div>
+  <!-- 로고만 먼저 — main.js가 three.js까지 받는 동안 기다리지 않도록 따로 띄운다 -->
+  <script type="module">
+    import { logoSvg, LOGO_VIEWBOX_TIGHT } from "./js/logo.js";
+    document.getElementById("loading-logo").innerHTML = logoSvg({ id: "vh-loading-logo", viewBox: LOGO_VIEWBOX_TIGHT });
+    document.getElementById("loading").dataset.since = String(Math.round(performance.now()));
+  </script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

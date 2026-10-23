@@ -179,6 +179,19 @@ export function starColor(bv) {
   return stops[stops.length - 1][1];
 }
 
+// 첫 번째 빛 — 지금 하늘에 떠 있는 밝은 천체 중 아직 알아가지 않은 것 하나 (첫 하늘의 '첫 번째 빛 만나기')
+//   candidates: [{ id, name, mag, alt }] — 하늘의 달 · 행성 · 카탈로그 별 · 메시에 천체 (alt: 고도, 도)
+//   1) id가 있고 아직 알아가지 않은 것만. 태양은 뺀다 (맨눈으로 바라보면 안 된다)
+//   2) 지평선 위 15도 이상을 먼저 — 낮게 뜬 빛은 건물 · 대기에 가려 실제로 찾기 어렵다. 없으면 지평선 위 전체에서
+//   3) 그 안에서 겉보기 등급이 가장 밝은 것 (달 → 금성 · 목성 → 시리우스 …). 등급을 모르면 맨 뒤, 같으면 이름순
+export function pickFirstLight(candidates, isKnown = () => false, minAltDeg = 15) {
+  const open = candidates.filter((c) => c?.id && c.kind !== "sun" && c.alt > 0 && !isKnown(c.id));
+  const mag = (c) => (Number.isFinite(Number(c.mag)) && c.mag !== null ? Number(c.mag) : Infinity);
+  const order = (a, b) => mag(a) - mag(b) || String(a.name).localeCompare(String(b.name), "ko");
+  const high = open.filter((c) => c.alt >= minAltDeg);
+  return (high.length ? high : open).sort(order)[0] ?? null;
+}
+
 // 사람이 읽는 별 색 — 툴팁용
 export function colorWord(bv) {
   if (bv < 0) return "푸른 흰색";

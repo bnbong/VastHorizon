@@ -9,16 +9,21 @@ import { api, askStream } from "./api.js";
 import { departureLabel, distanceText, horizonKm, horizonScale, measure, worldScaleLine } from "./astro.js";
 import { clearHistoryFlow, requestGate, runLatest } from "./flows.js";
 import { icon } from "./icons.js";
-import { GROUP_COLORS, MapMode } from "./map.js";
+import { miniLogoSvg } from "./logo.js";
+import { MapMode } from "./map.js";
 import { Stage } from "./scene.js";
-import { colorWord } from "./skydata.js";
+import { colorWord, pickFirstLight } from "./skydata.js";
+import { heroFact } from "./facts.js";
 import { SkyMode } from "./sky.js";
 import { playPrologue, STORAGE_KEY as PROLOGUE_KEY } from "./prologue.js";
 import { igniteBurst } from "./dream.js";
 import { loadBlackHoles, mountBlackHole } from "./blackhole.js";
-import { analogies, countByGroup, growthText, groupLine, knownAndUnknown, newlyInside } from "./worldscale.js";
+import { mountBodyView, stopBodyView } from "./bodyview.js";
+import { bodyInfo, sizeCaption } from "./solarbodies.js";
+import { analogies, growthText, knownAndUnknown, newlyInside } from "./worldscale.js";
 import { entryOf, localDate, reachOf, recent, restoreVisited, serialize, todays, WORLD_KEY } from "./journal.js";
 import { UnfoldMode } from "./unfold.js";
+import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $("#app");
@@ -29,7 +34,6 @@ const DEFAULT_CONSTELLATION = "오리온자리";
 const LY_KM = 9460730472580.8;
 const GROUPS = [["all", "전체"], ["star", "별"], ["messier", "메시에 천체"], ["solar_system", "태양계"],
                 ["human_made", "인류의 발자취"], ["constellation", "별자리"]];
-const groupColor = (g) => `#${(GROUP_COLORS[g] ?? 0x93b2ee).toString(16).padStart(6, "0")}`;
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches
   || new URLSearchParams(location.search).get("motion") === "off";
 
@@ -66,7 +70,7 @@ function resultHtml(body, cited, scope, notice, warnings = [], cls = "") {
 }
 
 const statusHtml = (text, tone = "progress") =>
-  `<p class="status ${tone === "progress" ? "" : tone}">${tone === "progress" ? "<span class=\"dots\"><i></i><i></i><i></i></span>" : ""}${esc(text)}</p>`;
+  `<p class="status ${tone === "progress" ? "" : tone}">${tone === "progress" ? miniLogoSvg() : ""}${esc(text)}</p>`;
 
 function measureHtml(km, { label, caption, size = "m", center = false, unitOnly } = {}) {
   const m = unitOnly ?? measure(km);
@@ -121,8 +125,17 @@ function claimPanel() {
   return () => gen === panelGen;
 }
 
+// 서랍 안 작은 WebGL 화면(블랙홀 · 천체 근접 뷰) — 한 번에 하나만. 서랍 내용이 바뀌거나 닫히면 컨텍스트까지 정리한다
+let drawerView = null;
+function stopDrawerView() {
+  drawerView?.stop();
+  drawerView = null;
+  stopBodyView();
+}
+
 function openDrawer(kind, html) {
   if (kind !== "item") clearSelection();      // 다른 기능 서랍으로 바뀌면 선택 표시도 지운다
+  stopDrawerView();
   state.drawer = kind;
   drawerBody.dataset.kind = kind;
   drawerBody.innerHTML = html;
@@ -138,7 +151,7 @@ function openDrawer(kind, html) {
     $("#drawer-close").focus({ preventScroll: true });
   }
   drawer.setAttribute("aria-hidden", "false");
-  stage?.setInset(window.innerWidth > 860 ? 432 : 0);   // 서랍(400 + 여백 16 × 2) 만큼 시야를 비킨다
+  stage?.setInset(window.innerWidth > 650 ? drawer.offsetWidth + 32 : 0);   // 서랍(폭 + 여백 16 × 2) 만큼 시야를 비킨다 (650px 이하는 아래 시트)
   renderChrome();
 }
 
@@ -154,6 +167,7 @@ function clearSelection() {
 
 function closeDrawer() {
   claimPanel();                                // 진행 중인 응답이 닫힌 서랍을 다시 그리지 않게
+  stopDrawerView();
   clearSelection();
   state.drawer = null;
   app.classList.remove("drawer-open");
@@ -271,27 +285,26 @@ function pickCrossed(points, max) {
 }
 
 // 담기 — 천체의 이야기를 읽고 난 뒤 사람이 직접 누른다. 거리를 몰라도 알아간 빛으로 기록할 수 있다
+// 알아간 빛 표식 — 살구색 채운 원 안의 ✦ (하늘 · 목록 · 서랍 · 내 세계에서 같은 모양)
+const collectedHtml = (text) => `<div class="collected"><span class="known-mark" aria-hidden="true">✦</span><span>${esc(text)}</span></div>`;
+
 function collectButtonHtml(obj) {
-  if (isObserved(obj.id)) {
-    return `<div class="collected">${icon("sparkles", 15)}이미 내 세상에 담긴 빛입니다</div>`;
-  }
-  const label = obj.distance_km ? `다 읽었어요, 내 세상에 담기 (${distanceText(obj.distance_km)})`
-    : obj.group === "constellation" ? "다 읽었어요, 알아간 빛으로 기록하기" : "다 읽었어요, 알아간 빛으로 기록하기 (거리 미확인)";
-  const note = obj.distance_km ? `다 읽으셨다면, 이 ${obj.kindWord ?? "천체"}를 내 세상에 더해 보세요.`
-    : "지도에 놓을 거리는 없지만, 알아간 빛 기록에는 남길 수 있습니다.";
+  if (isObserved(obj.id)) return collectedHtml("이미 내 세계에 담은 빛입니다");
+  const note = obj.distance_km ? `담으면 내 세계 지도에 ${distanceText(obj.distance_km)} 거리로 놓입니다.`
+    : obj.group === "constellation" ? "별자리는 여러 거리의 별이 모인 모양이라 지도 대신 알아간 빛 기록에 남깁니다."
+    : "거리가 확인되지 않아 지도 대신 알아간 빛 기록에 남깁니다.";
   return `<div class="collect">
-    <p class="collect-note">${note}</p>
-    ${btn(label, { variant: "horizon", size: "lg", ic: "globe", attrs: 'data-collect="1" style="width:100%"' })}
-  </div>`;
+    <button type="button" class="save-button" data-collect="1"><span>이 빛을 내 세계에 담기</span><span class="plus" aria-hidden="true">＋</span></button>
+    <p class="collect-note">${esc(note)}</p></div>`;
 }
 
 function bindCollect(root, obj) {
   root.querySelectorAll("[data-collect]").forEach((b) => b.addEventListener("click", () => {
-    state.sky?.observe(obj);                     // 하늘에 떠 있으면 옅은 고리가 네온 분필 오로라와 이름으로 (이름이 막 나타나는 연출)
+    state.sky?.observe(obj);                     // 하늘에 떠 있으면 빈 점선 원이 살구색 표식과 이름표로 (이름이 막 나타나는 연출)
     const at = state.mode === "sky" ? state.sky.screenOf(obj.id) : null;
     if (at) igniteBurst(at.x, at.y, { reducedMotion: reducedMotion() });  // 알게 되는 순간 — 그 천체가 환하게 켜진다
     const d = discover(obj);
-    b.closest(".collect").outerHTML = `<div class="collected">${icon("sparkles", 15)}내 세상에 새로운 빛으로 담았습니다 · 알아간 빛 ${(d?.count ?? world.visited.length).toLocaleString("ko-KR")}개</div>`;
+    b.closest(".collect").outerHTML = collectedHtml(`내 세계에 새로운 빛으로 담았습니다 · 알아간 빛 ${(d?.count ?? world.visited.length).toLocaleString("ko-KR")}개`);
   }));
 }
 
@@ -316,11 +329,17 @@ function rollMeter(to) {
   meterRaf = requestAnimationFrame(tick);
 }
 
+// 아래 리본의 거리 — 가장 먼 빛까지. 아직 거리를 아는 빛이 없으면 지평선(약 4.7km)에서 시작한다
 function drawMeter(km) {
-  $("#world-meter").innerHTML = `${measureHtml(km, {
-    label: "내 세상의 가장 먼 빛", size: "l",
-    caption: world.name === "지평선" ? "지평선까지 · 눈높이 1.7m 기준" : `${world.name}까지 · 알아간 빛 ${world.visited.length.toLocaleString("ko-KR")}개` })}
-    <div class="meter-scale">${esc(worldScaleLine(km))}</div>`;
+  const m = measure(km), n = world.visited.length.toLocaleString("ko-KR");
+  const caption = world.name === "지평선"
+    ? `지평선에서 시작하는 중${world.visited.length ? ` · 알아간 빛 ${n}개` : ""}`
+    : `${world.name}까지 · 알아간 빛 ${n}개`;
+  const el = $("#world-meter");
+  el.innerHTML = `<small class="meter-label">내가 지금까지 알아간 거리</small>
+    <strong class="meter-value">${esc(m.value)}<span class="meter-unit">${esc(m.unit)}</span></strong>
+    <em class="meter-caption">${esc(caption)}</em>`;
+  el.title = `${worldScaleLine(km)} · 눌러서 내 세계 보기`;
 }
 
 // ── 머리 · 발 ─────────────────────────────────────────────────────────────
@@ -332,10 +351,13 @@ const STOPS = [{ label: "지평선", sub: "하늘 보기", km: HORIZON_KM }, { l
                { label: "우주의 끝", sub: "10²⁶ m", km: 4.4e23 }];
 
 function renderChrome() {
-  // 발사대 — 지금 연 기능은 밝게
+  app.dataset.mode = state.mode;                // 첫 하늘 · 지평선 길의 표시 여부를 CSS가 정한다
+  // 기능 모음 (메뉴 안) — 지금 연 기능은 표시
   $("#launcher").innerHTML = TOOLS.map(([id, ic, label]) =>
-    btn(label, { variant: state.drawer === id ? "primary" : "ghost", ic, attrs: `data-tool="${id}" title="${label}"` })).join("");
-  $("#catalog-btn").className = `btn btn-sm ${state.drawer === "catalog" ? "btn-primary" : "btn-secondary"}`;
+    `<button type="button" class="menu-item ${state.drawer === id ? "on" : ""}" data-tool="${id}">${icon(ic, 16)}<span>${label}</span></button>`).join("");
+  $("#catalog-btn").classList.toggle("on", state.drawer === "catalog");
+  $("#nav-sky").toggleAttribute("aria-current", state.mode === "sky");
+  $("#nav-world").toggleAttribute("aria-current", state.mode === "map");
 
   // 지평선 길 — 금빛은 오늘 바라본 가장 먼 곳까지
   const fill = horizonScale(world.km);
@@ -353,47 +375,125 @@ function renderChrome() {
 
   if (meterKm !== world.km) rollMeter(world.km);
   else drawMeter(world.km);
+  renderFirstSky();
+  renderWorldHeading();
   renderHint();
   renderWorldCard();
+  syncHush();                                   // 요약 카드의 자리가 정해진 뒤에 지도 이름표 숨김 구역을 다시
 }
 
-// 내 세상 카드 — 내 세상 보기에서 늘. 기본은 알아간 빛 · 가장 먼 빛 · 최근 알아간 천체만, 크기 비교와 기록은 펼쳐서
+// 내 세계 지도의 머리글 — 오늘 새로 알아간 빛 · 두 줄 제목 · 범례 (design-proposal .collect-heading · .map-legend)
+function renderWorldHeading() {
+  const el = $("#world-heading");
+  const shown = state.mode === "map" && !state.scene;
+  el.classList.toggle("away", !shown);
+  $("#world-foot").classList.toggle("away", !shown);
+  el.inert = !shown;
+  if (!shown) return;
+  const h = worldHeading(world.visited, localDate());
+  $("#world-kicker").textContent = h.kicker;
+  $("#world-title").innerHTML = `${esc(h.lines[0])}<br><em>${esc(h.lines[1])}</em>`;
+  $("#map-legend").innerHTML = `<li>${markHtml(true)}<span>${esc(h.known)}</span></li><li>${markHtml(false)}<span>${esc(h.unknown)}</span></li>`;
+}
+
+// 첫 하늘 — 하늘 보기에서 서랍 · 장면이 닫혀 있을 때만. 이미 알아간 빛이 있으면 다음 빛을 권한다
+function renderFirstSky() {
+  const el = $("#first-sky");
+  const shown = state.mode === "sky" && !state.drawer && !state.scene;
+  el.classList.toggle("away", !shown);
+  el.inert = !shown;
+  app.classList.toggle("first-sky-on", shown);
+  syncHush();
+  const met = world.visited.length > 0;
+  $("#first-sky-title").innerHTML = met ? "오늘은 어떤 빛을<br><em>알아가 볼까요?</em>"
+    : "당신이 아직<br>만나지 못한 빛이<br><em>이토록 많아요.</em>";
+  $("#first-light").innerHTML = `<span>${met ? "다음 빛 만나기" : "첫 번째 빛 만나기"}</span>${icon("arrow-up-right", 20)}`;
+}
+
+// 하늘 이름표를 숨길 구역 — 첫 하늘 문장 뒤의 별자리 이름, 워드마크 · 상단 탐색 둘레의 모든 이름표 (sky.js applyHush)
+function syncHush() {
+  if (!state.sky || !stage) return;
+  const box = stage.container.getBoundingClientRect();
+  const zone = (el, pad, only) => {
+    const r = el.getBoundingClientRect();
+    return r.width ? { x0: r.left - box.left - pad, y0: r.top - box.top - pad, x1: r.right - box.left + pad, y1: r.bottom - box.top + pad, only } : null;
+  };
+  state.sky.hushZones = [app.classList.contains("first-sky-on") ? zone($("#first-sky"), 28, "constellation") : null,
+                         zone($(".wordmark"), 16), zone($(".chrome-top-right"), 16)].filter(Boolean);
+  // 내 세계 지도 — 머리글 · 요약 카드 · 바닥 문구 뒤의 거리 고리 이름 (map.js applyHush)
+  if (state.map) state.map.nameZones = state.mode !== "map" ? [] : [zone($("#world-card"), 6)].filter(Boolean);
+  if (state.map) state.map.hushZones = state.mode !== "map" ? [] : [zone($(".world-title"), 12), zone($("#map-legend"), 12), zone($("#world-card"), 12),
+    zone($("#world-foot"), 10), zone($(".wordmark"), 16), zone($(".chrome-top-right"), 16)].filter(Boolean);
+}
+
+// 프롤로그가 끝나고 크롬이 나타날 때 — 첫 하늘 문장이 350ms 동안 떠오른다
+function arriveFirstSky() {
+  const el = $("#first-sky");
+  syncHush();
+  el.classList.remove("arrive");
+  void el.offsetWidth;
+  el.classList.add("arrive");
+}
+
+// 첫 번째 빛 만나기 — 지금 이 하늘에 떠 있는 밝은 천체 중 아직 알아가지 않은 것 하나의 서랍을 연다.
+// 고르는 규칙은 skydata.pickFirstLight (지평선 위 15도 이상 · 태양 제외 · 겉보기 등급이 밝은 순)
+function meetFirstLight() {
+  if (!state.sky) return;
+  if (state.mode !== "sky") setMode("sky");
+  const pick = pickFirstLight(state.sky.brightCandidates(), isObserved);
+  if (!pick) {
+    showCatalog();
+    toast("지금 하늘에 새로 만날 밝은 빛이 없어 천체 목록을 열었습니다");
+    return;
+  }
+  state.sky.lookAt(pick.id);
+  showSelection({ id: pick.id, name: pick.name });          // 서랍이 열리기 전에 바로 표시
+  selectItem(pick.id, { fly: false });
+}
+
+// 내 세계 요약 카드 — 종이색 각진 카드. 나의 가장 먼 빛(큰 숫자) → 그 천체 이름 → 한 문단 → 다른 빛 만나러 가기.
+// 크기 비교 · 알아간 빛 기록 · 기록 지우기 · 우주 끝까지 떠나 보기는 카드 아래 접힘으로 (design-proposal .world-note)
 function renderWorldCard() {
   const el = $("#world-card");
   if (!el) return;
   el.hidden = state.mode !== "map" || !!state.scene;
-  if (el.hidden) return;
+  if (el.hidden) { fitMapView(); return; }
   const open = new Set([...el.querySelectorAll("details[open]")].map((d) => d.dataset.k));   // 다시 그려도 펼친 곳은 그대로
   if (renderWorldCard.openLog) { open.add("log"); renderWorldCard.openLog = false; }
   const byId = new Map(mapPoints().map((p) => [p.id, p]));
   const groupOf = (v) => v.group ?? byId.get(v.id)?.group ?? (v.id.startsWith("hip:") ? "star" : null);
-  const visited = world.visited, today = todayCount(), last = recent(visited, 1)[0];
-  const counts = countByGroup(visited.map((v) => ({ group: groupOf(v) })));
+  const visited = world.visited;
   const { unknown } = knownAndUnknown(mapPoints(), new Set(visited.map((v) => v.id)), world.km);
   const facts = analogies(world.km);
   const n = (x) => x.toLocaleString("ko-KR");
-  el.innerHTML = `<div class="wc-kicker">내 세상</div>
-    <div class="wc-row wc-main"><span>알아간 빛</span><b>${n(visited.length)}개</b></div>
-    ${visited.length ? `<div class="wc-note">${today ? `오늘 새로 ${n(today)}개 · ` : ""}${esc(groupLine(counts))}</div>`
-      : `<div class="wc-note">첫 번째 빛을 기다리고 있습니다. 천체 하나를 알아가면 이 지도에 첫 빛이 켜집니다</div>`}
-    <div class="wc-row"><span>가장 먼 빛</span><b>${esc(distanceText(world.km))}</b></div>
-    ${world.name !== "지평선" ? `<div class="wc-note">${esc(world.name)}</div>` : ""}
-    ${last ? `<div class="wc-row"><span>최근 알아간 천체</span><b class="wc-name">${esc(last.name)}</b></div>` : ""}
+  const far = farthestParts(world.km);
+  const copy = visited.length
+    ? `알아간 빛 ${n(visited.length)}개가 내 세계에 남아 있어요. 아직 닿지 않은 점들도 언제든 만나볼 수 있습니다.`
+    : "아직 알아간 빛이 없어요. 하늘에서 빛 하나를 만나 담으면 이 지도에 살구색 표식이 켜집니다.";
+  el.innerHTML = `<p class="wc-kicker">나의 가장 먼 빛</p>
+    <p class="wc-far"><span class="wc-far-value">${esc(far.value)}</span><span class="wc-far-unit">${esc(far.unit)}</span></p>
+    <hr class="wc-rule">
+    <p class="wc-name">${esc(world.name)}</p>
+    <p class="wc-copy">${esc(copy)}</p>
+    <button type="button" class="wc-link" id="wc-meet">${visited.length ? "다른 빛 만나러 가기" : "첫 번째 빛 만나러 가기"} <span aria-hidden="true">↗</span></button>
+    <div class="wc-extra">
     <details class="wc-more" data-k="compare" ${open.has("compare") ? "open" : ""}><summary>크기 비교 더 보기</summary>
       ${facts.map((f) => `<div class="wc-row"><span>${esc(f.label)}</span><b>${esc(f.value)}</b></div>${f.note ? `<div class="wc-note">${esc(f.note)}</div>` : ""}`).join("")}
       <div class="wc-row"><span>그 거리 안 아직 알아가지 않은 천체</span><b>${n(unknown.length)}개</b></div>
       <div class="wc-note">앞으로 알아갈 가능성입니다</div>
       <div class="wc-src">기준 · 지구 지름 12,742km(위키백과 「지구」) · 빛의 속도 299,792km/s</div></details>
     <details class="wc-more" data-k="log" ${open.has("log") ? "open" : ""}><summary>알아간 빛 기록 (${n(visited.length)})</summary>
-      ${visited.length ? `<ol class="wc-log">${recent(visited).map((v) => `<li><button type="button" data-open="${esc(v.id)}">${esc(v.name)}</button>
+      ${visited.length ? `<ol class="wc-log">${recent(visited).map((v) => `<li><button type="button" data-open="${esc(v.id)}">${markHtml(true)}${esc(v.name)}</button>
         <span>${v.km ? esc(distanceText(v.km)) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}</span></li>`).join("")}</ol>
         <button type="button" class="wc-reset" id="wc-reset">기록 처음부터 다시 시작</button>` : `<div class="wc-note">아직 기록이 없습니다</div>`}</details>
-    <button type="button" class="btn btn-ghost btn-sm wc-journey" id="wc-journey">${icon("sparkles", 14)}<span>우주 끝까지 떠나 보기</span></button>`;
+    <button type="button" class="wc-journey" id="wc-journey">${icon("sparkles", 14)}<span>우주 끝까지 떠나 보기</span></button></div>`;
   el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
     const v = world.visited.find((x) => x.id === b.dataset.open);
     if (v?.km) state.map?.select(v.id);
     selectItem(b.dataset.open, { fly: false });
   }));
+  $("#wc-meet").addEventListener("click", meetFirstLight);       // 하늘로 돌아가 아직 만나지 않은 밝은 빛 하나를 연다
+  fitMapView();
   $("#wc-journey").addEventListener("click", startJourney);
   $("#wc-reset")?.addEventListener("click", (e) => {
     if (e.currentTarget.dataset.armed) { resetWorld(); return; }    // 한 번 더 눌러야 지운다
@@ -402,13 +502,20 @@ function renderWorldCard() {
   });
 }
 
+// 좁은 화면 — 요약 카드가 지도 아래쪽을 덮으므로 '나'를 카드 위로 올린다 (카드 높이의 45%만큼 시야를 위로)
+function fitMapView() {
+  const card = $("#world-card");
+  const lift = state.mode === "map" && !card.hidden && !state.drawer && window.innerWidth <= 650 ? Math.round(card.offsetHeight * 0.45) : 0;
+  stage?.setInsetY(lift);
+}
+
 function renderHint() {
   const hint = $("#stage-hint");
-  if (state.mode === "map") hint.textContent = "분필처럼 빛나는 점이 내가 알아간 천체 · 빛의 선은 내가 알아간 여정 · 흐린 점은 아직 알아가지 않은 천체";
+  if (state.mode === "map") hint.textContent = "";      // 내 세계 지도는 범례(#map-legend)와 바닥 문구(#world-foot)가 안내한다
   else if (state.mode === "unfold") hint.textContent = `지구에서 본 ${state.unfold?.con.name ?? "별자리"} · '펼치기'를 누르면 별들이 실제 거리로 이동합니다`;
   else if (state.daytime) hint.textContent = "지금은 해가 떠 있어 별이 보이지 않습니다 · 오늘 밤 하늘에서 시각을 바꿔 보세요";
-  else hint.textContent = world.visited.length ? "아무 별이나 눌러 알아보세요 · 옅은 고리는 아직 알아가지 않은 천체 · 휠로 확대하면 더 어두운 별까지"
-    : "오늘은 어떤 빛을 알아가 볼까요? · 별 하나를 눌러 보세요 · 휠로 확대하면 더 어두운 별까지";
+  else hint.textContent = world.visited.length ? "아무 별이나 눌러 알아보세요 · 점선 원은 아직 만나지 않은 빛 · 휠로 확대하면 더 어두운 별까지"
+    : "하늘의 빛을 눌러 살펴보세요 · 휠로 확대하면 더 어두운 별까지";
 }
 
 let toastTimer;
@@ -449,27 +556,14 @@ function closeScene() {
   state.scene = null;
   $("#scene").hidden = true;
   $("#chrome").hidden = false;
+  renderFirstSky();
   wake();
 }
 
-function showIntro() {
-  showScene("intro", `<div class="scene-col">
-    <div class="kicker st0">VASTHORIZON</div>
-    <h1 class="st1">고개를 들어 보세요</h1>
-    <div class="intro-measure st2">${measureHtml(HORIZON_KM, { label: "눈앞의 지평선", caption: "지평선까지 · 눈높이 1.7m 기준", size: "l", center: true })}</div>
-    <p class="lede st3">눈앞의 지평선은 약 4.7km. 하지만 알아갈 수 있는 세계는 그 너머에 있습니다.<br>빛 하나를 알아갈 때마다, 당신의 세상은 <em class="kw">그만큼</em> 넓어집니다.</p>
-    <div class="actions st4">${btn("내 위치의 하늘 보기", { variant: "primary", size: "lg", ic: "map-pin", id: "intro-locate" })}
-      ${btn("서울 하늘로 시작", { variant: "ghost", size: "lg", id: "intro-seoul" })}</div>
-    <button type="button" class="replay st4" id="intro-prologue">프롤로그 다시 보기</button></div>`);
-  $("#intro-locate").addEventListener("click", () => { closeScene(); locate(); });
-  $("#intro-seoul").addEventListener("click", closeScene);
-  $("#intro-prologue").addEventListener("click", () => { closeScene(); startPrologue(); });
-}
-
-// 프롤로그 — 처음 켰을 때 한 번 (다시 보기 · ?prologue=1 로 언제든). 끝나면 처음 장면으로
+// 프롤로그 — 처음 켰을 때 한 번 (다시 보기 · ?prologue=1 로 언제든). 끝나면 첫 하늘로
 function startPrologue() {
   $("#chrome").hidden = true;
-  playPrologue({ reducedMotion: reducedMotion() }).then(() => { $("#chrome").hidden = false; showIntro(); });
+  playPrologue({ reducedMotion: reducedMotion() }).then(() => { $("#chrome").hidden = false; arriveFirstSky(); wake(); });
 }
 
 function prologueWanted(params) {
@@ -572,22 +666,32 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
     : isCon ? [`${item.name}에서 가장 밝은 별은 무엇인가요?`, "언제 잘 보이나요?"]
     : [`${item.name}은(는) 지금 어디에 있나요?`, "어떤 일을 했나요?"];
 
+  // 읽기 카드의 첫 단 — 그룹 → 이름 → 지정 번호 · 종류 · 거리 → 핵심 사실 한 문장(항목 메타데이터, facts.js) → 짧은 설명 → 출처 → 담기
+  const fact = heroFact(item, { figure: isCon ? state.constellations.find((c) => c.item_id === item.id) : null, refYear: state.refYear });
+  const meta = [code, item.kind, item.distance_km ? `${surface ? "지표면 위 " : ""}${distanceText(item.distance_km)}` : null].filter(Boolean);
+  const source = item.sources?.[0];
   openDrawer("item", `
     <div class="head reveal" style="animation-delay:0ms">
-      <div class="eyebrow">${esc(item.group_ko)}${code ? ` · <span class="code">${esc(code)}</span>` : ""}</div>
-      <h2 class="name">${esc(item.name)}</h2>
-      <div class="sub">${esc(item.kind ?? "")}</div></div>
-    ${item.distance_km ? `<div class="reveal" style="animation-delay:180ms">${measureHtml(item.distance_km, { label: surface ? "지표면 위 고도" : "지구로부터" })}</div>` : ""}
-    <div class="reveal" id="photo" style="animation-delay:270ms"></div>
-    <div class="reveal" id="blackhole" style="animation-delay:300ms"></div>
-    <div class="stack lg reveal intro" id="intro" style="animation-delay:360ms">${statusHtml("이 천체의 이야기를 불러오는 중…")}</div>
-    ${departs ? `<div class="card emphasis letter-card reveal" style="animation-delay:540ms">
+      <div class="eyebrow">${esc(item.group_ko)}</div>
+      <h2 class="name card-name">${esc(item.name)}</h2>
+      ${meta.length ? `<div class="card-meta">${meta.map((m) => `<span>${esc(m)}</span>`).join('<i aria-hidden="true">·</i>')}</div>` : ""}</div>
+    ${fact ? `<div class="reveal" style="animation-delay:150ms"><p class="hero-fact">${esc(fact.before)}<em>${esc(fact.em)}</em>${esc(fact.after)}</p>
+      ${fact.detail ? `<p class="fact-detail">${esc(fact.detail)}</p>` : ""}</div>` : ""}
+    <div class="evidence-line reveal" style="animation-delay:300ms"><span>근거 있는 이야기 · 항목 메타데이터</span>
+      ${source ? `<a href="${esc(source.url)}" target="_blank" rel="noopener">${esc(source.name)} ↗</a>` : ""}</div>
+    <div class="reveal" id="collect-slot" style="animation-delay:420ms">${collectButtonHtml(item)}</div>
+    <button type="button" class="ask-hint reveal" id="ask-hint" style="animation-delay:480ms">궁금한 것을 물어보세요 ${icon("arrow-up-right", 13)}</button>
+    <details class="more-read reveal" style="animation-delay:540ms"><summary><span class="eyebrow">더 읽기</span>${icon("chevron-down", 14)}</summary>
+      <div class="stack lg intro" id="intro">${statusHtml("이 천체의 이야기를 불러오는 중…")}</div></details>
+    <div class="reveal" id="photo" style="animation-delay:600ms"></div>
+    <div class="reveal" id="bodyview" style="animation-delay:600ms"></div>
+    <div class="reveal" id="blackhole" style="animation-delay:620ms"></div>
+    ${departs ? `<div class="card emphasis letter-card reveal" style="animation-delay:660ms">
       <div class="letter-head">${icon("mail", 14)}빛의 편지</div>
       <div class="letter-body">지금 보이는 이 빛은 <em class="kw">${esc(departs)}</em>에 출발해, 오늘 당신의 눈에 닿아 여정을 마쳤습니다.</div>
       <div class="letter-note">카탈로그 거리(${esc(distanceText(item.distance_km))})로 계산한 출발 시점입니다.</div>
       <div class="row">${btn("그 해 지구의 기록 보기", { variant: "ghost", icRight: "arrow-right", id: "act-letter", attrs: 'style="padding-left:0"' })}</div></div>` : ""}
-    <div class="reveal" id="collect-slot" style="animation-delay:720ms">${collectButtonHtml({ ...item, kindWord: item.group === "star" ? "별" : "천체" })}</div>
-    <div class="stack reveal" style="animation-delay:900ms">
+    <div class="stack reveal" style="animation-delay:720ms">
       <button type="button" class="disclosure" id="more-btn" aria-expanded="false"><span class="eyebrow">자세한 정보</span>${icon("chevron-down", 14)}</button>
       <div id="more" hidden>
         <dl class="attrs">${attrs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(typeof v === "boolean" ? (v ? "예" : "아니오") : v)}</dd>`).join("")}</dl>
@@ -614,6 +718,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
     e.currentTarget.setAttribute("aria-expanded", String(!more.hidden));
     e.currentTarget.lastElementChild.outerHTML = icon(more.hidden ? "chevron-down" : "chevron-up", 14);
   });
+  $("#ask-hint").addEventListener("click", () => $("#chat-form input")?.focus());
   $("#act-letter")?.addEventListener("click", () => showLetter({ item_id: item.id }));
   $("#act-letter2")?.addEventListener("click", () => showLetter({ item_id: item.id }));
   $("#act-unfold")?.addEventListener("click", () => setMode("unfold", item.id));
@@ -641,6 +746,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   loadIntro(item, alive);
   loadPhoto(item, alive);
   loadBlackHole(item, alive);
+  showBodyView(item);
   state.historyLoaded = loadHistory(item, alive, historyGate);   // 넘어온 질문은 기록을 다 그린 뒤에 보낸다
 }
 
@@ -660,7 +766,26 @@ async function loadBlackHole(item, alive) {
       ${bh.quote ? `<blockquote>${esc(bh.quote)}</blockquote>` : `<p>Wikidata에 이 은하의 일부인 블랙홀로 기록되어 있습니다.</p>`}
       <p class="disclaimer">${esc(data.note)} 빛이 블랙홀 둘레에서 휘는 경로를 계산해, 원반 뒤쪽이 그림자 위아래로 보이는 모습(영화 「인터스텔라」의 가르강튀아와 같은 원리)을 그렸습니다. 출처 · ${src}</p>
     </figcaption></figure>`;
-  mountBlackHole(box.querySelector("canvas"), { still: reducedMotion() });
+  stopDrawerView();
+  drawerView = mountBlackHole(box.querySelector("canvas"), { still: reducedMotion() });
+}
+
+// 태양계 천체를 가까이서 본 모습 — 태양 쪽 빛을 받으며 천천히 돈다 (bodyview.js). 표면은 알려진 특징을 바탕으로 한 상상도
+function showBodyView(item) {
+  const info = bodyInfo(item.id);
+  const box = $("#bodyview");
+  if (!info || !box) return;
+  const note = info.key === "moon" ? "달 표면은 NASA 과학시각화 스튜디오 CGI Moon Kit(LRO 색 지도)입니다."
+    : `표면은 알려진 특징을 바탕으로 한 상상도입니다.${info.key === "earth" ? " 대륙과 구름의 모양은 실제 지도가 아닙니다." : ""}`;
+  box.innerHTML = `<figure class="body-card">
+    <canvas class="body-canvas" aria-label="${esc(item.name)}을(를) 가까이서 본 모습 — 상상도"></canvas>
+    <figcaption>
+      <div class="eyebrow">가까이서 본 모습</div>
+      <p class="body-size">${esc(sizeCaption(info))}</p>
+      <p class="disclaimer">${esc(note)} 크기 출처 · NASA · 위키백과 공개 값</p>
+    </figcaption></figure>`;
+  stopDrawerView();
+  drawerView = mountBodyView(box.querySelector("canvas"), item.id, { still: reducedMotion() });
 }
 
 // 메시에 천체 사진 — NASA 'Hubble's Messier Catalog'의 대표 사진과 출처 표기 (web/data/messier, 없으면 비워 둔다)
@@ -781,11 +906,11 @@ async function showCatalog() {
     const list = state.catalog.filter((o) => (group === "all" || o.group === group)
       && (!q || o.name.toLowerCase().includes(q) || (o.name_en ?? "").toLowerCase().includes(q)));
     $("#catalog-list").innerHTML = list.map((o) => `<button type="button" class="catalog-row ${isObserved(o.id) ? "seen" : ""}" data-id="${esc(o.id)}">
-        <span class="gdot" style="background:${groupColor(o.group)};color:${groupColor(o.group)}"></span>
+        ${markHtml(isObserved(o.id))}
         <span><span class="nm">${esc(o.name)}</span><span class="ds">${esc(o.group_ko)}${o.kind ? ` · ${esc(o.kind)}` : ""}</span></span>
         <span class="dist">${o.distance_km ? esc(distanceText(o.distance_km)) : ""}</span></button>`).join("")
       || `<p class="status warn">찾는 항목이 없습니다.</p>`;
-    $("#catalog-note").textContent = `전체 ${state.catalog.length}건 중 ${list.length}건 · 빛나는 점은 오늘 관측한 천체`;
+    $("#catalog-note").textContent = `전체 ${state.catalog.length}건 중 ${list.length}건 · ✦ 표식은 내 세계에 담은 빛, 점선 원은 아직 만나지 않은 빛`;
   };
   $("#catalog-q").addEventListener("input", draw);
   $("#catalog-groups").addEventListener("click", (e) => {
@@ -848,7 +973,7 @@ function showExplore() {
               <div class="top"><span class="nm">${esc(m.name)}에게 이 질문하기</span>${icon("arrow-right", 14)}</div>
               <p class="sub">"${esc(res.query)}"</p></button>`).join("")}</div>` : "";
       const cardsHtml = res.cards.map((c) => `<button type="button" class="card explore-card" data-id="${esc(c.item_id)}">
-            <div class="top"><span class="nm">${esc(c.name)}</span>${dist(c.item_id) ? `<span class="badge neutral">${esc(distanceText(dist(c.item_id)))}</span>` : ""}</div>
+            <div class="top"><span class="nm">${markHtml(isObserved(c.item_id))}${esc(c.name)}</span>${dist(c.item_id) ? `<span class="badge neutral">${esc(distanceText(dist(c.item_id)))}</span>` : ""}</div>
             <p class="sub">${c.kind ? `${esc(c.kind)} · ` : ""}${esc(c.reason)}</p></button>`).join("");
       out.innerHTML = `
         ${res.applied.length ? `<p class="sub">적용한 조건: ${res.applied.map(esc).join(" · ")}</p>` : ""}
@@ -1178,13 +1303,48 @@ async function showHealth() {
 
 // ── 시작 ──────────────────────────────────────────────────────────────────
 
+// 오늘의 하늘 — 서랍 · 장면을 닫고 하늘 보기로 (첫 하늘 문장이 다시 보인다)
+function goSky() {
+  closeScene();
+  closeDrawer();
+  if (state.mode !== "sky") setMode("sky");
+}
+
+// 메뉴 — 천체 목록 · 기능 모음 · 내 위치 · 프롤로그 · 색인 상태. 고르면 닫힌다
+function setMenu(open) {
+  const menu = $("#menu"), b = $("#menu-btn");
+  if (menu.hidden === !open) return;
+  menu.hidden = !open;
+  b.setAttribute("aria-expanded", String(open));
+  b.setAttribute("aria-label", open ? "메뉴 닫기" : "메뉴 열기");
+  if (open) menu.querySelector(".menu-item:not([hidden])")?.focus({ preventScroll: true });
+  else if (menu.contains(document.activeElement)) b.focus({ preventScroll: true });
+}
+
 function bindChrome() {
-  $("#catalog-btn").innerHTML = `${icon("list", 15)}<span>천체 목록</span>`;
+  $("#menu-btn").innerHTML = icon("menu", 16);
+  $("#menu-btn").addEventListener("click", () => setMenu($("#menu").hidden));
+  document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".menu-wrap")) setMenu(false); });
+  $("#menu").addEventListener("click", (e) => { if (e.target.closest(".menu-item")) setMenu(false); });
+  $("#menu-sky").innerHTML = `${icon("sparkles", 16)}<span>오늘의 하늘</span>`;
+  $("#menu-world").innerHTML = `${icon("globe", 16)}<span>내 세계</span>`;
+  $("#nav-sky").addEventListener("click", goSky);
+  $("#menu-sky").addEventListener("click", goSky);
+  $("#nav-world").addEventListener("click", () => openWorld());
+  $("#menu-world").addEventListener("click", () => openWorld());
+  $("#menu-locate").innerHTML = `${icon("map-pin", 16)}<span>내 위치의 하늘 보기</span>`;
+  $("#menu-locate").addEventListener("click", () => { goSky(); locate(); });
+  $("#menu-prologue").innerHTML = `${icon("play", 16)}<span>프롤로그 다시 보기</span>`;
+  $("#menu-prologue").addEventListener("click", () => { closeScene(); closeDrawer(); startPrologue(); });
+  $("#first-light").addEventListener("click", meetFirstLight);
+  $("#first-prologue").innerHTML = `${icon("play", 14)}<span>프롤로그 다시 보기</span>`;
+  $("#first-prologue").addEventListener("click", () => { closeScene(); closeDrawer(); startPrologue(); });
+  $("#catalog-btn").innerHTML = `${icon("list", 16)}<span>천체 목록</span>`;
   $("#catalog-btn").addEventListener("click", () => (state.drawer === "catalog" ? closeDrawer() : showCatalog()));
   $("#drawer-close").innerHTML = icon("x", 15);
   $("#drawer-close").addEventListener("click", closeDrawer);
   $("#world-meter").addEventListener("click", () => openWorld());
-  $("#journey-btn").innerHTML = `${icon("globe", 17)}<span class="label-text">내 세상 보기</span>`;
+  $("#journey-btn").innerHTML = icon("arrow-up-right", 20);
   $("#journey-btn").addEventListener("click", () => openWorld());
   $("#launcher").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tool]");
@@ -1199,11 +1359,24 @@ function bindChrome() {
     else openWorld({ km: STOPS[+b.dataset.stop].km });          // 그 거리가 한눈에 보이는 자리로
   });
   for (const ev of ["pointermove", "pointerdown", "keydown", "wheel"]) window.addEventListener(ev, wake, { passive: true });
+  window.addEventListener("resize", syncHush, { passive: true });
+  window.addEventListener("resize", fitMapView, { passive: true });
   window.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    if (state.scene === "end") closeScene();
+    if (!$("#menu").hidden) setMenu(false);
+    else if (state.scene === "end") closeScene();
     else if (state.drawer) closeDrawer();
   });
+}
+
+// 로딩 화면 걷기 — 금방 끝나도 깜빡이지 않게 로고가 뜬 뒤 최소 0.8초는 보여 주고, 0.35초에 걸쳐 사라진다
+const LOADING_MIN_MS = 800, LOADING_LEAVE_MS = 350;
+async function leaveLoading() {
+  const el = $("#loading");
+  const wait = LOADING_MIN_MS - (performance.now() - (Number(el.dataset.since) || 0));
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  el.classList.add("leaving");
+  setTimeout(() => { el.hidden = true; }, reducedMotion() ? 0 : LOADING_LEAVE_MS);
 }
 
 async function start() {
@@ -1222,7 +1395,7 @@ async function start() {
                             map.points.filter((p) => p.group === "solar_system"));
     state.sky.setObserved(world.visited);
     bindStage();
-    $("#loading").hidden = true;
+    await leaveLoading();
     // 바로 가기 주소 — ?mode=sky · ?mode=unfold&con=Q8860 · ?item=Q48469 · ?mode=map&journey=end · ?panel=catalog|explore|letter|mind|tonight (시연 · 공유용)
     const params = new URLSearchParams(location.search);
     const mode = ["map", "sky", "unfold"].includes(params.get("mode")) ? params.get("mode") : "sky";
@@ -1231,13 +1404,14 @@ async function start() {
     else if (params.get("panel") === "catalog") showCatalog();
     else if (TOOL_OPEN[params.get("panel")]) TOOL_OPEN[params.get("panel")]();
     else if (mode === "sky" && prologueWanted(params)) startPrologue();
-    else if (mode === "sky" && !params.has("mode")) showIntro();
+    else if (mode === "sky" && !params.has("mode")) arriveFirstSky();
     if (params.get("journey") === "end") {
       stage.camera.position.copy(state.map.edgeView());
       journeyEnd();
     }
   } catch (e) {
-    $("#loading").textContent = `우주를 불러오지 못했습니다 — ${errorText(e)}`;
+    $("#loading").classList.add("failed");   // 로고는 그 자리에 멈춘다
+    $("#loading-text").textContent = `우주를 불러오지 못했습니다 — ${errorText(e)}`;
   }
 }
 
