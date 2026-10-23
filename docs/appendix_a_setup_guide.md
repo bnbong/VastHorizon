@@ -308,6 +308,7 @@ uvicorn vasthorizon.api.app:app --port 8000
 | `/?mode=map` | 지구에서 떠오르기 |
 | `/?mode=map&journey=end` | 끝 장면 (관측 가능한 우주) |
 | `/?mode=unfold&con=Q8860` | 오리온자리 펼치기 |
+| `/?prologue=1` | 프롤로그를 다시 (처음 방문에만 저절로 나옵니다. 시작 화면의 '프롤로그 다시 보기'로도 볼 수 있습니다) |
 | `/?motion=off` | 카메라 움직임 없이 (운영체제의 '움직임 줄이기' 설정도 따릅니다) |
 
 - Three.js(r170, MIT)와 Lucide 아이콘(0.468.0, ISC)은 `web/` 안에 들어 있어서 인터넷이 없어도 화면이 열립니다.

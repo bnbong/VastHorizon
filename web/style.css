@@ -348,3 +348,60 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
   .scene h1 { font-size: 40px; }
   .measure.xl .measure-row { font-size: 64px; }
 }
+
+/* ── 프롤로그 — 처음 켰을 때 (web/js/prologue.js) ─────────────────────────── */
+.prologue { position: fixed; inset: 0; z-index: 50; color: var(--star-100); cursor: pointer; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 42%, #070b18 0%, #02040a 70%); animation: plIn 1.6s var(--ease-cinematic) both; }
+.prologue.leaving { animation: plOut 1.4s var(--ease-cinematic) both; pointer-events: none; }
+.pl-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pl-veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 46%, rgba(2,4,10,0) 0%, rgba(2,4,10,.55) 80%); pointer-events: none; }
+.pl-stage { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 24px; }
+.pl-beat { grid-area: 1 / 1; max-width: 760px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.pl-beat.out { animation: plBeatOut .7s var(--ease-cinematic) both; }
+.pl-title { margin: 0; font: 300 clamp(28px, 4.2vw, 50px)/1.32 var(--font-serif); letter-spacing: -0.015em; word-break: keep-all; }
+.pl-line { display: block; }
+.pl-w { display: inline-block; white-space: nowrap; }
+.pl-g { display: inline-block; opacity: 0; filter: blur(10px); transform: translateY(.35em);
+  animation: plGlyph 1.1s var(--ease-cinematic) both; animation-delay: var(--d); }
+.fx-sphere .pl-line:last-child .pl-g, .fx-finale .pl-g { color: var(--gold-200); }
+.pl-counter { font: 300 clamp(40px, 6vw, 72px)/1 var(--font-serif); color: var(--gold-300); letter-spacing: -0.02em;
+  opacity: 0; animation: plFade .9s var(--ease-cinematic) both; animation-delay: var(--after); text-shadow: 0 0 24px rgba(240,211,150,.35); }
+.pl-counter .u { font-size: .38em; margin-left: .3em; color: var(--star-200); }
+.pl-fact { margin: 0; max-width: 620px; font: 400 15px/1.85 var(--font-sans); color: var(--star-200); position: relative; padding-top: 22px;
+  opacity: 0; animation: plFade 1.2s var(--ease-cinematic) both; animation-delay: calc(var(--after) + 250ms); }
+.pl-fact::before { content: ""; position: absolute; top: 0; left: 50%; width: 120px; height: 1px; transform: translateX(-50%) scaleX(0);
+  background: var(--gradient-gold-line); animation: plLine 1.4s var(--ease-cinematic) both; animation-delay: var(--after); }
+.pl-src { margin: 0; font: 400 11px/1.6 var(--font-mono); letter-spacing: .04em; color: var(--star-400);
+  opacity: 0; animation: plFade 1s var(--ease-cinematic) both; animation-delay: calc(var(--after) + 700ms); }
+.pl-src a { color: var(--star-300); text-decoration: underline; text-underline-offset: 3px; }
+.pl-src a:hover { color: var(--gold-300); }
+.pl-note { margin: 0; font: 400 16px/1.7 var(--font-sans); color: var(--star-300);
+  opacity: 0; animation: plFade 1.2s var(--ease-cinematic) both; animation-delay: calc(var(--after) + 200ms); }
+.pl-start { margin-top: 8px; padding: 14px 34px; border-radius: 999px; border: 1px solid var(--gold-400); background: rgba(230,191,120,.1);
+  color: var(--gold-200); font: 500 16px/1 var(--font-sans); cursor: pointer; opacity: 0;
+  animation: plFade 1s var(--ease-cinematic) both, plGlow 2.8s ease-in-out infinite; animation-delay: calc(var(--after) + 600ms), calc(var(--after) + 1600ms); }
+.pl-start:hover { background: rgba(230,191,120,.2); }
+.pl-foot { position: absolute; left: 0; right: 0; bottom: 32px; display: flex; justify-content: center; align-items: center; gap: 28px; }
+.pl-dots { display: flex; gap: 10px; }
+.pl-dot { width: 26px; height: 3px; border-radius: 2px; background: rgba(216,210,197,.18); overflow: hidden; cursor: pointer; }
+.pl-dot i { display: block; height: 100%; width: 0; background: var(--gold-300); }
+.pl-dot.past i { width: 100%; }
+.pl-dot.on i { animation: plProgress var(--hold) linear both; }
+.pl-skip { background: none; border: 0; color: var(--star-400); font: 400 12px/1 var(--font-sans); letter-spacing: .08em; cursor: pointer; padding: 8px; }
+.pl-skip:hover { color: var(--star-100); }
+.pl-hint { position: absolute; left: 0; right: 0; bottom: 64px; margin: 0; text-align: center; font: 400 11px/1 var(--font-sans);
+  color: var(--star-500); opacity: 0; animation: plFade 1s ease 3s both; }
+.prologue.still .pl-g, .prologue.still .pl-fact, .prologue.still .pl-src, .prologue.still .pl-note, .prologue.still .pl-counter,
+.prologue.still .pl-start, .prologue.still .pl-fact::before { animation-duration: .01ms; animation-delay: 0ms; }
+@keyframes plIn { from { opacity: 0; } }
+@keyframes plOut { to { opacity: 0; transform: scale(1.04); filter: blur(6px); } }
+@keyframes plGlyph { to { opacity: 1; filter: blur(0); transform: none; } }
+@keyframes plFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes plLine { to { transform: translateX(-50%) scaleX(1); } }
+@keyframes plBeatOut { to { opacity: 0; transform: translateY(-14px); filter: blur(8px); } }
+@keyframes plProgress { from { width: 0; } to { width: 100%; } }
+@keyframes plGlow { 50% { box-shadow: 0 0 28px rgba(240,211,150,.35); } }
+@media (max-width: 640px) { .pl-fact { font-size: 14px; } .pl-foot { bottom: 20px; } .pl-hint { display: none; } }
+
+.replay { margin-top: 18px; background: none; border: 0; color: var(--star-400); font: 400 12px/1 var(--font-sans); letter-spacing: .06em; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.replay:hover { color: var(--star-100); }

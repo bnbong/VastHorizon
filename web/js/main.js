@@ -13,6 +13,7 @@ import { GROUP_COLORS, MapMode } from "./map.js";
 import { Stage } from "./scene.js";
 import { colorWord } from "./skydata.js";
 import { SkyMode } from "./sky.js";
+import { playPrologue, STORAGE_KEY as PROLOGUE_KEY } from "./prologue.js";
 import { UnfoldMode } from "./unfold.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -323,9 +324,23 @@ function showIntro() {
     <div class="intro-measure st2">${measureHtml(HORIZON_KM, { label: "지금 당신의 세상", caption: "지평선까지 · 눈높이 1.7m 기준", size: "l", center: true })}</div>
     <p class="lede st3">저 하늘의 빛들은 아직 이름 없는 가능성입니다.<br>하나를 바라보는 순간, 당신의 세상은 <em class="kw">그 별까지</em> 넓어집니다.</p>
     <div class="actions st4">${btn("내 위치의 하늘 보기", { variant: "primary", size: "lg", ic: "map-pin", id: "intro-locate" })}
-      ${btn("서울 하늘로 시작", { variant: "ghost", size: "lg", id: "intro-seoul" })}</div></div>`);
+      ${btn("서울 하늘로 시작", { variant: "ghost", size: "lg", id: "intro-seoul" })}</div>
+    <button type="button" class="replay st4" id="intro-prologue">프롤로그 다시 보기</button></div>`);
   $("#intro-locate").addEventListener("click", () => { closeScene(); locate(); });
   $("#intro-seoul").addEventListener("click", closeScene);
+  $("#intro-prologue").addEventListener("click", () => { closeScene(); startPrologue(); });
+}
+
+// 프롤로그 — 처음 켰을 때 한 번 (다시 보기 · ?prologue=1 로 언제든). 끝나면 처음 장면으로
+function startPrologue() {
+  $("#chrome").hidden = true;
+  playPrologue({ reducedMotion: reducedMotion() }).then(() => { $("#chrome").hidden = false; showIntro(); });
+}
+
+function prologueWanted(params) {
+  if (params.get("prologue") === "1") return true;
+  if (params.get("prologue") === "0" || params.has("mode")) return false;
+  try { return !localStorage.getItem(PROLOGUE_KEY); } catch { return true; }
 }
 
 function startJourney() {
@@ -1029,6 +1044,7 @@ async function start() {
     if (params.get("item")) selectItem(params.get("item"), { fly: true });
     else if (params.get("panel") === "catalog") showCatalog();
     else if (TOOL_OPEN[params.get("panel")]) TOOL_OPEN[params.get("panel")]();
+    else if (mode === "sky" && prologueWanted(params)) startPrologue();
     else if (mode === "sky" && !params.has("mode")) showIntro();
     if (params.get("journey") === "end") {
       stage.camera.position.copy(state.map.edgeView());
