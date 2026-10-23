@@ -127,6 +127,8 @@ VM1 Nginx가 `vasthorizon.bnbong.com`의 `/api/`를 VM2로 프록시하므로 �
 | API | VM2 `/opt/bnbong/vasthorizon` | `deploy/vm2/docker-compose.yml`로 띄운 컨테이너(`vm2-vasthorizon`)입니다 |
 | 연결 | VM1 Nginx → `10.0.1.60:8020` | 컨테이너의 8000을 VM2 사설 IP와 `127.0.0.1`의 8020에만 공개합니다 |
 
+컨테이너는 전용 네트워크 외에 Bifrost 등록을 위해 `api-network`에도 붙습니다.
+
 VM2에는 다음처럼 파일을 둡니다. compose 프로젝트 이름은 `vasthorizon`입니다(compose 파일의 `name:`).
 
 ```text

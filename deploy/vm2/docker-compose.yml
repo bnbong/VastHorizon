@@ -56,6 +56,9 @@ services:
     restart: unless-stopped
     networks:
       - vasthorizon-network
+      # Bifrost 게이트웨이(vm2-gateway)는 api-network 안의 컨테이너 이름으로만 업스트림에 닿는다.
+      # Bifrost 서비스 등록부에 http://vm2-vasthorizon:8000을 적으려면 같은 네트워크에 있어야 한다.
+      - api-network
     healthcheck:
       # image에 curl이 없으므로 Dockerfile의 HEALTHCHECK처럼 python urllib을 쓴다.
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
@@ -66,10 +69,13 @@ services:
       # 실측: 배치 16으로 항목 색인 424건에 약 20분(메모리 최고치 2.6GB), 서가 색인까지 25분 안팎.
       start_period: 1800s
 
-# 전용 네트워크. VM2 core의 api-network에는 붙이지 않는다 (다른 서비스와 통신하지 않는다).
+# 전용 네트워크와 BNGdrasil 공용 네트워크. api-network는 VM2 core가 만든 것을 가져다 쓰므로 external로 선언한다.
 networks:
   vasthorizon-network:
     name: vasthorizon-network
+  api-network:
+    name: api-network
+    external: true
 
 volumes:
   vh-data:
