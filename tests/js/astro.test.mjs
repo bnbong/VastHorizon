@@ -34,6 +34,15 @@ test("로그 스케일 반지름은 거리 순서를 지킨다", () => {
   assert.equal(mapRadius(0), 0);
 });
 
+test("지도 척도 — 멀수록 고리 간격이 넓어진다 (1광초 · 1광분 · 1광일 · 1광년 · 1천 광년 · 100만 광년 · 우주의 끝)", () => {
+  const LY = 9460730472580.8, C = 299792.458;
+  const rs = [C, C * 60, C * 86400, LY, 1e3 * LY, 1e6 * LY, 465e8 * LY].map(mapRadius);
+  const gaps = rs.slice(1).map((r, i) => r - rs[i]);
+  assert.deepEqual([...gaps].sort((a, b) => a - b), gaps);          // 간격이 점점 커진다
+  assert.ok(gaps.at(-1) > 2 * gaps[0] && gaps.at(-1) > 60, gaps.join(","));
+  assert.ok(rs.at(-1) > 190 && rs.at(-1) < 200, rs.at(-1));       // 관측 가능한 우주의 끝 — 최대 줌아웃의 기준
+});
+
 test("거리 표기", () => {
   assert.equal(distanceText(420), "약 420 km");
   assert.equal(distanceText(4.15e15), "약 439 광년");

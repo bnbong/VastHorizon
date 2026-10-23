@@ -10,6 +10,7 @@ import { altAzToScene, localSiderealDeg, radecToEq } from "./astro.js";
 import { applyMatrix, colorWord, eqToHorizonMatrix, limitingMag, pickSky, transpose } from "./skydata.js";
 import { DsoLayer, loadDsos, loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
 import { SolarLayer } from "./solar.js";
+import { ChalkMarks } from "./dream.js";
 
 const R = 100;
 const DIRECTIONS = [["북", 0], ["북동", 45], ["동", 90], ["남동", 135], ["남", 180], ["남서", 225], ["서", 270], ["북서", 315]];
@@ -66,6 +67,8 @@ export class SkyMode {
     this.group.add(this.solar.group);
     this.solarLabels = new THREE.Group();      // 태양계 이름표 — 시야가 바뀔 때 이 그룹만 다시 만든다
     this.group.add(this.solarLabels);
+    this.chalk = new ChalkMarks({ size: 48, haloSize: 130 });   // 발견한(담은) 천체 — 네온 분필 오로라 + 성운 빛무리
+    this.group.add(this.chalk.group);
     this.place = { lat: 37.5665, lon: 126.978, name: "서울" };
     this.date = new Date();
     this.planets = [];
@@ -110,10 +113,10 @@ export class SkyMode {
       new THREE.MeshBasicMaterial({ color: 0x060a09, side: THREE.BackSide })));
     // 지평선 근처의 옅은 빛 — 남색 위에 아주 옅은 금빛
     const glow = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.965, R * 0.965, 8, 96, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0x1d3a6e, transparent: true, opacity: 0.16, side: THREE.BackSide, depthWrite: false }));
+      new THREE.MeshBasicMaterial({ color: 0x3a2782, transparent: true, opacity: 0.2, side: THREE.BackSide, depthWrite: false }));
     glow.position.y = 4;
     const warm = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.966, R * 0.966, 2.2, 96, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xe6bf78, transparent: true, opacity: 0.06, side: THREE.BackSide, depthWrite: false }));
+      new THREE.MeshBasicMaterial({ color: 0xff8fd2, transparent: true, opacity: 0.05, side: THREE.BackSide, depthWrite: false }));
     warm.position.y = 1.1;
     this.group.add(glow, warm);
     const horizon = Array.from({ length: 181 }, (_, i) => {
@@ -192,7 +195,7 @@ export class SkyMode {
     }
     this.dynamic.add(new THREE.LineSegments(
       new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(linePos, 3)),
-      new THREE.LineBasicMaterial({ color: 0x4a6aa8, transparent: true, opacity: 0.4 })));
+      new THREE.LineBasicMaterial({ color: 0x7a6ac8, transparent: true, opacity: 0.42 })));
 
     // 카탈로그 천체 — 관측 전에는 옅은 고리, 담은 뒤에는 금빛 고리와 이름. 천체 자체는 실제 별 · 성운으로 이미 그려져 있다
     const faint = [], faintCol = [];
@@ -222,10 +225,7 @@ export class SkyMode {
       this.addMark(pos, v.name, v.id);
       this.targets.push({ position: pos, data: { id: v.id, name: v.name, kind: "sky-star-seen" } });
     }
-    if (this.gold.length) {
-      this.dynamic.add(new THREE.Points(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(this.gold, 3)),
-        pointsMaterial({ map: ring(), size: 19, color: 0xe6bf78, opacity: 0.9 })));
-    }
+    this.chalk.setPositions(this.gold);
     this.justObserved.clear();
 
 
@@ -252,7 +252,7 @@ export class SkyMode {
     if (!pos || pos.y < 0) return;
     const mark = new THREE.Group();
     const ringPts = new THREE.Points(new THREE.BufferGeometry().setFromPoints([pos]),
-      pointsMaterial({ map: ring(), size: 30, color: 0x9fd8ff, opacity: 0.95 }));
+      pointsMaterial({ map: ring(), size: 30, color: 0xd7c4ff, opacity: 0.95 }));
     mark.add(ringPts);
     if (sel.name && !this.observed.has(sel.id)) {           // 담은 천체는 이미 이름이 있다
       const tag = label(sel.name, "label selected");
@@ -351,6 +351,7 @@ export class SkyMode {
     if (this.stage?.mode !== this || !this.stars) return;
     this.stars.uniforms.uTime.value += dt;
     pulse(this.selectMark?.userData.ring, this.stars.uniforms.uTime.value, this.stars.uniforms.uTwinkle.value > 0);
+    this.chalk.update(this.stars.uniforms.uTime.value);
     if (this.stage.camera.fov !== this.lastFov) {
       this.lastFov = this.stage.camera.fov;
       this.stage.controls.rotateSpeed = skyRotateSpeed(this.lastFov);
@@ -360,7 +361,7 @@ export class SkyMode {
 
   // 낮 · 박명이면 하늘을 밝게, 별 · 은하수는 흐리게 — 태양 고도는 서버(/api/sky)가 계산한다
   setDaylight(sunAltDeg) {
-    const night = new THREE.Color(0x02040a), day = new THREE.Color(0x2b4f7e);
+    const night = new THREE.Color(0x06041a), day = new THREE.Color(0x2b4f7e);
     const k = THREE.MathUtils.clamp((sunAltDeg + 12) / 18, 0, 1);      // −12도 이하 밤 → +6도 이상 낮
     this.background = night.lerp(day, k);
     this.dim = 1 - 0.9 * k;
@@ -396,7 +397,7 @@ export class SkyMode {
     stage.camera.position.copy(south.multiplyScalar(-0.01));
     stage.camera.fov = 75;
     stage.camera.updateProjectionMatrix();
-    stage.scene.background = this.background ?? new THREE.Color(0x02040a);
+    stage.scene.background = this.background ?? new THREE.Color(0x06041a);
     const twinkle = !(matchMedia("(prefers-reduced-motion: reduce)").matches
       || new URLSearchParams(location.search).get("motion") === "off");
     this.stars.uniforms.uTwinkle.value = twinkle ? 1 : 0;
@@ -405,7 +406,20 @@ export class SkyMode {
 
   exit() {
     delete this.stage.controls._rotateLeft;          // 다른 보기는 원래 회전으로
-    this.stage.scene.background = new THREE.Color(0x02040a);
+    this.stage.scene.background = new THREE.Color(0x06041a);
+  }
+
+  // 그 천체의 화면 좌표 (보이지 않으면 null) — 발견하는 순간의 연출 자리
+  screenOf(id) {
+    const t = this.targets?.find((x) => x.data.id === id);
+    if (!t || !this.stage) return null;
+    const st = this.stage, rect = st.renderer.domElement.getBoundingClientRect();
+    const facing = new THREE.Vector3();
+    st.camera.getWorldDirection(facing);
+    if (t.position.clone().sub(st.camera.position).dot(facing) <= 0) return null;
+    const v = t.position.clone().project(st.camera);
+    if (Math.abs(v.x) > 1 || Math.abs(v.y) > 1) return null;
+    return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
   }
 
   // 그 천체 쪽으로 고개 돌리기
@@ -441,7 +455,7 @@ export class SkyMode {
       const { stars } = this.stars.parts[hit.part], i = hit.index;
       const catalogStar = this.byCode.get(`HIP${stars.hip[i]}`);
       const data = catalogStar ? { ...catalogStar, kind: catalogStar.group, unobserved: !this.observed.has(catalogStar.id) }
-        : { id: `hip:${stars.hip[i]}`, kind: "sky-star", hip: stars.hip[i], mag: stars.mag[i], bv: stars.bv[i] };
+        : { id: `hip:${stars.hip[i]}`, kind: "sky-star", hip: stars.hip[i], mag: stars.mag[i], bv: stars.bv[i], ra: stars.ra[i], dec: stars.dec[i] };
       return toHit(radecToEq(stars.ra[i], stars.dec[i]), data, hit.away);
     }
     // 성운 · 성단 · 은하 — 메시에 천체는 카탈로그 항목으로, 나머지는 이름만 알려 준다

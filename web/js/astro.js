@@ -39,10 +39,10 @@ export function altAzToScene(altDeg, azDeg) {
   return [Math.cos(alt) * Math.sin(az), Math.sin(alt), -Math.cos(alt) * Math.cos(az)];
 }
 
-// 우주 지도의 로그 스케일 반지름 — 400km(국제우주정거장) ~ 250만 광년(안드로메다)을 한 화면에
-export const MAP_SCALE = 6;
+// 우주 지도의 반지름 — 로그 거리를 1.75제곱해, 멀수록 고리 간격이 넓어진다 (거리감).
+// 1광초 → 1광분 → 1광일 → 1광년 → 1천 광년 → 100만 광년 → 관측 가능한 우주의 끝 간격 약 8 · 21 · 22 · 32 · 37 · 67
 export function mapRadius(km) {
-  return km > 0 ? Math.max(0.8, (Math.log10(km) - 2) * MAP_SCALE) : 0;
+  return km > 0 ? 1.5 + 0.9 * Math.pow(Math.max(0, Math.log10(km) - 2), 1.75) : 0;
 }
 
 // 펼치기 — 별까지의 거리(광년)를 화면 반지름으로 (로그 스케일)

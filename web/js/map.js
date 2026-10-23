@@ -3,7 +3,8 @@
 import { THREE, label, pointsMaterial, ring } from "./scene.js";
 import { pulse } from "./sky.js";
 import { MODELS, ModelShelf } from "./models.js";
-import { distanceText, eqToScene, mapRadius } from "./astro.js";
+import { ChalkMarks, DreamSphere } from "./dream.js";
+import { distanceText, eqToScene, mapRadius, radecToEq } from "./astro.js";
 import { EQ_TO_MAP } from "./skydata.js";
 import { loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
 
@@ -49,7 +50,7 @@ export class MapMode {
         return new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r);
       });
       this.group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({ color: ring.edge ? 0xd2a356 : 0x5a6b93, transparent: true, opacity: ring.edge ? 0.9 : 0.35 })));
+        new THREE.LineBasicMaterial({ color: ring.edge ? 0xff8fd2 : 0x6a5fa8, transparent: true, opacity: ring.edge ? 0.9 : 0.35 })));
       const tag = label(ring.label, ring.edge ? "label ring edge" : "label ring");
       const angle = -0.35 * idx;              // 고리마다 이름표 각도를 달리해 겹치지 않게
       tag.position.set(Math.cos(angle) * r, 0, Math.sin(angle) * r);
@@ -68,6 +69,8 @@ export class MapMode {
     const geom = new THREE.BufferGeometry()
       .setAttribute("position", new THREE.BufferAttribute(positions, 3))
       .setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    this.baseColors = colors.slice();            // 내 세상 안 · 밖에 따라 색을 바꿀 때의 기준
+    this.pointGeom = geom;
     this.group.add(new THREE.Points(geom, pointsMaterial({ size: 9, vertexColors: true })));
 
     // 나 (지구)
@@ -86,15 +89,18 @@ export class MapMode {
       this.group.add(tag);
       this.landmarkTags.set(p.id, tag);
     }
-    // 내 세상 — 지금까지 바라본 가장 먼 천체까지의 구
-    this.worldSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24),
-      new THREE.MeshBasicMaterial({ color: 0x4d8fdc, transparent: true, opacity: 0.1, depthWrite: false }));
-    this.worldEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1, 3)),
-      new THREE.LineBasicMaterial({ color: 0x7eb6ff, transparent: true, opacity: 0.22, depthWrite: false }));
-    this.group.add(this.worldSphere, this.worldEdge);
-    // 오늘의 궤적 — '나'에서 바라본 천체를 거리순으로 잇는 금빛 선
+    // 내 세상 — 내가 알아간(담은) 천체는 네온 분필과 이름, 빛의 선으로. 담지 않은 천체는 거리와 관계없이 아직 알아가지 않은 천체다.
+    // (개인이 아직 모른다는 은유일 뿐, 천체의 물리적 상태와는 관계없다.) 가장 먼 빛까지는 영역처럼 보이지 않게 아주 옅은 테두리만
+    this.reach = new DreamSphere({ strength: 0.22, sparkles: false });
+    this.group.add(this.reach.group);
+    // 오늘의 궤적 — '나'에서 바라본 천체를 거리순으로 잇는 무지갯빛 혜성 꼬리, 발견한 천체는 네온 분필
     this.trail = new THREE.Group();
     this.group.add(this.trail);
+    this.visitedChalk = new ChalkMarks({ size: 34, haloSize: 84 });
+    this.group.add(this.visitedChalk.group);
+    this.crossedGroup = new THREE.Group();        // 넓어지는 순간 — 새로 안쪽에 들어온 천체 이름
+    this.group.add(this.crossedGroup);
+    this.clockT = 0;
     this.visitedGroup = new THREE.Group();
     this.group.add(this.visitedGroup);
     this.edgeRadius = mapRadius(Math.max(...rings.map((r) => r.km)));
@@ -104,7 +110,7 @@ export class MapMode {
     this.group.add(this.selectedTag);
     // 선택 표시 — 누른 천체 둘레에서 맥박 치는 고리 (하늘과 같은 모양)
     this.selectRing = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3()]),
-      pointsMaterial({ map: ring(), size: 30, color: 0x9fd8ff, opacity: 0.95 }));
+      pointsMaterial({ map: ring(), size: 30, color: 0xd7c4ff, opacity: 0.95 }));
     this.selectRing.visible = false;
     this.group.add(this.selectRing);
     // 대표 기체의 실제 형태 (NASA 3D 모델) — 가까이 가면 내려받아 그 점 자리에 띄운다
@@ -113,6 +119,13 @@ export class MapMode {
 
   update(dt, stage) {
     this.backdrop.position.copy(stage.camera.position);
+    // 움직임 줄이기 — 테두리 · 분필 · 일렁임을 멈춘 채 그린다 (편하게 읽을 수 있게)
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches || new URLSearchParams(location.search).get("motion") === "off";
+    this.still = still;
+    if (!still) this.clockT += dt;
+    this.reach.update(this.clockT);
+    this.visitedChalk.update(this.clockT);
+    if (!still || !this.shimmered) this.shimmer(this.clockT);
     this.models.update(dt, stage.camera);
     this.clock = (this.clock ?? 0) + dt;
     pulse(this.selectRing.visible ? this.selectRing : null, this.clock, !matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -121,9 +134,41 @@ export class MapMode {
 
   enter(stage) {
     this.stage = stage;
-    Object.assign(stage.controls, { minDistance: 1.5, maxDistance: 900 });
-    stage.camera.position.set(0, 2.5, 6);
-    stage.controls.target.set(0, 0, 0);
+    // 최대로 물러나면 관측 가능한 우주의 끝 전체가 보이는 자리 (edgeView와 같은 거리)
+    Object.assign(stage.controls, { minDistance: 1.5, maxDistance: this.edgeView().length() });
+    if (this.lastView) {                              // 다시 오면 마지막에 보던 자리 그대로
+      stage.camera.position.copy(this.lastView.position);
+      stage.controls.target.copy(this.lastView.target);
+    } else {                                          // 처음에는 알아간 천체가 한눈에 들어오는 자리
+      stage.camera.position.copy(this.knownView());
+      stage.controls.target.set(0, 0, 0);
+    }
+  }
+
+  exit() {
+    this.lastView = { position: this.stage.camera.position.clone(), target: this.stage.controls.target.clone() };
+  }
+
+  // 알아간 천체가 모두 들어오는 자리 — 아직 없으면 '나' 가까이
+  knownView() {
+    let r = 2.4;
+    for (const id of this.knownIds ?? []) {
+      const p = this.lookup(id);
+      if (p) r = Math.max(r, p.position.length());
+    }
+    return new THREE.Vector3(0.33, 0.42, 0.85).normalize().multiplyScalar(Math.max(6, r * 2.4));
+  }
+
+  // 거리 눈금 — 그 거리의 고리가 한눈에 보이는 자리로
+  viewDistance(km) {
+    const r = Math.min(mapRadius(km), this.edgeRadius);
+    const to = r >= this.edgeRadius * 0.99 ? this.edgeView() : new THREE.Vector3(0.33, 0.62, 0.85).normalize().multiplyScalar(Math.max(6, r * 2.3));
+    this.stage.flyTo(to, new THREE.Vector3(), this.still ? 1 : 1400);
+  }
+
+  // 지도 카탈로그의 점, 또는 카탈로그 밖에서 알아간 천체(방향 · 거리로 놓은 점)
+  lookup(id) {
+    return this.byId.get(id) ?? this.extra?.get(id) ?? null;
   }
 
   // 첫 화면 연출 — 지구 위 '나'에서 시작해 우주 전체로 시야를 넓힌다 (기획안 장면 1 · 2)
@@ -134,27 +179,108 @@ export class MapMode {
   // 내 세상 — 반지름(바라본 가장 먼 거리)과 바라본 천체 이름표
   setWorld(worldKm, visited) {
     const r = Math.max(mapRadius(worldKm), 0.6);
-    this.worldSphere.scale.setScalar(r);
-    this.worldEdge.scale.setScalar(r);
+    this.reach.setRadius(r);
     this.worldRadius = r;
-    this.visitedGroup.clear();
+    this.worldKm = worldKm;
+    this.knownIds = new Set(visited.map((v) => v.id));
+    // 카탈로그 밖에서 알아간 천체 (하늘의 아무 별) — 거리와 방향을 알면 그 자리에 놓는다. 거리를 모르면 지도에는 놓지 않는다
+    this.extra = new Map();
     for (const v of visited) {
-      const p = this.byId.get(v.id);
+      if (this.byId.has(v.id) || !(v.km > 0) || v.ra == null || v.dec == null) continue;
+      this.extra.set(v.id, { id: v.id, name: v.name, km: v.km,
+        position: new THREE.Vector3(...eqToScene(radecToEq(v.ra, v.dec))).multiplyScalar(mapRadius(v.km)) });
+    }
+    this.shimmer(this.clockT ?? 0);
+    this.visitedGroup.clear();
+    this.visitedTags = new Map();
+    for (const v of visited) {
+      const p = this.lookup(v.id);
       if (!p) continue;
       const tag = label(p.name, "label visited");
+      this.visitedTags.set(p.id, tag);
       tag.position.copy(p.position);
       this.visitedGroup.add(tag);
       this.landmarkTags.get(p.id)?.removeFromParent();
     }
     this.trail.clear();
-    const stops = visited.map((v) => this.byId.get(v.id)).filter(Boolean).sort((a, b) => a.km - b.km).map((p) => p.position);
+    const stops = visited.map((v) => this.lookup(v.id)).filter(Boolean).sort((a, b) => a.km - b.km).map((p) => p.position);
+    this.visitedChalk.setPositions(stops.flatMap((v) => v.toArray()));
     if (stops.length) {
-      const path = [new THREE.Vector3(), ...stops];
-      this.trail.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(path),
-        new THREE.LineBasicMaterial({ color: 0xf0d396, transparent: true, opacity: 0.7 })));
-      this.trail.add(new THREE.Points(new THREE.BufferGeometry().setFromPoints(stops),        // 이음점의 금빛 번짐
-        pointsMaterial({ color: 0xe6bf78, size: 16, opacity: 0.35 })));
+      // 혜성 꼬리 — 선을 잘게 나눠 분홍 → 주황 → 노랑 → 연두 → 파랑으로 흐르게
+      const path = [new THREE.Vector3(), ...stops], pts = [], cols = [];
+      const spectrum = [0xff4fa8, 0xff9f43, 0xffe066, 0x7dffb3, 0x3d7bff].map((h) => new THREE.Color(h));
+      const segs = path.length - 1, steps = 24;
+      for (let s = 0; s < segs; s++) {
+        for (let k = 0; k <= steps; k++) {
+          const u = (s + k / steps) / segs;
+          pts.push(new THREE.Vector3().lerpVectors(path[s], path[s + 1], k / steps));
+          const f = u * (spectrum.length - 1), i = Math.min(spectrum.length - 2, Math.floor(f));
+          const c = spectrum[i].clone().lerp(spectrum[i + 1], f - i);
+          cols.push(c.r, c.g, c.b);
+        }
+      }
+      this.trail.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts).setAttribute("color", new THREE.Float32BufferAttribute(cols, 3)),
+        new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })));
     }
+  }
+
+  // 아직 알아가지 않은 천체 — 담지 않은 천체는 거리와 관계없이 흐리게 일렁인다. 알아간 천체는 또렷하게
+  shimmer(t) {
+    this.shimmered = true;
+    const col = this.pointGeom.attributes.color, cool = new THREE.Color(0x6a6aa8), c = new THREE.Color();
+    const known = this.knownIds ?? new Set();
+    this.points.forEach((p, i) => {
+      c.fromArray(this.baseColors, i * 3);
+      if (known.has(p.id)) c.lerp(new THREE.Color(0xffffff), 0.25);
+      else c.lerp(cool, 0.5).multiplyScalar(0.42 + 0.16 * Math.sin(t * (0.8 + (i % 7) * 0.13) + i));
+      col.setXYZ(i, c.r, c.g, c.b);
+    });
+    col.needsUpdate = true;
+  }
+
+  // 넓어지는 순간 — 구가 이전 반지름에서 새 반지름까지 자라고, 카메라가 함께 물러난다.
+  // 구의 가장자리가 지나는 천체는 이름이 하나씩 떠오른다 ("+ 시리우스"). 끝나면 done()
+  // crossed: 그 사이에 지나는, 아직 알아가지 않은(담지 않은) 천체 — 이름만 흐리게 스친다. knownId: 새로 알게 된 천체
+  expandTo(fromKm, toKm, crossed, done, knownId) {
+    const r0 = Math.max(mapRadius(fromKm), 0.6), r1 = Math.max(mapRadius(toKm), 0.6);
+    const st = this.stage;
+    const dir = st.camera.position.clone().normalize();
+    if (dir.lengthSq() < 1e-6 || Math.abs(dir.y) > 0.95) dir.set(0.33, 0.42, 0.85).normalize();
+    st.controls.target.set(0, 0, 0);
+    this.crossedGroup.traverse((o) => { if (o.isCSS2DObject) o.element.remove(); });
+    this.crossedGroup.clear();
+    // crossed는 지도 데이터(위치 없음)일 수 있다 — ID로 이 지도의 점(3D 위치)을 찾는다
+    const marks = crossed.map((c) => this.byId.get(c.id)).filter(Boolean).map((p) => ({ p, r: mapRadius(p.km), shown: false }));
+    const dist = (r) => Math.max(5, r * 2.5);
+    const instant = matchMedia("(prefers-reduced-motion: reduce)").matches || new URLSearchParams(location.search).get("motion") === "off";
+    st.animate(4200, (k) => {
+      const r = r0 + (r1 - r0) * k;
+      this.reach.setRadius(r);
+      this.worldRadius = r;
+      st.camera.position.copy(dir).multiplyScalar(dist(r));
+      for (const m of marks) {
+        if (m.shown || m.r > r) continue;
+        m.shown = true;
+        const tag = label(m.p.name, "label passing");
+        tag.position.copy(m.p.position);
+        this.crossedGroup.add(tag);
+      }
+    }, () => {
+      const known = knownId && this.lookup(knownId);
+      if (known) {                                 // 새로 알게 된 천체 — 이름이 또렷하게
+        const tag = label(`+ ${known.name}`, "label crossed");
+        tag.position.copy(known.position);
+        this.crossedGroup.add(tag);
+      }
+      this.reach.setRadius(r1);
+      this.worldRadius = r1;
+      if (instant) for (const m of marks) if (!m.shown) { m.shown = true; const tag = label(m.p.name, "label passing"); tag.position.copy(m.p.position); this.crossedGroup.add(tag); }
+      done?.();
+      setTimeout(() => {                           // 이름은 잠시 뒤 사라진다
+        this.crossedGroup.traverse((o) => { if (o.isCSS2DObject) o.element.remove(); });
+        this.crossedGroup.clear();
+      }, 6000);
+    });
   }
 
   // 끝 장면 — 위쪽 글이 가리지 않게 우주를 화면 아래쪽(62%)으로
@@ -192,8 +318,9 @@ export class MapMode {
 
   // 선택 — 이름표와 맥박 고리. fly면 그 천체로 카메라를 옮긴다. id가 없거나 지도에 없는 천체면 표시를 지운다
   select(id, { fly = true } = {}) {
-    const p = id ? this.byId.get(id) : null;
+    const p = id ? this.lookup(id) : null;
     for (const [tagId, tag] of this.landmarkTags) tag.visible = tagId !== id;   // 선택 이름표와 겹치지 않게
+    for (const [tagId, tag] of this.visitedTags ?? []) tag.visible = tagId !== id;
     if (!p) {
       this.selectedTag.visible = false;
       this.selectRing.visible = false;

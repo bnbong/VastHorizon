@@ -1,27 +1,32 @@
 :root{
-/* Ink — the night. Deep midnight, slightly warm-blue, never pure black */
---ink-0:#02040a;--ink-1:#05070f;--ink-2:#0a0e1a;--ink-3:#101524;--ink-4:#171d2f;--ink-5:#212839;
+/* Ink — the night. 몽환적인 남보라 밤하늘 (순수한 검정은 쓰지 않는다) */
+--ink-0:#06041a;--ink-1:#0a0721;--ink-2:#110c2c;--ink-3:#181238;--ink-4:#211946;--ink-5:#2b2256;
 /* Starlight — text. Warm ivory, not cold white */
 --star-50:#fbf7ee;--star-100:#f3ede1;--star-200:#d8d2c5;--star-300:#a9a499;--star-400:#7c7a74;--star-500:#55555a;
 /* Gold — the horizon line. Reserved for emphasis: core keywords, "my world", the trajectory */
 --gold-200:#f7e4b8;--gold-300:#f0d396;--gold-400:#e6bf78;--gold-500:#d2a356;--gold-600:#a47c3b;--gold-800:#4a3a1e;--gold-900:#231c10;
 /* Celestial — interaction, selection, "my sphere" */
---sky-200:#cfe0f7;--sky-300:#a6c6ee;--sky-400:#7eb6ff;--sky-500:#4d8fdc;--sky-600:#2c58a6;--sky-700:#1d3a6e;--sky-900:#0d1830;
+--sky-200:#e4dcff;--sky-300:#c7b6ff;--sky-400:#a98bff;--sky-500:#8466f2;--sky-600:#5c41c8;--sky-700:#3a2782;--sky-900:#170f36;
+/* Dream — 내 세상 · 성운 (청록 → 보라 → 분홍), 발견한 천체 (네온 분필 스펙트럼) */
+--dream-teal:#6fd8e8;--dream-blue:#7d8cff;--dream-violet:#a77bff;--dream-pink:#ff8fd2;--dream-rose:#ffb3dc;
+--neon-pink:#ff4fa8;--neon-orange:#ff9f43;--neon-yellow:#ffe066;--neon-green:#7dffb3;--neon-blue:#3d7bff;
+--gradient-dream:linear-gradient(120deg,#6fd8e8 0%,#7d8cff 35%,#a77bff 62%,#ff8fd2 100%);
+--gradient-neon:linear-gradient(90deg,#ff4fa8,#ff9f43,#ffe066,#7dffb3,#3d7bff);
 /* Semantic */
 --ember-400:#eea494;--ember-900:#26130f;--sage-400:#9fd4b4;--sage-900:#0f1f17;--amber-400:#ecc47a;--amber-900:#221b0d;
 /* Data — object groups (from web/js/map.js GROUP_COLORS) */
 --group-solar:#ffd27a;--group-human:#7ee0ff;--group-star:#f4f6ff;--group-messier:#c59bff;--group-constellation:#93b2ee;
 /* Lines */
---line-1:rgba(243,237,225,.07);--line-2:rgba(243,237,225,.12);--line-3:rgba(243,237,225,.22);--line-gold:rgba(230,191,120,.38);--line-sky:rgba(126,182,255,.45);
+--line-1:rgba(226,214,255,.08);--line-2:rgba(226,214,255,.14);--line-3:rgba(226,214,255,.24);--line-gold:rgba(230,191,120,.38);--line-sky:rgba(169,139,255,.5);--line-dream:rgba(255,143,210,.4);
 
 /* Semantic aliases */
 --bg-page:var(--ink-1);--bg-stage:var(--ink-0);
 --surface-panel:var(--ink-2);--surface-card:var(--ink-3);--surface-raised:var(--ink-4);--surface-hover:var(--ink-5);
---surface-glass:rgba(10,14,26,.72);--surface-glass-strong:rgba(10,14,26,.9);--surface-scrim:rgba(2,4,10,.6);
+--surface-glass:rgba(20,13,48,.7);--surface-glass-strong:rgba(17,11,42,.92);--surface-scrim:rgba(6,4,26,.6);
 --text-primary:var(--star-100);--text-secondary:var(--star-200);--text-muted:var(--star-300);--text-faint:var(--star-400);--text-inverse:var(--ink-1);
 --text-emphasis:var(--gold-300);--text-link:var(--sky-300);--text-link-hover:var(--sky-200);
 --accent-emphasis:var(--gold-400);--accent-interactive:var(--sky-400);--accent-selected:var(--gold-300);
 --border-subtle:var(--line-1);--border-default:var(--line-2);--border-strong:var(--line-3);--border-focus:var(--sky-400);
 --status-error:var(--ember-400);--status-error-bg:var(--ember-900);--status-warn:var(--amber-400);--status-warn-bg:var(--amber-900);--status-ok:var(--sage-400);--status-ok-bg:var(--sage-900);--status-info-bg:var(--sky-900);
---cite-bg:rgba(126,182,255,.14);--cite-fg:var(--sky-200);
+--cite-bg:rgba(169,139,255,.18);--cite-fg:var(--sky-200);
 }

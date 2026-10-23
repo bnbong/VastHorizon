@@ -138,7 +138,7 @@ const MW_FRAG = /* glsl */ `
     float v = texture2D(uMap, vec2(fract(ra / (2.0 * PI)), (0.5 * PI - dec) / PI)).r;
     float a = pow(v, 0.8) * uStrength;
     if (uHorizon > 0.5) a *= smoothstep(-0.02, 0.12, d.y);
-    gl_FragColor = vec4(vec3(0.72, 0.78, 1.0) * a, a);
+    gl_FragColor = vec4(mix(vec3(0.62, 0.78, 1.0), vec3(0.86, 0.66, 1.0), v) * a, a);   // 라벤더빛 은하수 (밝은 곳은 분홍빛)
   }`;
 
 export class MilkyWayLayer {

@@ -73,7 +73,7 @@ export class Stage {
     container.appendChild(this.labels.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x03050c);
+    this.scene.background = new THREE.Color(0x06041a);
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.001, 5000);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
