@@ -105,7 +105,8 @@ def error_payload(error: Exception) -> tuple[int, ErrorResponse]:
         return 409, ErrorResponse(code="conversation_busy",
                                   message="이 항목의 이전 질문에 아직 답하는 중입니다. 답변이 끝난 뒤 다시 질문해 주세요.")
     if isinstance(error, MissingApiKeyError):
-        return 503, ErrorResponse(code="missing_key", message="AI 서비스 키(GMS_KEY)가 설정되지 않아 답할 수 없습니다.")
+        from vasthorizon.config import key_name
+        return 503, ErrorResponse(code="missing_key", message=f"AI 서비스 키({key_name()})가 설정되지 않아 답할 수 없습니다.")
     if isinstance(error, IndexMissingError):
         return 503, ErrorResponse(code="index_missing", message=str(error))
     if isinstance(error, EmbeddingMismatchError):
@@ -204,7 +205,29 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         return JSONResponse(status_code=422, content=ErrorResponse(
             code="invalid_request", message=f"요청 형식이 올바르지 않습니다: {', '.join(fields)}").model_dump())
 
-    errors = {status: {"model": ErrorResponse} for status in (404, 409, 422, 500, 503)}
+    errors = {status: {"model": ErrorResponse} for status in (404, 409, 422, 429, 500, 503)}
+
+    # 공개 배포 — LLM을 부르는 요청(POST /api/...)에 호출 한도, 다른 주소의 프런트엔드(Cloudflare Pages 등)에 CORS
+    from vasthorizon.config import get_settings
+    settings = get_settings()
+    if settings.limits.enabled:
+        from vasthorizon.api.limits import RateLimiter, client_ip, message
+        limiter = RateLimiter(settings.limits)
+        app.state.limiter = limiter
+
+        @app.middleware("http")
+        async def rate_limit(request, call_next):
+            if request.method == "POST" and request.url.path.startswith("/api/"):
+                ip = client_ip(request.headers, request.client.host if request.client else None, settings.limits.trust_proxy)
+                verdict = limiter.check(ip)
+                if not verdict.allowed:
+                    return JSONResponse(status_code=429, headers={"Retry-After": str(verdict.retry_after)},
+                                        content=ErrorResponse(code="rate_limited", message=message(verdict)).model_dump())
+            return await call_next(request)
+    if settings.server.cors_origins:
+        from fastapi.middleware.cors import CORSMiddleware
+        app.add_middleware(CORSMiddleware, allow_origins=list(settings.server.cors_origins),
+                           allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type"], max_age=600)
 
     @app.get("/api/health", response_model=HealthResponse)
     def health() -> HealthResponse:

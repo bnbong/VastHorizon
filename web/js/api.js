@@ -1,4 +1,8 @@
 // VastHorizon API 호출 — 오류는 {code, message} 형식 그대로 ApiError로 던진다.
+//
+// API 주소: 기본은 같은 서버(상대 경로). 화면만 다른 곳(Cloudflare Pages 등)에 둘 때는
+// index.html의 <meta name="vh-api-base" content="https://api.example.com">로 API 서버를 가리킨다 (scripts/build_static.py).
+export const API_BASE = (document.querySelector('meta[name="vh-api-base"]')?.content ?? "").replace(/\/+$/, "");
 
 export class ApiError extends Error {
   constructor(status, body) {
@@ -11,7 +15,7 @@ export class ApiError extends Error {
 async function request(path, options = {}) {
   let res;
   try {
-    res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+    res = await fetch(API_BASE + path, { headers: { "Content-Type": "application/json" }, ...options });
   } catch {
     throw new ApiError(0, { code: "network", message: "서버에 연결할 수 없습니다. 서버가 켜져 있는지 확인해 주세요." });
   }
@@ -57,7 +61,7 @@ export const api = {
 export async function askStream(itemId, question, onProgress) {
   let res;
   try {
-    res = await fetch("/api/ask/stream", {
+    res = await fetch(`${API_BASE}/api/ask/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sessionId(), item_id: itemId, question }),

@@ -93,7 +93,8 @@ def show_compare() -> None:
         with st.spinner("두 방식으로 검색하는 중…"):
             result = compare_search(item_id, question.strip(), top_k=top_k, fetch_k=fetch_k, lambda_mult=lam)
     except MissingApiKeyError:
-        st.error("AI 서비스 키(GMS_KEY)가 없어 질문을 임베딩할 수 없습니다. .env 설정을 확인하세요.")
+        from vasthorizon.config import key_name
+        st.error(f"AI 서비스 키({key_name()})가 없어 질문을 임베딩할 수 없습니다. .env 설정을 확인하세요.")
         return
     except EmbeddingMismatchError:
         st.error("색인과 현재 임베딩 설정이 맞지 않습니다. 문서 색인을 재구축해야 합니다.")

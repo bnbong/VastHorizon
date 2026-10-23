@@ -1,14 +1,25 @@
-"""GMS 경유 OpenAI 모델 생성.
+"""채팅 · 임베딩 모델 생성 — 설정(config.toml의 [llm])에 따라 제공자를 고른다.
 
-상용 API를 직접 부르지 않고, base_url만 SSAFY GMS로 바꿔 OpenAI 라이브러리를 그대로 쓴다.
+  - gms (기본, 과제 제출 환경): 상용 API를 직접 부르지 않고, base_url만 SSAFY GMS로 바꿔 OpenAI 라이브러리를 그대로 쓴다.
+  - anthropic (배포): Claude 채팅 (langchain-anthropic, requirements-deploy.txt). 키는 CLAUDE_API_KEY.
+  - 임베딩 local (배포): Claude에는 임베딩 API가 없어서, 서버 안에서 fastembed(ONNX)로 다국어 모델을 돌린다.
+배포 전용 패키지는 그 제공자를 쓸 때만 불러온다 — 과제 환경(requirements.txt)에는 없어도 된다.
 """
 
 from __future__ import annotations
 
-import openai
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from functools import lru_cache
 
-from vasthorizon.config import get_gms_key, get_settings
+import openai
+from langchain_core.embeddings import Embeddings
+from langchain_core.language_models import BaseChatModel
+
+from vasthorizon.config import get_claude_key, get_gms_key, get_settings, key_name
+
+try:                                   # 배포용 (requirements-deploy.txt) — 없으면 GMS 오류만 다룬다
+    import anthropic
+except ImportError:                    # pragma: no cover - 과제 환경
+    anthropic = None
 
 # 잠시 뒤 다시 하면 될 수 있는 API 장애 — 이미 있는 색인 · 근거로 답변을 이어 간다.
 # 인증 실패 · 잘못된 요청처럼 계속하면 안 되는 오류는 여기에 넣지 않는다.
@@ -16,40 +27,54 @@ TRANSIENT_API_ERRORS = (
     openai.APIConnectionError,        # 연결 실패 (APITimeoutError 포함)
     openai.RateLimitError,
     openai.InternalServerError,
-)
+) + ((anthropic.APIConnectionError, anthropic.RateLimitError, anthropic.InternalServerError) if anthropic else ())
 
-_ERROR_LABELS = {
-    openai.APITimeoutError: "응답 시간 초과",
-    openai.APIConnectionError: "연결 오류",
-    openai.RateLimitError: "호출 한도 초과",
-    openai.InternalServerError: "서버 오류",
-}
+# LLM 호출이 실패한 모든 경우 — 기능마다 '실패'로 처리하고 결과를 캐시하지 않는다
+API_ERRORS = (openai.APIError,) + ((anthropic.APIError,) if anthropic else ())
+
+_ERROR_LABELS = [
+    (openai.APITimeoutError, "응답 시간 초과"),
+    (openai.APIConnectionError, "연결 오류"),
+    (openai.RateLimitError, "호출 한도 초과"),
+    (openai.InternalServerError, "서버 오류"),
+] + ([(anthropic.APITimeoutError, "응답 시간 초과"), (anthropic.APIConnectionError, "연결 오류"),
+      (anthropic.RateLimitError, "호출 한도 초과"), (anthropic.InternalServerError, "서버 오류")] if anthropic else [])
 
 
 def describe_api_error(error: Exception) -> str:
     """사용자에게 보여줄 장애 종류. 키 · URL · 요청 본문 같은 내부 정보는 넣지 않는다. (NF2004)"""
-    for cls, label in _ERROR_LABELS.items():
+    for cls, label in _ERROR_LABELS:
         if isinstance(error, cls):
             return label
     return "일시적 오류"
 
 
 class MissingApiKeyError(RuntimeError):
-    """GMS_KEY가 설정되지 않았을 때. 화면에는 키 설정 안내로 바꿔 보여준다. (F2012)"""
+    """LLM 키(GMS_KEY 또는 CLAUDE_API_KEY)가 설정되지 않았을 때. 화면에는 키 설정 안내로 바꿔 보여준다. (F2012)"""
 
     def __init__(self) -> None:
-        super().__init__("GMS_KEY가 설정되지 않았습니다. 프로젝트 폴더의 .env 파일을 확인하세요.")
+        super().__init__(f"{key_name()}가 설정되지 않았습니다. 프로젝트 폴더의 .env 파일을 확인하세요.")
 
 
 def _require_key() -> str:
-    key = get_gms_key()
+    key = get_claude_key() if get_settings().llm.provider == "anthropic" else get_gms_key()
     if not key:
         raise MissingApiKeyError()
     return key
 
 
-def chat_model(**overrides) -> ChatOpenAI:
+def chat_model(**overrides) -> BaseChatModel:
     cfg = get_settings().llm
+    if cfg.provider == "anthropic":
+        key = _require_key()                        # 키가 없으면 패키지보다 먼저 키 안내
+        from langchain_anthropic import ChatAnthropic
+        overrides.pop("model_kwargs", None)         # OpenAI 전용 옵션(JSON 모드)은 Claude에 넘기지 않는다
+        overrides.pop("temperature", None)          # 최신 Claude 모델은 기본값 외의 temperature를 받지 않는다
+        params = dict(model=cfg.anthropic_model, api_key=key, timeout=cfg.timeout_sec,
+                      max_retries=2, max_tokens=cfg.max_tokens)
+        params.update(overrides)
+        return ChatAnthropic(**params)
+    from langchain_openai import ChatOpenAI
     params = dict(
         model=cfg.chat_model,
         api_key=_require_key(),
@@ -61,12 +86,67 @@ def chat_model(**overrides) -> ChatOpenAI:
     return ChatOpenAI(**params)
 
 
-def embeddings() -> OpenAIEmbeddings:
+def json_chat_model() -> BaseChatModel:
+    """JSON 객체로 답하는 모델. GMS는 JSON 모드, Claude는 프롬프트의 형식 지시만으로 (응답은 parse_json_reply가 정리한다)."""
+    if get_settings().llm.provider == "anthropic":
+        return chat_model()                         # 최신 Claude 모델은 temperature 값을 받지 않는다
+    return chat_model(model_kwargs={"response_format": {"type": "json_object"}})
+
+
+def reply_text(reply) -> str:
+    """모델 응답의 글만 — GMS(OpenAI)는 문자열, Claude는 내용 블록 목록([{type: "text", text}, ...])으로 온다."""
+    content = getattr(reply, "content", reply)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(b if isinstance(b, str) else b.get("text", "") if isinstance(b, dict) and b.get("type", "text") == "text" else ""
+                       for b in content)
+    return str(content or "")
+
+
+class LocalEmbeddings(Embeddings):
+    """서버 안에서 돌리는 다국어 임베딩 (fastembed, ONNX — torch 없이 CPU로). 처음 쓸 때 모델을 내려받아 캐시한다.
+
+    문서는 passage_embed, 질문은 query_embed로 — e5 계열처럼 접두어가 필요한 모델도 fastembed가 맞춰 준다.
+    """
+
+    def __init__(self, model: str) -> None:
+        self.model = model
+        self._engine = _local_engine(model)
+        self.dimensions = _local_dim(model)
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [v.tolist() for v in self._engine.passage_embed(list(texts))]
+
+    def embed_query(self, text: str) -> list[float]:
+        return next(iter(self._engine.query_embed([text]))).tolist()
+
+
+@lru_cache(maxsize=2)
+def _local_engine(model: str):
+    from fastembed import TextEmbedding
+    return TextEmbedding(model_name=model)
+
+
+@lru_cache(maxsize=2)
+def _local_dim(model: str) -> int | None:
+    from fastembed import TextEmbedding
+    return next((m.get("dim") for m in TextEmbedding.list_supported_models() if m["model"] == model), None)
+
+
+def embeddings() -> Embeddings:
     cfg = get_settings().llm
+    if cfg.embedding_provider == "local":
+        return LocalEmbeddings(cfg.local_embedding_model)
+    from langchain_openai import OpenAIEmbeddings
     return OpenAIEmbeddings(
         model=cfg.embedding_model,
-        api_key=_require_key(),
+        api_key=get_gms_key() or _missing(),
         base_url=cfg.base_url,
         timeout=cfg.timeout_sec,
         max_retries=2,
     )
+
+
+def _missing() -> str:
+    raise MissingApiKeyError()

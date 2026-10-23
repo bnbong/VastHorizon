@@ -50,20 +50,20 @@ def check_health(items: list[dict], ref_year: int) -> HealthResponse:
     카탈로그와 항목 색인이 같은 데이터인지도 본다 — 카탈로그에서 다시 만든 텍스트 해시와
     색인에 저장된 text_hash를 비교한다 (임베딩 호출 없음).
     """
-    from vasthorizon.config import get_gms_key, get_settings
+    from vasthorizon.config import get_llm_key, get_settings, key_name
     from vasthorizon.data.constellation_figures import figures_path
     from vasthorizon.store import chroma
     from vasthorizon.store.item_index import index_drift
 
     settings = get_settings()
     items_loaded = len(items)
-    has_key = get_gms_key() is not None
+    has_key = get_llm_key() is not None                 # 설정한 제공자(GMS · Claude)의 키
     items_indexed = chroma.collection_count(settings.collections.items)
     docs_indexed = chroma.collection_count(settings.collections.docs)
     notices = []
     if not has_key:
         notices.append(Notice(code="missing_key", level="error",
-                              message="AI 서비스 키(GMS_KEY)가 설정되지 않아 질문에 답할 수 없습니다. "
+                              message=f"AI 서비스 키({key_name()})가 설정되지 않아 질문에 답할 수 없습니다. "
                                       "서버의 .env 설정을 확인해 주세요."))
     if items_loaded == 0:
         notices.append(Notice(code="catalog_missing", level="error",

@@ -23,7 +23,6 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-import openai
 import requests
 from langchain_core.language_models import BaseChatModel
 
@@ -31,6 +30,7 @@ from vasthorizon.collect.cache import CollectCache, normalize_query, now, usable
 from vasthorizon.config import get_settings
 from vasthorizon.data.docs import Candidate, Document, SourceError, nssdca, wikipedia
 from vasthorizon.data.item_text import display_name
+from vasthorizon.llm import API_ERRORS
 from vasthorizon.rag.llm_json import JsonReplyError, invoke_json, json_chat_model, string_list
 from vasthorizon.rag.prompts import query_messages, select_messages
 
@@ -42,7 +42,7 @@ SELECTED, REJECTED = "selected", "rejected"
 
 # 외부 출처 · LLM 장애로 보는 예외 — 이 경우 단계 실패로 기록하고 계속 진행한다
 SOURCE_ERRORS = (requests.RequestException, SourceError)
-LLM_ERRORS = (JsonReplyError, openai.APIError)
+LLM_ERRORS = (JsonReplyError, *API_ERRORS)   # GMS · Claude 어느 쪽이든
 
 Progress = Callable[[str], None]
 

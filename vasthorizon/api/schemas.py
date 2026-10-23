@@ -24,7 +24,7 @@ class Notice(BaseModel):
 
 class HealthResponse(BaseModel):
     ready: bool = Field(description="질문을 받을 수 있는 상태인가 (키 설정 + 항목 색인 있음)")
-    gms_key: bool = Field(description="GMS 키가 설정됐는가 (값은 노출하지 않는다)")
+    gms_key: bool = Field(description="LLM 키(GMS_KEY 또는 CLAUDE_API_KEY)가 설정됐는가 (값은 노출하지 않는다, 필드 이름은 호환을 위해 유지)")
     items_loaded: int
     items_indexed: int
     docs_indexed: int

@@ -1,0 +1,11 @@
+# VastHorizon 배포 의존성 — Claude API + 서버 안 로컬 임베딩 (config.deploy.toml)
+#
+#     pip install -r requirements-deploy.txt
+#
+# 과제 제출 환경(requirements.txt, GMS)은 그대로 두고, 배포에 필요한 것만 더한다.
+
+-r requirements.txt
+
+langchain-anthropic==1.7.0      # langchain-core 1.6.0(requirements.txt 고정)과 맞는 마지막 버전
+anthropic==1.17.0
+fastembed==0.9.0

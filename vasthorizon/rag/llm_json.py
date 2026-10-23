@@ -1,6 +1,6 @@
 """JSON으로 답하는 LLM 호출과 응답 검증.
 
-GMS의 JSON 모드(response_format=json_object)로 받고, 그래도 형식이 깨지면
+GMS의 JSON 모드(response_format=json_object)로 받고(Claude는 프롬프트의 형식 지시로), 그래도 형식이 깨지면
 코드 블록 · 앞뒤 설명을 걷어 내고 한 번 더 파싱한다.
 문법이 맞아도 필드 타입이 스키마와 다르면 같은 JsonReplyError로 다룬다.
 호출하는 쪽은 이 오류를 '실패'로 처리하고, 정상 결과(빈 선택 등)로 캐시하지 않는다.
@@ -19,36 +19,50 @@ class JsonReplyError(ValueError):
 
 
 def json_chat_model() -> BaseChatModel:
-    from vasthorizon.llm import chat_model
-    return chat_model(model_kwargs={"response_format": {"type": "json_object"}})
+    from vasthorizon.llm import json_chat_model as make
+    return make()
 
 
 def parse_json_reply(content: str):
+    """응답에서 JSON 값을 꺼낸다. 코드 블록 · 앞뒤 설명은 걷어 낸다.
+
+    JSON이 여러 개면 마지막 것을 쓴다 — Claude는 JSON을 낸 뒤 "잠깐, 고치겠습니다"처럼 스스로 바로잡은 JSON을
+    한 번 더 내기도 한다 (고친 쪽이 마지막).
+    """
     text = content.strip()
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    fenced = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
+    fenced = re.findall(r"```(?:json)?\s*(.*?)```", text, re.S)
     if fenced:
-        text = fenced.group(1).strip()
-    start = min((i for i in (text.find("{"), text.find("[")) if i >= 0), default=-1)
-    if start >= 0:
+        text = fenced[-1].strip()
         try:
-            return json.loads(text[start:])
+            return json.loads(text)
         except json.JSONDecodeError:
-            end = max(text.rfind("}"), text.rfind("]"))
+            pass
+    decoder = json.JSONDecoder()
+    found, i = [], 0
+    while i < len(text):
+        if text[i] in "{[":
             try:
-                return json.loads(text[start:end + 1])
+                value, end = decoder.raw_decode(text, i)
+                found.append(value)
+                i = end
+                continue
             except json.JSONDecodeError:
                 pass
+        i += 1
+    if found:
+        return found[-1]
     raise JsonReplyError("LLM 응답을 JSON으로 읽을 수 없습니다.")
 
 
 def invoke_json(llm: BaseChatModel, messages: list) -> dict:
     """JSON 객체 하나를 받는다. 배열 · 문자열 같은 다른 최상위 타입은 스키마 오류."""
     reply = llm.invoke(messages)
-    data = parse_json_reply(reply.content if hasattr(reply, "content") else str(reply))
+    from vasthorizon.llm import reply_text
+    data = parse_json_reply(reply_text(reply))
     if not isinstance(data, dict):
         raise JsonReplyError(f"LLM 응답이 JSON 객체가 아닙니다 ({type(data).__name__}).")
     return data

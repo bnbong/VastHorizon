@@ -27,6 +27,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 
 from vasthorizon.data.domain import NOT_FOUND_SENTENCE
+from vasthorizon.llm import reply_text
 from vasthorizon.rag.citations import citation_issue, resolve_citations
 from vasthorizon.rag.prompts import answer_messages
 from vasthorizon.rag.retrieval import Evidence, retrieve_evidence
@@ -114,7 +115,7 @@ def generate_validated(model: BaseChatModel, messages: list, evidences: list[Evi
     issues: list[str] = []
     raw = ""
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        raw = model.invoke(messages).content
+        raw = reply_text(model.invoke(messages))
         cited = resolve_citations(clean_reply(raw), evidences)
         not_found = is_not_found(cited.text)
         issue = citation_issue(cited, not_found)

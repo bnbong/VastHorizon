@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from langchain_core.language_models import BaseChatModel
 
 from vasthorizon.config import PROJECT_ROOT, get_settings
+from vasthorizon.llm import reply_text
 from vasthorizon.rag.graph import default_chat_model, is_not_found
 from vasthorizon.rag.prompts import ANSWER_SYSTEM, BASELINE_SYSTEM, baseline_messages
 
@@ -98,7 +99,8 @@ def run_info(run_id: str | None = None, started_at: str | None = None) -> dict:
 def baseline_answer(item_name: str, question: str, llm: BaseChatModel | None = None) -> dict:
     t = time.perf_counter()
     reply = default_chat_model(llm).invoke(baseline_messages(item_name, question))
-    return {"answer": reply.content, "seconds": round(time.perf_counter() - t, 2), "metrics": metrics(reply.content)}
+    text = reply_text(reply)
+    return {"answer": text, "seconds": round(time.perf_counter() - t, 2), "metrics": metrics(text)}
 
 
 def rag_answer(item: dict, question: str, ask: Callable) -> dict:

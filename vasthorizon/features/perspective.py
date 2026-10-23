@@ -31,7 +31,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import chromadb
-import openai
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 
@@ -43,6 +42,7 @@ from vasthorizon.data.perspective_library import (
 )
 from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.rag.graph import default_chat_model, generate_validated
+from vasthorizon.llm import API_ERRORS
 from vasthorizon.rag.llm_json import JsonReplyError, invoke_json, json_chat_model, optional_field, string_list
 from vasthorizon.rag.prompts import perspective_classify_messages, perspective_messages
 from vasthorizon.rag.retrieval import KIND_DOC, Evidence, IndexMissingError
@@ -54,7 +54,7 @@ TOP_K = 4
 MAX_TEXT = 300
 MAX_THEMES = 2
 ROLE_LIBRARY = "관점 전환 서가"
-LLM_ERRORS = (JsonReplyError, openai.APIError)
+LLM_ERRORS = (JsonReplyError, *API_ERRORS)   # GMS · Claude 어느 쪽이든
 CHECK_ERRORS = (*LLM_ERRORS, MissingApiKeyError)       # 2차 위기 확인을 끝내지 못한 경우
 UNCHECKED_MESSAGE = ("지금은 마음 한 줄을 차분히 읽어 보지 못했어요. 잠시 뒤 다시 적어 주시거나, 감정 버튼으로 골라 주세요. "
                      "마음이 많이 힘들다면 아래 상담 창구가 24시간 열려 있습니다.")

@@ -2,6 +2,7 @@
 
 VastHorizon을 직접 실행해 보려는 분을 위한 안내입니다.
 프로젝트 수행 결과는 [README](../README.md)에서 확인하세요.
+개인 Claude API 키로 공개 배포하는 방법은 [부록 B. 배포 안내](appendix_b_deploy_guide.md)에 따로 정리했습니다.
 
 > 이 문서는 구현이 진행되는 대로 단계별로 채워집니다.
 

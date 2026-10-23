@@ -79,7 +79,7 @@ VastHorizon은 그런 날을 위해 만들었습니다.
 | 하늘 | 실제 별 118,216개 (확대하면 12등급대까지), 성운과 성단과 은하 15,809개, 은하수. 아무 별이나 눌러 담기 |
 | 태양계 | 그날의 태양, 달, 행성을 실제 시지름으로 (JPL Horizons와 대조해 오차 5분각 안). 달은 NASA 표면 지도와 그날의 위상 |
 | 사진과 모델 | 메시에 천체 사진 89장 (NASA 허블 메시에 목록, 출처 표기), 국제우주정거장과 허블, 제임스 웹, 보이저의 NASA 3D 모델 |
-| 테스트 | Python 375, JavaScript 61, 브라우저 점검 44: **모두 통과** |
+| 테스트 | Python 395, JavaScript 61, 브라우저 점검 44: **모두 통과** |
 
 ---
 
@@ -189,6 +189,17 @@ flowchart LR
 
 자세한 설치, 실행, 옵션은 [부록 A. 설치, 실행 안내](docs/appendix_a_setup_guide.md)에 있습니다.
 
+### 배포 (Claude API)
+
+과제 제출 환경은 SSAFY GMS를 쓰고, 공개 배포는 설정 파일 하나(`config.deploy.toml`)로 Claude API와 서버 안 로컬 임베딩으로 바꿉니다. 코드는 같습니다.
+
+```bash
+# .env에 CLAUDE_API_KEY, WIKI_CONTACT
+docker compose up -d --build      # 첫 실행에 색인을 만들고 http://서버:8000 에서 시작
+```
+
+화면만 Cloudflare Pages에 두고 API는 개인 서버에 두는 방식, 호출 한도(개인 키 보호), 임베딩 모델 비교는 [부록 B. 배포 안내](docs/appendix_b_deploy_guide.md)에 있습니다.
+
 ---
 
 ## 출처와 이용 조건
@@ -245,3 +256,4 @@ scripts/      수집, 색인, 비교 스크립트          tests/   테스트
 | [04. 검증 결과](docs/04_verification.md) | 확인 항목별 결과 화면, 대조표, 테스트, 체크리스트 |
 | [05. RAG 전후 품질 비교](docs/05_rag_comparison.md) | F2015: 8문항 나란히 |
 | [부록 A. 설치, 실행 안내](docs/appendix_a_setup_guide.md) | 명령, 옵션, 설정 |
+| [부록 B. 배포 안내](docs/appendix_b_deploy_guide.md) | Claude API, 로컬 임베딩, Docker, Cloudflare Pages, 호출 한도 |

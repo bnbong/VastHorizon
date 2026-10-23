@@ -1,0 +1,24 @@
+# VastHorizon 배포 (개인 서버 · BNGdrasil 등) — 화면과 API를 컨테이너 하나로
+#
+#     docker compose up -d --build
+#
+# .env에 CLAUDE_API_KEY(필수)와 WIKI_CONTACT(권장)를 둔다. 키 값은 이미지에 들어가지 않는다.
+# 리버스 프록시(Cloudflare Tunnel, Nginx 등) 뒤라면 VH_TRUST_PROXY=1 로 사용자 주소를 X-Forwarded-For에서 읽는다.
+# 화면을 Cloudflare Pages 등 다른 주소에 둘 때는 VH_CORS_ORIGINS에 그 주소를 쉼표로 적는다.
+
+services:
+  vasthorizon:
+    build: .
+    image: vasthorizon:latest
+    env_file: .env
+    environment:
+      VH_TRUST_PROXY: "0"
+      VH_CORS_ORIGINS: ""
+    ports:
+      - "8000:8000"
+    volumes:
+      - vh-data:/app/data/deploy
+    restart: unless-stopped
+
+volumes:
+  vh-data:

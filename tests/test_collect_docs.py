@@ -429,6 +429,14 @@ class ParsingTest(unittest.TestCase):
         with self.assertRaises(JsonReplyError):
             parse_json_reply("JSON 아님")
 
+    def test_parse_json_reply_takes_self_corrected_last_object(self):
+        # Claude가 JSON을 낸 뒤 스스로 바로잡은 JSON을 한 번 더 내는 경우 — 고친(마지막) 쪽을 쓴다
+        reply = ('{"queries": ["見かけの等級", "UBV 측광계"]}\n\nWait — I must output only Korean titles. Let me correct.\n\n'
+                 '{"queries": ["겉보기 등급", "UBV 측광계"]}')
+        self.assertEqual(parse_json_reply(reply), {"queries": ["겉보기 등급", "UBV 측광계"]})
+        self.assertEqual(parse_json_reply('{ 이건 JSON 아님 } 그리고 {"selected": []}'), {"selected": []})
+        self.assertEqual(parse_json_reply('```json\n{"a": 1}\n```\n고친 답:\n```json\n{"a": 2}\n```'), {"a": 2})
+
     def test_wiki_extract_cleaning(self):
         raw = ("보이저 1호는 탐사선이다.\n\n== 역사 ==\n발사되었다.\n\n== 빈 절 ==\n== 임무 ==\n=== 목성 ===\n"
                "목성을 지났다.\n\n== 각주 ==\n[1] 출처\n== 외부 링크 ==\n링크")

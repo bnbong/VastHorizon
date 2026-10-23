@@ -30,13 +30,13 @@ import re
 from dataclasses import dataclass, field
 
 import chromadb
-import openai
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 
 from vasthorizon.config import get_settings
 from vasthorizon.data.item_text import CATEGORIES, display_name, year_text
 from vasthorizon.data.items.common import GROUPS
+from vasthorizon.llm import API_ERRORS
 from vasthorizon.rag.llm_json import JsonReplyError, invoke_json, json_chat_model, optional_field, string_list
 from vasthorizon.rag.prompts import explore_filter_messages, explore_select_messages
 from vasthorizon.rag.retrieval import IndexMissingError
@@ -45,7 +45,7 @@ from vasthorizon.store.search import search
 
 MAX_RESULTS = 8
 SEASONS = ("봄", "여름", "가을", "겨울")
-LLM_ERRORS = (JsonReplyError, openai.APIError)
+LLM_ERRORS = (JsonReplyError, *API_ERRORS)   # GMS · Claude 어느 쪽이든
 
 
 @dataclass

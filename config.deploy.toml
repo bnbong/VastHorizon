@@ -1,0 +1,68 @@
+# VastHorizon 배포 설정 — Claude API(개인 키) + 서버 안 로컬 임베딩
+#
+#     VH_CONFIG=config.deploy.toml
+#
+# 과제 제출 환경은 config.toml(GMS)을 그대로 쓴다. 이 파일은 공개 배포용이다.
+# 색인 · 캐시는 GMS 색인과 섞이지 않게 data/deploy/ 아래에 따로 둔다 (임베딩 모델이 달라 벡터를 함께 쓸 수 없다).
+
+[llm]
+provider = "anthropic"                   # 채팅: Claude (키: CLAUDE_API_KEY)
+anthropic_model = "claude-sonnet-5-5"    # 비용을 줄이려면 "claude-haiku-5-5"
+max_tokens = 2048
+timeout_sec = 60
+embedding_provider = "local"             # Claude에는 임베딩 API가 없어 서버 안에서 계산한다 (fastembed, ONNX)
+# 다국어 모델. 한국어 질문 4개로 비교했을 때 정답 청크 순위: e5-large [1, 1, 1, 1], mpnet-base [17, 1, 9, 2], MiniLM [12, 2, 1, 1]
+# e5-large는 2.2GB · 메모리 약 2.5GB가 필요하다. 서버가 작으면 sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 (0.22GB)
+# 모델을 바꾸면 색인을 다시 만든다 (python -m scripts.deploy_init --rebuild)
+local_embedding_model = "intfloat/multilingual-e5-large"
+# 아래 셋은 gms 제공자용 — 배포에서는 쓰지 않는다
+base_url = "https://gms.ssafy.io/gmsapi/api.openai.com/v1/"
+chat_model = "gpt-6-luna"
+embedding_model = "text-embedding-3-small"
+
+[paths]
+data_dir = "data"
+chroma_dir = "data/deploy/chroma"
+cache_dir = "data/deploy/cache"
+
+[collections]
+items = "cosmos_items"
+docs = "cosmos_docs"
+perspective = "cosmos_perspective"
+
+[chunking]
+chunk_size = 1000
+chunk_overlap = 200
+
+[retrieval]
+search_type = "similarity"
+top_k_docs = 6
+mmr_fetch_k = 30
+mmr_lambda = 0.5
+item_candidates = 20
+
+[collect]
+max_queries = 4
+candidates_per_query = 5
+max_selected = 4
+min_summary_chars = 40
+min_doc_chars = 200
+max_doc_chars = 20000
+
+[http]
+app_name = "VastHorizon/0.1"
+min_interval_sec = 0.5
+max_retries = 4
+timeout_sec = 30
+
+# 공개 배포 — 개인 API 키를 지키는 호출 한도 (LLM을 부르는 POST /api/... 요청만 센다)
+[limits]
+enabled = true
+per_ip_per_minute = 6
+per_ip_per_day = 60
+global_per_day = 1500
+trust_proxy = false       # 리버스 프록시(Cloudflare Tunnel, Nginx 등) 뒤에서만 true. 프록시 없이 true면 주소를 속여 한도를 피할 수 있다
+
+# 화면을 다른 주소(Cloudflare Pages 등)에 둘 때 허용할 출처. 환경변수 VH_CORS_ORIGINS(쉼표 구분)가 있으면 그 값을 쓴다
+[server]
+cors_origins = []
