@@ -841,18 +841,20 @@ function showExplore() {
     onSettled: () => composer.setBusy(false),
     onSuccess: (res) => {
       const dist = (id) => state.catalog?.find((o) => o.id === id)?.distance_km;
+      // 질문에 나온 천체에게 묻기 — 사실 질문(ask)이면 주 안내, 카드가 있으면 카드 아래 보조 문구 (오류처럼 보이지 않게)
+      const askHtml = res.mentioned?.length ? `<div class="stack sm ask-about">
+            <p class="sub">${res.status === "ask" ? "이 천체에게 직접 물으면 문서를 찾아 근거와 함께 답합니다." : "질문에 나온 천체에게 직접 물어볼 수도 있습니다."}</p>
+            ${res.mentioned.map((m) => `<button type="button" class="card explore-card ask" data-ask="${esc(m.item_id)}" data-question="${esc(res.query)}">
+              <div class="top"><span class="nm">${esc(m.name)}에게 이 질문하기</span>${icon("arrow-right", 14)}</div>
+              <p class="sub">"${esc(res.query)}"</p></button>`).join("")}</div>` : "";
+      const cardsHtml = res.cards.map((c) => `<button type="button" class="card explore-card" data-id="${esc(c.item_id)}">
+            <div class="top"><span class="nm">${esc(c.name)}</span>${dist(c.item_id) ? `<span class="badge neutral">${esc(distanceText(dist(c.item_id)))}</span>` : ""}</div>
+            <p class="sub">${c.kind ? `${esc(c.kind)} · ` : ""}${esc(c.reason)}</p></button>`).join("");
       out.innerHTML = `
         ${res.applied.length ? `<p class="sub">적용한 조건: ${res.applied.map(esc).join(" · ")}</p>` : ""}
         ${res.notice ? `<p class="status warn">${esc(res.notice)}</p>` : ""}
         ${res.warnings.map((w) => `<p class="status warn">${esc(w)}</p>`).join("")}
-        ${res.mentioned?.length ? `<div class="stack sm ask-about">
-            <p class="sub">${res.status === "ask" ? "이 천체에게 직접 물으면 문서를 찾아 근거와 함께 답합니다." : "질문에 나온 천체에게 직접 물어볼 수도 있습니다."}</p>
-            ${res.mentioned.map((m) => `<button type="button" class="card explore-card ask" data-ask="${esc(m.item_id)}" data-question="${esc(res.query)}">
-              <div class="top"><span class="nm">${esc(m.name)}에게 이 질문하기</span>${icon("arrow-right", 14)}</div>
-              <p class="sub">"${esc(res.query)}"</p></button>`).join("")}</div>` : ""}
-        ${res.cards.map((c) => `<button type="button" class="card explore-card" data-id="${esc(c.item_id)}">
-            <div class="top"><span class="nm">${esc(c.name)}</span>${dist(c.item_id) ? `<span class="badge neutral">${esc(distanceText(dist(c.item_id)))}</span>` : ""}</div>
-            <p class="sub">${c.kind ? `${esc(c.kind)} · ` : ""}${esc(c.reason)}</p></button>`).join("")}`;
+        ${res.cards.length ? cardsHtml + askHtml : askHtml}`;
     },
   });
   composer = bindComposer($("#explore-form"), (q) => run(q));

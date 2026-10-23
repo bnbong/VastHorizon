@@ -61,6 +61,7 @@ from vasthorizon.config import PROJECT_ROOT
 from vasthorizon.data.constellation_figures import LICENSES, figure_stats
 from vasthorizon.data.items.common import GROUPS
 from vasthorizon.features.constellation import FigureUnavailableError, figure_for
+from vasthorizon.features.explore import names_only
 from vasthorizon.data.perspective_library import THEMES
 from vasthorizon.features.light_letter import LetterUnavailableError, star_for_age
 from vasthorizon.features.perspective import PerspectiveInputError
@@ -344,7 +345,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.post("/api/explore", response_model=ExploreResponse, responses=errors)
     def explore(req: ExploreRequest, request: Request) -> ExploreResponse:
-        spend_ai(request)
+        if not names_only(req.query, svc().items):     # 이름만 있는 질문("베가")은 LLM을 부르지 않는다
+            spend_ai(request)
         result = svc().explore(req.query)
         notice = {"no_match": "조건에 맞는 항목을 찾지 못했습니다. 조건을 조금 넓혀 보세요.",
                   "failed": "조건과 대조하지 못했습니다. 잠시 뒤 다시 시도해 주세요.",

@@ -258,6 +258,14 @@ class AiBudgetTest(unittest.TestCase):
         c, ask, _ = limited_app()
         self.assertTrue(all(c.post("/api/ask", json=ask_body()).status_code == 200 for _ in range(8)))
 
+    def test_name_only_explore_does_not_spend_budget(self):
+        from vasthorizon.features.explore import ExploreResult
+        self.c.app.state.services.explore = lambda q: ExploreResult(query=q, applied=[], cards=[], candidates=0, status="ok")
+        codes = [self.c.post("/api/explore", json={"query": q}).status_code for q in ("보이저 1호", "Voyager 1", "오리온자리")]
+        self.assertEqual(codes, [200] * 3)                               # 이름만 있는 질문 — LLM을 부르지 않는다
+        self.assertEqual([self.c.post("/api/explore", json={"query": "보이저 1호보다 먼 탐사선"}).status_code
+                          for _ in range(3)], [200, 200, 429])           # 조건어가 있으면 예산을 쓴다
+
     def test_global_limit_across_users(self):
         codes = []
         limits = LimitsConfig(enabled=True, per_ip_per_minute=10, per_ip_per_day=10, global_per_day=3)

@@ -348,6 +348,71 @@ class ExploreFactQuestionTest(ExploreTestBase):
         self.assertIn("그 천체에게 물으면", body["notice"])
 
 
+NAMED_STARS = [
+    item("Q3427", "베가", "star", "항성", 25), item("Q12179", "데네브", "star", "항성", 2600),
+    item("Q12975", "알타이르", "star", "항성", 16.7), item("Q13072", "알니타크", "star", "항성", 1260),
+    item("Q13070", "알닐람", "star", "항성", 2000), item("Q680341", "민타카", "star", "항성", 1200),
+]
+
+
+class ExploreNameQueryTest(ExploreTestBase):
+    """이름만 있는 질문 · 성군 이름 — '찾지 못함' 대신 그 천체 · 구성 천체를 카드로 돌려준다."""
+
+    def run_explore(self, query, *replies):
+        llm = FakeChat(*[json.dumps(r, ensure_ascii=False) for r in replies])
+        return explore(query, llm=llm, embedding=self.emb, db=self.db, items=CATALOG + NAMED_STARS), llm
+
+    def test_name_only_query_returns_card_without_llm(self):
+        result, llm = self.run_explore("베가")
+        self.assertEqual((result.status, [c.item_id for c in result.cards]), ("ok", ["Q3427"]))
+        self.assertIn("이름", result.cards[0].reason)
+        self.assertEqual(llm.received, [])                            # 조건이 없으니 LLM을 부르지 않는다
+        self.assertEqual(result.mentioned, [])                        # 카드가 곧 그 천체 — '질문하기' 보조 블록 없음
+        result, _ = self.run_explore("베텔게우스와 시리우스")
+        self.assertEqual([c.item_id for c in result.cards], ["Q12124", "Q3409"])
+
+    def test_asterism_alias_returns_members(self):
+        for query in ("여름 삼각형", "여름삼각형", "Summer Triangle"):
+            result, llm = self.run_explore(query)
+            self.assertEqual((result.status, [c.item_id for c in result.cards]), ("ok", ["Q3427", "Q12179", "Q12975"]), query)
+            self.assertEqual(result.cards[0].reason, "여름 삼각형을 이루는 별입니다.")
+            self.assertEqual((llm.received, result.mentioned), ([], []))
+
+    def test_asterism_alias_table_matches_catalog(self):
+        from vasthorizon.data.asterisms import ASTERISMS
+        from vasthorizon.data.item_text import display_name
+        names = {display_name(i["name"]) for i in json.loads(
+            (get_settings().paths.data_dir / "items.json").read_text(encoding="utf-8"))["items"]}
+        for group, (_, members) in ASTERISMS.items():
+            self.assertEqual([m for m in members if m not in names], [], group)
+
+    def test_llm_members_matched_against_catalog(self):
+        result, llm = self.run_explore("오리온의 허리띠를 이루는 별",
+                                       {"semantic_query": "오리온 허리띠", "members": ["알니타크", "알닐람", "민타카", "없는별"]},
+                                       {"selected": []})
+        self.assertEqual((result.status, [c.item_id for c in result.cards]), ("ok", ["Q13072", "Q13070", "Q680341"]))
+        self.assertEqual(len(llm.received), 2)
+        result, _ = self.run_explore("오리온의 허리띠", {"semantic_query": "오리온 허리띠", "members": ["없는별"]},
+                                     {"selected": []})
+        self.assertEqual((result.status, result.cards), ("no_match", []))   # 카탈로그에 없는 이름은 버린다
+
+    def test_fact_question_still_asks(self):
+        result, llm = self.run_explore("베가는 몇 광년 떨어져 있어?", {"semantic_query": "베가 거리", "asks_fact": True})
+        self.assertEqual((result.status, result.cards, [m["id"] for m in result.mentioned]), ("ask", [], ["Q3427"]))
+        self.assertEqual(len(llm.received), 1)
+
+    def test_condition_with_name_keeps_selection(self):
+        result, llm = self.run_explore("베가보다 밝은 별",
+                                       {"semantic_query": "밝은 별", "categories": ["별"]},
+                                       {"selected": [{"id": "Q3409", "reason": "겉보기 등급 -1.46"},
+                                                     {"id": "Q3427", "reason": "중복"}]})
+        self.assertEqual(len(llm.received), 2)                       # 필터 추출 + 선별
+        self.assertEqual(result.applied, ["종류: 별"])
+        self.assertEqual([c.item_id for c in result.cards], ["Q3427", "Q3409"])   # 이름이 나온 천체가 맨 앞, 중복 없음
+        self.assertEqual(result.cards[1].reason, "겉보기 등급 -1.46")
+        self.assertEqual([m["id"] for m in result.mentioned], ["Q3427"])   # 조건어가 있으면 보조 블록은 그대로
+
+
 class ExploreNoMatchTest(ExploreTestBase):
     def test_candidates_but_none_selected_is_no_match(self):
         result, _ = self.explore({"semantic_query": "은하", "categories": ["은하"]}, {"selected": []})
