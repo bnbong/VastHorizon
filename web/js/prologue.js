@@ -87,8 +87,11 @@ export function playPrologue({ reducedMotion = false } = {}) {
       index = i;
       const beat = BEATS[i];
       clearTimeout(timer);
-      const old = stage.querySelector(".pl-beat");
-      if (old) { old.classList.add("out"); setTimeout(() => old.remove(), 700); }
+      // 지금 보이는 장면은 모두 물러난다 — 빠르게 두 번 넘기면 물러나는 중인 장면만 골라 지금 장면이 남던 문제
+      stage.querySelectorAll(".pl-beat:not(.out)").forEach((old) => {
+        old.classList.add("out");
+        setTimeout(() => old.remove(), reducedMotion ? 0 : 700);
+      });
       const glyphs = beat.lines.join("").replace(/ /g, "").length;
       const textMs = reducedMotion ? 0 : glyphs * 42 + 600;
       const el = document.createElement("div");

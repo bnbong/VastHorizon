@@ -509,7 +509,7 @@ function journeyEnd() {
     <div class="serif-line st0">지금 당신의 세상은</div>
     <div class="end-measure st1">${measureHtml(world.km, { size: "xl", center: true })}</div>
     <div class="serif-line st2">${seen ? `${seen.toLocaleString("ko-KR")}개의 빛을 알아가, ${world.name === "지평선" ? "기록에 담았습니다" : `${esc(world.name)}까지 닿았습니다`}` : "첫 번째 빛을 기다리고 있습니다"}</div>
-    <p class="muted st3">${today ? `오늘 새로운 빛 ${today}개를 알아갔습니다 · ` : ""}금빛 고리는 관측 가능한 우주의 끝, 반지름 약 465억 광년.
+    <p class="muted st3">${today ? `오늘 새로운 빛 ${today}개를 알아갔습니다 · ` : ""}가장 바깥의 분홍빛 고리는 관측 가능한 우주의 끝, 반지름 약 465억 광년.
       그 구의 중심에는 언제나 <em class="kw sky">바라보는 당신</em>이 있습니다.</p>
     <div class="actions st4">${btn(seen ? "다음 빛 알아가러 하늘로" : "첫 번째 빛 만나러 하늘로", { variant: "primary", size: "md", ic: "sparkles", id: "end-sky" })}
       ${btn("이 우주 둘러보기", { variant: "ghost", size: "md", id: "end-stay" })}</div>
