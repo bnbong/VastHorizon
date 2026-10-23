@@ -14,7 +14,7 @@ from pathlib import Path
 from PIL import Image
 
 from vasthorizon.config import PROJECT_ROOT
-from vasthorizon.data.messier_images import build, parse_page, to_jpeg
+from vasthorizon.data.messier_images import build, parse_page, pick_image, to_jpeg
 
 PAGE_HTML = """<html><head><meta property="og:image" content="https://science.nasa.gov/wp-content/uploads/m1.webp?x=1" />
 </head><body><figure><img src="m1.webp"></figure><figcaption><div class="hds-credits">NASA, ESA, J. Hester &amp; A. Loll</div>
@@ -51,6 +51,39 @@ class ParseTest(unittest.TestCase):
     def test_to_jpeg_shrinks_long_side(self):
         img = Image.open(io.BytesIO(to_jpeg(png_bytes())))
         self.assertEqual((img.format, max(img.size)), ("JPEG", 512))
+
+
+BASE = "https://assets.science.nasa.gov/content/dam/science/missions/hubble/galaxies/m4/"
+
+
+class BannerTest(unittest.TestCase):
+    def test_new_image_replaced_by_same_stem_final(self):
+        og = BASE + "potw1_NewImage.jpg"
+        text = f'<img src="{BASE}other_FINAL.jpg"><img src="{BASE}potw1_NewImage.jpg"><img src="{BASE}potw1_FINAL.jpg?w=300">'
+        self.assertEqual(pick_image(text, og), BASE + "potw1_FINAL.jpg")
+
+    def test_falls_back_to_any_clean_hubble_image(self):
+        og = BASE + "potw1_new-image.png"
+        text = f'<img src="{BASE}x_FINAL_2026.jpg"><img src="https://example.com/y.jpg">'
+        self.assertEqual(pick_image(text, og), BASE + "x_FINAL_2026.jpg")
+
+    def test_no_alternative_keeps_og(self):
+        og = BASE + "potw1_New_Image.jpg"
+        self.assertEqual(pick_image(f'<img src="{og}">', og), og)
+
+    def test_clean_og_untouched(self):
+        og = BASE + "a.jpg"
+        self.assertEqual(pick_image(f'<img src="{BASE}b_FINAL.jpg">', og), og)
+
+    def test_parse_page_uses_alternative_and_build_warns_without(self):
+        og = BASE + "p_NewImage.jpg"
+        tpl = '<meta property="og:image" content="%s?x=1"><div class="hds-credits">NASA</div>%s'
+        self.assertEqual(parse_page(tpl % (og, f'<a href="{BASE}p_FINAL.jpg">'))["image"], BASE + "p_FINAL.jpg")
+        logs = []
+        get = lambda url: Resp(text=tpl % (og, "")) if "messier-" in url else Resp(content=png_bytes(), ctype="image/png")
+        with tempfile.TemporaryDirectory() as tmp:
+            build(Path(tmp), get, numbers=[4], log=logs.append)
+        self.assertTrue(any("띠 없는 대안" in m for m in logs))
 
 
 class BuildTest(unittest.TestCase):

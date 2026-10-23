@@ -24,6 +24,28 @@ PAGE = "https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hu
 OG_IMAGE = re.compile(r'<meta property="og:image" content="([^"]+)"')
 CREDIT = re.compile(r'<div class="hds-credits">(.*?)</div>', re.S)
 WIDTH = 512
+HUBBLE_ASSET = re.compile(r"https://assets\.science\.nasa\.gov/content/dam/science/missions/hubble/[^\s\"'<>()?]+?\.(?:jpe?g|png)", re.I)
+NEW_IMAGE = re.compile(r"new[_\- ]?image", re.I)    # 사진에 빨간 "New Image" 띠가 박힌 변형 (..._NewImage.jpg)
+
+
+def has_banner(url: str) -> bool:
+    return bool(NEW_IMAGE.search(url.rsplit("/", 1)[-1]))
+
+
+def pick_image(text: str, og: str) -> str:
+    """og:image가 'New Image' 띠 변형이면 같은 페이지의 띠 없는 허블 이미지(파일명 앞부분이 같은 것 우선)로 바꾼다. 못 찾으면 og 그대로."""
+    if not has_banner(og):
+        return og
+    seen, clean = set(), []
+    for url in HUBBLE_ASSET.findall(html.unescape(text)):
+        if url not in seen and not has_banner(url):
+            seen.add(url)
+            clean.append(url)
+    if not clean:
+        return og
+    stem = NEW_IMAGE.split(og.rsplit("/", 1)[-1])[0].lower()
+    same = [u for u in clean if stem and u.rsplit("/", 1)[-1].lower().startswith(stem)]
+    return (same or clean)[0]
 
 
 def to_jpeg(data: bytes, size: int = WIDTH) -> bytes:
@@ -45,7 +67,7 @@ def parse_page(text: str) -> dict | None:
     clean = html.unescape(re.sub(r"<[^>]+>", "", credit.group(1))).strip()
     if not clean:
         return None
-    return {"image": og.group(1).split("?")[0], "credit": re.sub(r"\s+", " ", clean)}
+    return {"image": pick_image(text, og.group(1).split("?")[0]), "credit": re.sub(r"\s+", " ", clean)}
 
 
 def build(out_dir: Path, get: Callable[[str], object], numbers=range(1, 111), log=print) -> dict:
@@ -64,6 +86,8 @@ def build(out_dir: Path, get: Callable[[str], object], numbers=range(1, 111), lo
             if not found:
                 log(f"  {key}: 사진 또는 출처 표기 없음 — 건너뜀")
                 continue
+            if has_banner(found["image"]):
+                log(f"  {key}: 띠 없는 대안 사진을 찾지 못함 — og:image 그대로 씀 ({found['image']})")
             img = get(f"{found['image']}?w={WIDTH}")
             if img.status_code != 200 or not img.headers.get("content-type", "").startswith("image/"):
                 log(f"  {key}: 사진을 받지 못함 ({img.status_code} {img.headers.get('content-type')}) — 건너뜀")
