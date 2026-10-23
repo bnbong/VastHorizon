@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import importlib.util
+import io
 import os
 import tempfile
 import unittest
@@ -124,6 +126,34 @@ class ClaudeModelTest(unittest.TestCase):
     def test_local_embedding_dimension_known_without_download(self):
         from vasthorizon.llm import _local_dim
         self.assertEqual(_local_dim("intfloat/multilingual-e5-large"), 1024)
+
+
+class LocalEmbeddingBatchTest(unittest.TestCase):
+    """기본 배치(256)로 e5-large 서가 색인을 만들 때 6.4GB, 상한 4GB에서는 항목 색인 도중 OOM — 설정한 배치로 나눠 넣는다."""
+
+    def test_passage_embed_gets_configured_batch_size(self):
+        from vasthorizon import llm
+
+        class Vec(list):
+            def tolist(self): return list(self)
+
+        class Engine:
+            def __init__(self): self.calls = []
+
+            def passage_embed(self, texts, **kwargs):
+                self.calls.append((list(texts), kwargs))
+                return [Vec([float(len(t)), 0.0]) for t in texts]
+
+        engine = Engine()
+        with mock.patch.object(llm, "_local_engine", return_value=engine), \
+             mock.patch.object(llm, "_local_dim", return_value=2), \
+             mock.patch.object(llm, "get_settings", return_value=deploy_settings()):
+            e = llm.embeddings()                                           # 설정 파일의 값으로 만든다
+            vectors = e.embed_documents(["베가", "알타이르"])
+        self.assertEqual(deploy_settings().llm.local_embedding_batch_size, 16)
+        self.assertEqual(engine.calls, [(["베가", "알타이르"], {"batch_size": 16})])
+        self.assertEqual(vectors, [[2.0, 0.0], [4.0, 0.0]])
+        self.assertEqual(get_settings().llm.local_embedding_batch_size, 16)   # 설정 파일에 없어도 기본값
 
 
 class PromptLanguageTest(unittest.TestCase):
@@ -368,6 +398,44 @@ class DeployInitTest(unittest.TestCase):
         self.assertEqual(code, 1)                                         # 성공으로 끝내지 않는다 (서버를 띄우지 않음)
         self.assertTrue(self.models()[self.s.collections.docs].endswith("old-model"))   # 기존 활성 색인 보존
         self.assertEqual(self.db.get_collection(self.s.collections.docs).count(), before)
+
+    def run_init(self, **kwargs) -> tuple[int, str]:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = self.deploy_init.main([], embedding=self.old, db=self.db, perspective_collector=self.lib(), **kwargs)
+        return code, out.getvalue()
+
+    def test_partial_index_without_marker_is_rebuilt(self):
+        # VM에서 본 일: 항목 색인 도중 메모리 부족으로 죽고, 다음 실행이 '항목 색인 있음 (200건)'으로 넘어갔다
+        items, perspective = self.s.collections.items, self.s.collections.perspective
+        total = self.deploy_init.catalog_size()
+        col = self.db.get_collection(items)
+        self.assertEqual((col.metadata[chroma.COMPLETE_KEY], col.metadata[chroma.COUNT_KEY]), (True, total))
+        col.modify(metadata={**col.metadata, chroma.COMPLETE_KEY: False})          # 표식 없이 일부만 남은 색인
+        col.delete(ids=col.get(include=[])["ids"][: total // 2])
+        lib = self.db.get_collection(perspective)                                   # 표식은 있으나 건수가 다른 서가
+        lib.delete(ids=lib.get(include=[])["ids"][:1])
+        partial = total - total // 2
+        code, out = self.run_init()
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"항목 색인이 불완전합니다 ({partial}/{total}건)", out)
+        self.assertIn("관점 전환 서가 색인이 불완전합니다", out)
+        for name in (items, perspective):
+            count = chroma.collection_count(name, self.db)
+            self.assertEqual(chroma.recorded_count(name, self.db), count)
+        self.assertEqual(chroma.collection_count(items, self.db), total)
+        self.assertTrue(self.models()[items].endswith("old-model"))
+
+    def test_complete_index_with_matching_count_is_skipped(self):
+        from scripts import index_items, index_perspective
+        with mock.patch.object(index_items, "main") as items_main, \
+             mock.patch.object(index_perspective, "main") as lib_main:
+            code, out = self.run_init()
+        self.assertEqual(code, 0, out)
+        items_main.assert_not_called()
+        lib_main.assert_not_called()
+        self.assertIn(f"항목 색인 있음 ({self.deploy_init.catalog_size()}건)", out)
+        self.assertNotIn("불완전", out)
 
     def test_same_model_is_noop_and_empty_docs_is_fine(self):
         with mock.patch("sys.stdout"):

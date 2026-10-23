@@ -84,6 +84,9 @@ NO_CITATION = "답변에 인용된 근거가 없습니다."
 NOT_FOUND_NOTICE = "문서에서 확인되지 않아 인용된 근거가 없습니다."
 REJECTED_NOTICE = "근거 번호 규칙을 지키는 답변을 만들지 못해 답변 대신 안내를 표시합니다."
 NOT_RECORDED_NOTICE = "답변하는 동안 대화 기록이 지워져, 이 답변은 기록에 남지 않습니다."
+# SSE 하트비트 간격(초). 이벤트 사이가 이보다 길면 주석 줄(: keepalive)을 보낸다.
+# Cloudflare는 원본이 100초 동안 바이트를 보내지 않으면 끊고, Nginx proxy_read_timeout도 이벤트 사이 간격에 걸린다.
+KEEPALIVE_SECONDS = 15.0
 
 
 # ── 오류 → 안내 (F2012 · NF2004) ───────────────────────────────────────────
@@ -303,7 +306,14 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         threading.Thread(target=worker, daemon=True).start()
 
         def stream():
-            while (event := events.get()) is not None:
+            while True:
+                try:
+                    event = events.get(timeout=KEEPALIVE_SECONDS)
+                except queue.Empty:  # 임베딩 · 답변 생성처럼 긴 단계 — 연결이 끊기지 않게 주석 줄을 보낸다
+                    yield ": keepalive\n\n"
+                    continue
+                if event is None:
+                    return
                 name, data = event
                 yield f"event: {name}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 

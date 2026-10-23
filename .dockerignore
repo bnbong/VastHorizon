@@ -22,3 +22,6 @@ docs/
 tests/
 app/
 dist/
+
+# 서버별 배포 설정 (compose, .env 템플릿은 이미지에 필요 없음)
+deploy/

@@ -82,6 +82,7 @@ export async function askStream(itemId, question, onProgress) {
     while ((cut = buffer.indexOf("\n\n")) >= 0) {
       const block = buffer.slice(0, cut);
       buffer = buffer.slice(cut + 2);
+      if (!/^event: /m.test(block)) continue; // 하트비트(: keepalive) 같은 주석 · 빈 블록은 건너뛴다
       const event = /^event: (.+)$/m.exec(block)?.[1];
       const data = JSON.parse(/^data: (.+)$/m.exec(block)?.[1] ?? "null");
       if (event === "progress") onProgress?.(data.message);

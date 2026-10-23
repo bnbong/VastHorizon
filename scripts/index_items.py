@@ -7,6 +7,7 @@
 
 컬렉션을 건드리기 전에 카탈로그 검증과 API 키 확인을 먼저 끝낸다.
 --rebuild는 실패해도 기존 컬렉션이 그대로 남는다 (vasthorizon/store/chroma.py 교체 정책 참고).
+끝까지 성공하고 건수가 맞을 때만 완성 표식을 남긴다 (같은 파일의 '완성 표식').
 """
 
 from __future__ import annotations
@@ -67,6 +68,7 @@ def main(argv: list[str] | None = None, embedding=None, db=None) -> int:
         if args.rebuild:
             report = rebuild_items(items, name, embedding, ref_year, db)
         else:
+            chroma.mark_incomplete(name, db)            # 도중에 끝나면 표식 없는 색인으로 남는다
             report = sync_items(items, chroma.open_collection(name, embedding, db), embedding, ref_year)
     except (chroma.EmbeddingMismatchError, IndexingError) as e:
         print(f"[FAIL] {e}")
@@ -86,6 +88,7 @@ def main(argv: list[str] | None = None, embedding=None, db=None) -> int:
     if count != report.loaded:
         print(f"[FAIL] 로드한 항목 {report.loaded}건과 색인된 청크 {count}건이 다릅니다.")
         return 1
+    chroma.mark_complete(name, db)
     print(f"[ OK ] 로드 {report.loaded}건 = 색인 {count}건")
     return 0
 

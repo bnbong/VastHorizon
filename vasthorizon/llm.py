@@ -108,15 +108,18 @@ class LocalEmbeddings(Embeddings):
     """서버 안에서 돌리는 다국어 임베딩 (fastembed, ONNX — torch 없이 CPU로). 처음 쓸 때 모델을 내려받아 캐시한다.
 
     문서는 passage_embed, 질문은 query_embed로 — e5 계열처럼 접두어가 필요한 모델도 fastembed가 맞춰 준다.
+    batch_size는 한 번에 모델에 넣는 문서 수다. fastembed 기본값(256)으로 e5-large를 돌리면 활성값만 수 GB라
+    작은 서버에서 프로세스가 죽는다. 배치를 줄여도 결과 벡터는 같다.
     """
 
-    def __init__(self, model: str) -> None:
+    def __init__(self, model: str, batch_size: int = 16) -> None:
         self.model = model
+        self.batch_size = batch_size
         self._engine = _local_engine(model)
         self.dimensions = _local_dim(model)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [v.tolist() for v in self._engine.passage_embed(list(texts))]
+        return [v.tolist() for v in self._engine.passage_embed(list(texts), batch_size=self.batch_size)]
 
     def embed_query(self, text: str) -> list[float]:
         return next(iter(self._engine.query_embed([text]))).tolist()
@@ -137,7 +140,7 @@ def _local_dim(model: str) -> int | None:
 def embeddings() -> Embeddings:
     cfg = get_settings().llm
     if cfg.embedding_provider == "local":
-        return LocalEmbeddings(cfg.local_embedding_model)
+        return LocalEmbeddings(cfg.local_embedding_model, cfg.local_embedding_batch_size)
     from langchain_openai import OpenAIEmbeddings
     return OpenAIEmbeddings(
         model=cfg.embedding_model,

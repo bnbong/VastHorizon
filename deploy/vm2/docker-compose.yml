@@ -1,0 +1,75 @@
+# VM2 VastHorizon API compose (BNGdrasil)
+#
+# 운영 배치 위치: /opt/bnbong/vasthorizon/docker-compose.yml
+# compose project: vasthorizon (working_dir /opt/bnbong/vasthorizon)
+#   /opt/bnbong/vasthorizon/
+#     docker-compose.yml   이 파일 (저장소의 deploy/vm2/docker-compose.yml)
+#     .env                 deploy/vm2/env.template를 채운 것 (비밀 값, 저장소에 올리지 않는다)
+#     src/                 저장소 소스 (현장 build 대체 경로에서만 쓴다)
+#
+# 역할 분리
+#   - 화면(web/)은 VM1 Nginx가 /opt/bnbong/vasthorizon/web에서 정적으로 내보낸다.
+#   - 이 컨테이너는 API만 맡는다. VM1 Nginx가 vasthorizon.bnbong.com의 /api/를
+#     10.0.1.60:8020으로 프록시하므로 화면과 같은 출처이고 CORS는 필요 없다.
+#   - 평소 release는 GHCR image를 받아 `--no-build`로 교체한다. build 블록은
+#     GHCR image를 쓸 수 없을 때 src/에서 현장 build하는 대체 경로다.
+#   - 루트의 docker-compose.yml(범용 배포용, 화면과 API를 컨테이너 하나로)과는 별개다.
+#
+# 변수 치환 규칙 (BNGdrasil compose 관례)
+#   - 선택 변수는 `${VAR:-기본값}`으로 적는다. 변수가 없을 때와 비어 있을 때를 모두 기본값으로 메운다.
+#   - 주소처럼 기본값을 둘 수 없는 항목은 `${VAR:?설명}`으로 적는다. 값이 없으면 컨테이너를
+#     만들기 전에 compose 단계에서 중단된다.
+#   - CLAUDE_API_KEY, WIKI_CONTACT는 env_file(.env)로만 넘긴다. 키 값은 image에 들어가지 않는다.
+
+name: vasthorizon
+
+services:
+  vasthorizon:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    # .env에 VASTHORIZON_IMAGE가 없거나 비어 있으면 GHCR의 main 태그를 쓴다.
+    image: ${VASTHORIZON_IMAGE:-ghcr.io/bnbong/vasthorizon:main}
+    container_name: vm2-vasthorizon
+    ports:
+      # VM1 Nginx가 10.0.1.60:8020으로 접근하므로 VM2 private IP에 게시한다. public IP에는 게시하지 않는다.
+      # `:?`를 붙인 이유는, 변수가 비어 있으면 바인딩이 조용히 모든 인터페이스로 넓어지고
+      # 원본 포트에 바로 닿은 쪽이 X-Forwarded-For를 속일 수 있게 되기 때문이다.
+      - "${VM2_PRIVATE_IP:?VM2_PRIVATE_IP must be set}:8020:8000"
+      # VM2 안에서 확인용 (curl http://127.0.0.1:8020/api/health)
+      - "127.0.0.1:8020:8000"
+    env_file: .env
+    environment:
+      # Uvicorn --proxy-headers가 X-Forwarded-For를 믿을 발신지. VM1 Nginx만 믿는다.
+      # Nginx는 X-Forwarded-For에 CF-Connecting-IP 하나를 넣어 보내므로, 그 값이 AI 호출 한도의 사용자 주소가 된다.
+      # 값이 없으면 compose가 중단된다 (빈 값이면 헤더를 아무것도 믿지 않아 모든 사용자가 VM1 주소 하나로 묶인다).
+      - FORWARDED_ALLOW_IPS=${VM1_PRIVATE_IP:?VM1_PRIVATE_IP must be set}
+      # 화면이 같은 출처(VM1)에서 나가므로 CORS를 열지 않는다.
+      - VH_CORS_ORIGINS=
+      - PORT=8000
+    volumes:
+      # 색인과 문서 캐시. 컨테이너를 바꿔도 남으므로 다음 실행은 바로 시작한다.
+      - vh-data:/app/data/deploy
+    # VM2에는 스왑이 없다. 상한을 두어 메모리가 넘치면 호스트 대신 이 컨테이너만 OOM으로 재시작되게 한다.
+    # e5-large로 첫 항목 색인을 만들 때 4GB에서 OOM(Killed)이 반복되어 7GB로 올렸다(VM2 12GB 중 가용 약 9GB).
+    mem_limit: 7g
+    restart: unless-stopped
+    networks:
+      - vasthorizon-network
+    healthcheck:
+      # image에 curl이 없으므로 Dockerfile의 HEALTHCHECK처럼 python urllib을 쓴다.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # 2코어 ARM(A1.Flex)에서는 첫 실행의 색인 만들기가 Dockerfile 기본값(600s)보다 길다.
+      # 실측: 배치 16으로 항목 색인 424건에 약 20분(메모리 최고치 2.6GB), 서가 색인까지 25분 안팎.
+      start_period: 1800s
+
+# 전용 네트워크. VM2 core의 api-network에는 붙이지 않는다 (다른 서비스와 통신하지 않는다).
+networks:
+  vasthorizon-network:
+    name: vasthorizon-network
+
+volumes:
+  vh-data:

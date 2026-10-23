@@ -39,6 +39,7 @@ class LLMConfig:
     max_tokens: int = 2048
     embedding_provider: str = "gms"
     local_embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    local_embedding_batch_size: int = 16    # 한 번에 임베딩할 문서 수 — fastembed 기본 256은 큰 모델에서 메모리를 수 GB 쓴다
 
 
 @dataclass(frozen=True)

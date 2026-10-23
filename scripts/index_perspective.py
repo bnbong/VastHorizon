@@ -5,6 +5,7 @@
     python -m scripts.index_perspective --list      # 주제별 서가 문서 목록 (외부 호출 없음)
 
 서가 문서 목록은 vasthorizon/data/perspective_library.py 에 있다.
+모든 문서를 받고 건수가 맞을 때만 완성 표식을 남긴다 (vasthorizon/store/chroma.py의 '완성 표식').
 """
 
 from __future__ import annotations
@@ -30,6 +31,8 @@ def main(argv: list[str] | None = None, embedding=None, db=None, collector=None)
             print(f"{theme.key:8} {theme.label:16} {' · '.join(theme.titles)}")
         return 0
     try:
+        if not args.rebuild:
+            chroma.mark_incomplete(library_name(), db)    # 도중에 끝나면 표식 없는 색인으로 남는다
         report, failures = sync_library(embedding, db, collector, rebuild=args.rebuild)
     except (MissingApiKeyError, chroma.EmbeddingMismatchError, DocIndexError) as e:
         print(f"[FAIL] {e} — 기존 서가 색인을 그대로 둡니다.")
@@ -41,6 +44,8 @@ def main(argv: list[str] | None = None, embedding=None, db=None, collector=None)
           f"삭제 {report.deleted})")
     count = chroma.collection_count(library_name(), db)
     ok = not failures and count == report.chunks          # 못 받은 문서가 있으면 기존 청크가 남아 수가 다르다
+    if ok:
+        chroma.mark_complete(library_name(), db)
     print(f"[{' OK ' if ok else 'WARN'}] {library_name()} 색인 {count}개")
     return 0 if not failures else 1
 

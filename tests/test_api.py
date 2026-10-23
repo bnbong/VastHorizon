@@ -7,10 +7,13 @@ from __future__ import annotations
 
 import contextlib
 import json
+import time
 import unittest
+from unittest import mock
 
 from fastapi.testclient import TestClient
 
+from vasthorizon.api import app as app_module
 from vasthorizon.api.app import create_app
 from vasthorizon.api.schemas import HealthResponse, Notice
 from vasthorizon.api.services import Services
@@ -143,6 +146,8 @@ class HistoryApiTest(ApiTestBase):
 def sse_events(text: str) -> list[tuple[str, dict]]:
     events = []
     for block in text.strip().split("\n\n"):
+        if block.startswith(":"):     # 하트비트 주석 줄
+            continue
         lines = dict(line.split(": ", 1) for line in block.splitlines())
         events.append((lines["event"], json.loads(lines["data"])))
     return events
@@ -157,6 +162,27 @@ class StreamAndErrorTest(ApiTestBase):
         self.assertEqual([e for e, _ in events], ["progress", "progress", "result"])
         self.assertEqual(events[0][1]["message"], "관련 문서를 찾는 중")
         self.assertEqual(events[-1][1]["status"], "cited")
+
+    def test_stream_keepalive_while_worker_is_slow(self):
+        # 긴 단계(임베딩 · 답변 생성) 동안 주석 줄로 연결을 살려 두고, 끝나면 result를 보낸다
+        class SlowAsk(FakeAsk):
+            def __call__(self, item, question, history=None, progress=None, search_type=None):
+                if progress:
+                    progress("문서 5건을 색인하는 중")
+                time.sleep(0.5)
+                return super().__call__(item, question, history, None, search_type)
+
+        c = self.client(SlowAsk())
+        with mock.patch.object(app_module, "KEEPALIVE_SECONDS", 0.05):
+            text = self.stream(c).text
+        blocks = text.strip().split("\n\n")
+        keepalive = [i for i, b in enumerate(blocks) if b == ": keepalive"]
+        self.assertGreaterEqual(len(keepalive), 2)
+        self.assertTrue(blocks[-1].startswith("event: result"))
+        self.assertLess(keepalive[-1], len(blocks) - 1)
+        self.assertEqual([e for e, _ in sse_events(text)], ["progress", "result"])
+        # 대화 처리권이 풀려 다음 질문을 받을 수 있다
+        self.assertEqual(self.post_ask(c).status_code, 200)
 
     def test_stream_unknown_item_is_404_before_streaming(self):
         r = self.stream(self.client(), "Q404")

@@ -6,6 +6,12 @@
 - 색인과 검색 모두 열 때 현재 임베딩 설정과 비교한다. 다르면 EmbeddingMismatchError로 멈춘다.
   식별 정보가 없는 예전 컬렉션도 불일치로 본다 — 전체 재구축(--rebuild)으로 해결한다.
 
+완성 표식 (index_complete · index_count)
+- 항목 · 서가 색인 스크립트가 끝까지 성공했을 때만 같은 메타데이터에 완성 표식과 그때의 건수를 남긴다.
+  증분 반영을 시작하기 전에는 표식을 내린다. 그래서 도중에 죽은 색인(메모리 부족 등)은 건수가 있어도
+  표식이 없거나 기록된 건수와 실제 건수가 달라, scripts/deploy_init.py가 불완전한 색인으로 알아챈다.
+- 재구축은 임시 컬렉션에서 만들고 교체한 뒤 활성 컬렉션에 표식을 남긴다 (임시 컬렉션에는 남기지 않는다).
+
 재구축 · 교체 정책 (Chroma에는 트랜잭션이 없다)
 1. 임시 컬렉션 <이름>__staging 에 처음부터 색인한다. 활성 컬렉션은 이 동안 그대로 조회된다.
 2. 임시 컬렉션의 건수 · ID · 식별 정보를 검증한다. 실패하면 임시 컬렉션만 지우고 끝난다.
@@ -120,6 +126,40 @@ def record_dimension(collection, dim: int) -> None:
         raise EmbeddingMismatchError(f"임베딩 차원 불일치 — 컬렉션 {stored['embedding_dim']}, 새 벡터 {dim}.")
     if not stored["embedding_dim"]:
         collection.modify(metadata={**(collection.metadata or {}), "embedding_dim": dim})
+
+
+# ── 완성 표식 ─────────────────────────────────────────────────────────────
+
+COMPLETE_KEY = "index_complete"
+COUNT_KEY = "index_count"
+
+
+def mark_complete(name: str, db: chromadb.ClientAPI | None = None) -> int:
+    """색인이 끝까지 성공했다는 표식과 지금 건수를 남긴다 (모듈 설명의 '완성 표식')."""
+    collection = db_for(name, db).get_collection(name)
+    count = collection.count()
+    collection.modify(metadata={**(collection.metadata or {}), COMPLETE_KEY: True, COUNT_KEY: count})
+    return count
+
+
+def mark_incomplete(name: str, db: chromadb.ClientAPI | None = None) -> None:
+    """쓰기를 시작하기 전에 표식을 내린다 — 이번 실행이 도중에 끝나면 다음 준비가 알아챈다."""
+    db = db_for(name, db)
+    if not _exists(name, db):
+        return
+    collection = db.get_collection(name)
+    meta = collection.metadata or {}
+    if meta.get(COMPLETE_KEY):
+        collection.modify(metadata={**meta, COMPLETE_KEY: False})
+
+
+def recorded_count(name: str, db: chromadb.ClientAPI | None = None) -> int | None:
+    """완성 표식에 기록된 건수. 컬렉션이나 표식이 없으면 None."""
+    db = db_for(name, db)
+    if not _exists(name, db):
+        return None
+    meta = db.get_collection(name).metadata or {}
+    return meta.get(COUNT_KEY) if meta.get(COMPLETE_KEY) is True else None
 
 
 # ── 컬렉션 열기 ───────────────────────────────────────────────────────────

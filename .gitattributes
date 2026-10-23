@@ -1,0 +1,2 @@
+# Shell scripts run on Linux servers; CRLF breaks the shebang and every line.
+*.sh text eol=lf
