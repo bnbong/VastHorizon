@@ -454,3 +454,9 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
 .wc-reset { background: none; border: 0; padding: 4px 0; color: var(--star-400); font: 400 11px/1.4 var(--font-sans); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .wc-reset[data-armed] { color: var(--dream-rose); }
 .wc-journey { margin-top: 10px; width: 100%; justify-content: center; }
+.label.blackhole { color: #ffd9a8; font: 400 11px/1.2 var(--font-sans); letter-spacing: .04em; text-shadow: 0 0 8px rgba(255,150,60,.7), 0 0 2px #000; }
+.bh-card { margin: 0; border-radius: 14px; overflow: hidden; background: radial-gradient(ellipse at 50% 45%, #1a1030 0%, #05030f 70%);
+  border: 1px solid rgba(255,170,90,.25); }
+.bh-canvas { display: block; width: 100%; height: 190px; }
+.bh-card figcaption { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+.bh-card blockquote { margin: 0; padding-left: 10px; border-left: 2px solid rgba(255,170,90,.6); font: 400 13px/1.6 var(--font-sans); color: var(--star-100); }

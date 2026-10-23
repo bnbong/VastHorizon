@@ -159,6 +159,13 @@ export function pickScore(d, maxPx, pickRadius = 0) {
 }
 
 // 색지수(B−V) → 별빛 색 (파랑 → 흰색 → 노랑 → 주황)
+// 분광형 → 별의 색 — 분광형 첫 글자(O B A F G K M)의 대표 색지수로. 모르면 해와 비슷한 흰빛
+const SPECTRAL_BV = { O: -0.32, B: -0.16, A: 0.05, F: 0.42, G: 0.66, K: 1.12, M: 1.6 };
+export function spectralColor(spectral) {
+  const letter = String(spectral ?? "").trim().toUpperCase().match(/^[OBAFGKM]/)?.[0];
+  return starColor(letter ? SPECTRAL_BV[letter] : 0.6);
+}
+
 export function starColor(bv) {
   const stops = [[-0.4, [0.62, 0.72, 1]], [0, [0.85, 0.9, 1]], [0.6, [1, 0.97, 0.9]], [1.2, [1, 0.82, 0.6]], [2, [1, 0.65, 0.45]]];
   if (bv <= stops[0][0]) return stops[0][1];

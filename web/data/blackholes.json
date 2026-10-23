@@ -1,0 +1,64 @@
+{
+ "note": "가르강튀아 모습은 일반상대론으로 빛의 경로를 계산한 상상도이며, 실제 크기 · 모습이 아닙니다.",
+ "galaxies": [
+  {
+   "id": "Q2469",
+   "name": "안드로메다 은하",
+   "code": "M31",
+   "black_hole": "M31*",
+   "quote": "은하의 핵은 중심부에 있는 초대질량 블랙홀 M31*을 중심으로 하고 있으며, 질량은 태양 질량의 약 1억 4,000만 배로 추산되는데, 참고로 우리 은하의 중심에 있는 궁수자리 A*의 질량은 태양의 약 430만 배로 추정된다.",
+   "doc": {
+    "title": "안드로메다 은하",
+    "url": "https://ko.wikipedia.org/wiki/%EC%95%88%EB%93%9C%EB%A1%9C%EB%A9%94%EB%8B%A4_%EC%9D%80%ED%95%98",
+    "permalink": "https://ko.wikipedia.org/w/index.php?oldid=42684715",
+    "license": "CC BY-SA 4.0 — 한국어 위키백과 기여자"
+   },
+   "wikidata": null
+  },
+  {
+   "id": "Q92258118",
+   "name": "메시에 84",
+   "code": "M84",
+   "black_hole": null,
+   "quote": "여기서 은하핵에 있는 초대질량 블랙홀의 질량을 계산하면 1.8 × 109M☉이다.",
+   "doc": {
+    "title": "메시에 84",
+    "url": "https://ko.wikipedia.org/wiki/%EB%A9%94%EC%8B%9C%EC%97%90_84",
+    "permalink": "https://ko.wikipedia.org/w/index.php?oldid=41743653",
+    "license": "CC BY-SA 4.0 — 한국어 위키백과 기여자"
+   },
+   "wikidata": null
+  },
+  {
+   "id": "Q14041",
+   "name": "처녀자리 A 은하",
+   "code": "M87",
+   "black_hole": "M87*",
+   "quote": "여기서 은하핵에 있는 초대질량 블랙홀의 질량을 계산하면 3 ×10^9 M☉이다.",
+   "doc": {
+    "title": "처녀자리 A 은하",
+    "url": "https://ko.wikipedia.org/wiki/%EC%B2%98%EB%85%80%EC%9E%90%EB%A6%AC_A_%EC%9D%80%ED%95%98",
+    "permalink": "https://ko.wikipedia.org/w/index.php?oldid=42571719",
+    "license": "CC BY-SA 4.0 — 한국어 위키백과 기여자"
+   },
+   "wikidata": {
+    "qid": "Q3841190",
+    "url": "https://www.wikidata.org/wiki/Q3841190"
+   }
+  },
+  {
+   "id": "Q91461627",
+   "name": "솜브레로 은하",
+   "code": "M104",
+   "black_hole": null,
+   "quote": "하지만 핵에서 초대질량블랙홀이 발견되었기 때문에, 이 활동은하핵이 솜브레로 은하의 저전리중심핵광선영역의 에너지원으로 생각된다.",
+   "doc": {
+    "title": "솜브레로 은하",
+    "url": "https://ko.wikipedia.org/wiki/%EC%86%9C%EB%B8%8C%EB%A0%88%EB%A1%9C_%EC%9D%80%ED%95%98",
+    "permalink": "https://ko.wikipedia.org/w/index.php?oldid=42158573",
+    "license": "CC BY-SA 4.0 — 한국어 위키백과 기여자"
+   },
+   "wikidata": null
+  }
+ ]
+}

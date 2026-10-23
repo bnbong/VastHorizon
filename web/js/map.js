@@ -4,6 +4,7 @@ import { THREE, label, pointsMaterial, ring } from "./scene.js";
 import { pulse } from "./sky.js";
 import { MODELS, ModelShelf } from "./models.js";
 import { ChalkMarks, DreamSphere } from "./dream.js";
+import { DetailLayer } from "./details.js";
 import { distanceText, eqToScene, mapRadius, radecToEq } from "./astro.js";
 import { EQ_TO_MAP } from "./skydata.js";
 import { loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
@@ -113,6 +114,8 @@ export class MapMode {
       pointsMaterial({ map: ring(), size: 30, color: 0xd7c4ff, opacity: 0.95 }));
     this.selectRing.visible = false;
     this.group.add(this.selectRing);
+    // 가까이 가면 그 천체다운 모습 — 별 원반 · 허블 사진 · 성단 · 은하 중심 블랙홀 (details.js)
+    this.details = new DetailLayer(this.points, this.group);
     // 대표 기체의 실제 형태 (NASA 3D 모델) — 가까이 가면 내려받아 그 점 자리에 띄운다
     this.models = new ModelShelf(this.group, this.points.filter((p) => MODELS[p.name]));
   }
@@ -127,6 +130,7 @@ export class MapMode {
     this.visitedChalk.update(this.clockT);
     if (!still || !this.shimmered) this.shimmer(this.clockT);
     this.models.update(dt, stage.camera);
+    this.details.update(this.clockT, stage.camera, still);
     this.clock = (this.clock ?? 0) + dt;
     pulse(this.selectRing.visible ? this.selectRing : null, this.clock, !matchMedia("(prefers-reduced-motion: reduce)").matches
       && new URLSearchParams(location.search).get("motion") !== "off");

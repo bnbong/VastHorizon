@@ -56,6 +56,7 @@ class MapPointsTest(unittest.TestCase):
         self.assertEqual(_point({"id": "Q1", "name": "M", "group": "messier", "attrs": {"메시에 번호": "M31"}}, [1, 0, 0], 1.0, "sky")["code"], "M31")
         self.assertEqual(_point({"id": "Q2", "name": "S", "group": "star", "attrs": {"히파르코스 번호": "HIP 32349"}}, [1, 0, 0], 1.0, "sky")["code"], "HIP 32349")
         self.assertIsNone(_point({"id": "Q3", "name": "J", "group": "human_made", "attrs": {}}, None, 1.0, "computed")["code"])
+        self.assertEqual(_point({"id": "Q4", "name": "B", "group": "star", "attrs": {"분광형": "M1-2Ia"}}, [1, 0, 0], 1.0, "sky")["spectral"], "M1-2Ia")
 
     def test_placements(self):
         self.assertEqual({n: p["placement"] for n, p in self.points.items()}, {

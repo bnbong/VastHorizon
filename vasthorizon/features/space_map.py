@@ -69,7 +69,9 @@ def _point(item: dict, direction: list[float] | None, km: float, placement: str)
             "km": km, "ly": km / LY_KM, "placement": placement,
             "mag": attrs.get("겉보기 등급"), "naked_eye": attrs.get("맨눈 관측"),
             # 하늘 데이터(web/data)의 별 · 성운과 잇는 번호 — "M45" · "HIP 32349"
-            "code": attrs.get("메시에 번호") or attrs.get("히파르코스 번호")}
+            "code": attrs.get("메시에 번호") or attrs.get("히파르코스 번호"),
+            # 가까이 갔을 때의 모습 — 별의 색(분광형)
+            "spectral": attrs.get("분광형")}
 
 
 def map_points(items: list[dict]) -> dict:

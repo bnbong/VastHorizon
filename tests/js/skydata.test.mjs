@@ -147,3 +147,11 @@ test("원반 고르기 점수 — 리뷰 재현: 화각 1도 · 달 화면 반�
   assert.equal(pickScore(10, 14, 4), 10);                    // 작게 보이면 기존 최소 영역 그대로
   assert.equal(pickScore(20, 14, 4), null);
 });
+
+test("분광형 → 별의 색 — 첫 글자로, 모르면 해와 비슷한 흰빛", async () => {
+  const { spectralColor, starColor } = await import("../../web/js/skydata.js");
+  assert.deepEqual(spectralColor("M1-2Ia"), starColor(1.6));        // 베텔게우스 — 붉은빛
+  assert.deepEqual(spectralColor("B8IV-VHgMn"), starColor(-0.16));  // 푸른 흰빛
+  assert.deepEqual(spectralColor(null), starColor(0.6));
+  assert.ok(spectralColor("O9")[2] > spectralColor("M2")[2]);        // 뜨거운 별일수록 푸르다
+});

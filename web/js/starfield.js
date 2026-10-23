@@ -163,15 +163,18 @@ export class MilkyWayLayer {
 
 // ── 성운 · 성단 · 은하 ─────────────────────────────────────────────────────
 
-const DSO_CLASS = { s: 0, s0: 0, sd: 0, e: 0, i: 0, g: 0, gg: 0, oc: 1, gc: 1, en: 2, bn: 2, rn: 2, dn: 2, sfr: 2, snr: 2, pn: 3 };
+// 0 은하 · 1 산개 성단 · 2 성운 · 3 행성상 성운 · 4 구상 성단
+const DSO_CLASS = { s: 0, s0: 0, sd: 0, e: 0, i: 0, g: 0, gg: 0, oc: 1, gc: 4, en: 2, bn: 2, rn: 2, dn: 2, sfr: 2, snr: 2, pn: 3 };
 
 const DSO_VERT = /* glsl */ `
   attribute float size;
   attribute float mag;
   attribute float cls;
+  attribute float seed;
+  attribute float photo;
   uniform mat3 uRot;
   uniform float uRadius, uLimit, uPxPerDeg, uPixel, uShow, uHorizon;
-  varying float vAlpha, vCls, vRing;
+  varying float vAlpha, vCls, vRing, vSeed, vPx;
   void main() {
     vec3 p = uRot * position;
     float px = size / 60.0 * uPxPerDeg;                       // 장축(각분) → 화면 픽셀
@@ -183,26 +186,68 @@ const DSO_VERT = /* glsl */ `
       return;
     }
     gl_Position = projectionMatrix * modelViewMatrix * vec4(p * uRadius, 1.0);
-    gl_PointSize = clamp(px, 9.0 * uPixel, 360.0 * uPixel);
+    gl_PointSize = clamp(px * 1.4, 12.0 * uPixel, 420.0 * uPixel);   // 빛이 퍼지는 만큼 조금 크게
+    vPx = gl_PointSize;
     vRing = 1.6 * uPixel / gl_PointSize;                      // 테두리 두께 약 1.6px
-    vAlpha = uShow * 0.75;
+    // 밝을수록 또렷하게 (등급 · 한계 등급 차이)
+    vAlpha = uShow * mix(0.55, 1.0, clamp((uLimit - mag) / 4.0, 0.0, 1.0));
+    vAlpha *= 1.0 - photo * smoothstep(60.0, 140.0, px / uPixel * 1.3);   // 허블 사진이 나타나면(sky.js updatePhotos와 같은 기준) 그림은 물러난다
     vCls = cls;
+    vSeed = seed;
   }`;
 
+// 사진처럼 보이게 — 은하는 밝은 핵과 옅은 원반, 성단은 별 알갱이, 성운은 뭉게뭉게한 수소 · 산소 빛, 행성상 성운은 고리.
+// 방향(위치각) 정보가 없어 모두 둥글게 그린다. 아주 옅은 테두리를 남겨 누를 수 있는 천체임을 알린다
 const DSO_FRAG = /* glsl */ `
-  varying float vAlpha, vCls, vRing;
+  varying float vAlpha, vCls, vRing, vSeed, vPx;
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+  }
+  float fbm(vec2 p) { return 0.5 * noise(p) + 0.3 * noise(p * 2.1) + 0.2 * noise(p * 4.3); }
+  // 별 알갱이 — 칸마다 하나, 칸 크기는 화면 픽셀에 맞춰 (작게 보일 때 뭉개지지 않게)
+  float grains(vec2 q, float density, float cells) {
+    vec2 g = q * cells + vSeed * 91.0;
+    vec2 id = floor(g), f = fract(g) - 0.5;
+    float h = hash(id);
+    vec2 o = (vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5) * 0.6;
+    return step(1.0 - density, h) * smoothstep(0.22, 0.0, length(f - o)) * (0.5 + 0.5 * hash(id + 1.3));
+  }
   void main() {
     vec2 q = gl_PointCoord * 2.0 - 1.0;
     float r = length(q);
     if (r > 1.0) discard;
-    vec3 c = vCls < 0.5 ? vec3(1.0, 0.72, 0.82)                // 은하
-           : vCls < 1.5 ? vec3(1.0, 0.88, 0.58)                // 성단
-           : vCls < 2.5 ? vec3(0.55, 0.9, 1.0)                 // 성운
-           : vec3(0.6, 1.0, 0.75);                             // 행성상 성운
     float ring = smoothstep(1.0 - 2.5 * vRing, 1.0 - vRing, r) * (1.0 - smoothstep(1.0 - vRing, 1.0, r));
-    if (vCls > 0.5 && vCls < 1.5) ring *= step(0.0, sin(atan(q.y, q.x) * 12.0));   // 성단은 점선
-    float fill = 0.12 * exp(-r * r * 3.0);
-    float a = (ring * 0.9 + fill) * vAlpha;
+    float cells = clamp(vPx / 7.0, 3.0, 26.0);
+    vec3 c;
+    float a;
+    if (vCls < 0.5) {                                          // 은하 — 밝은 팽대부 + 옅은 원반 + 먼지 얼룩
+      float bulge = exp(-r * r * 26.0);
+      float disc = exp(-r * 3.4) * (0.75 + 0.25 * fbm(q * 4.0 + vSeed * 13.0));
+      c = mix(vec3(0.72, 0.78, 1.0), vec3(1.0, 0.9, 0.74), bulge);
+      a = bulge * 0.9 + disc * 0.42 + ring * 0.14;
+    } else if (vCls < 1.5) {                                   // 산개 성단 — 드문드문 밝은 젊은 별 (푸른 흰빛)
+      float s = grains(q, 0.16 * (1.0 - r * 0.6), cells * 0.7);
+      c = vec3(0.82, 0.88, 1.0);
+      a = s * 1.1 + exp(-r * r * 4.0) * 0.05 + ring * 0.12;
+    } else if (vCls < 2.5) {                                   // 성운 — 수소(분홍) · 산소(청록) 빛이 뭉게뭉게
+      float n = fbm(q * 2.6 + vSeed * 17.0);
+      float m = fbm(q * 4.2 - vSeed * 5.0);
+      c = mix(vec3(0.95, 0.52, 0.66), vec3(0.58, 0.84, 0.95), smoothstep(0.4, 0.75, m));
+      a = smoothstep(0.32, 0.8, n) * (1.0 - smoothstep(0.5, 1.0, r)) * 0.38 + ring * 0.12;
+    } else if (vCls < 3.5) {                                   // 행성상 성운 — 청록 고리와 붉은 가장자리
+      float shell = exp(-pow((r - 0.55) / 0.18, 2.0));
+      c = mix(vec3(0.5, 1.0, 0.85), vec3(1.0, 0.5, 0.55), smoothstep(0.5, 0.8, r));
+      a = shell * 0.8 + exp(-r * r * 30.0) * 0.5 + ring * 0.12;
+    } else {                                                   // 구상 성단 — 빽빽한 핵 + 별 알갱이 (늙은 별, 노란빛)
+      float core = exp(-r * r * 9.0);
+      float s = grains(q, 0.55 * core + 0.12, cells);
+      c = vec3(1.0, 0.9, 0.72);
+      a = core * 0.45 + s * 0.9 + ring * 0.1;
+    }
+    a = min(a * vAlpha * 1.7, 1.0);
     gl_FragColor = vec4(c * a, a);
   }`;
 
@@ -210,7 +255,7 @@ export class DsoLayer {
   constructor(data, { radius, horizon }) {
     const rows = data.rows;
     const pos = new Float32Array(rows.length * 3), size = new Float32Array(rows.length);
-    const mag = new Float32Array(rows.length), cls = new Float32Array(rows.length);
+    const mag = new Float32Array(rows.length), cls = new Float32Array(rows.length), seed = new Float32Array(rows.length);
     this.grid = new SkyGrid(2);
     this.rows = rows;
     this.types = data.types;
@@ -219,6 +264,7 @@ export class DsoLayer {
       size[i] = major ?? 0;
       mag[i] = m ?? -99;
       cls[i] = DSO_CLASS[type] ?? 2;
+      seed[i] = (i * 0.6180339887) % 1;
       this.grid.add(ra, dec, i);
     });
     this.uniforms = { uRot: { value: new THREE.Matrix3() }, uRadius: { value: radius }, uLimit: { value: 6 },
@@ -228,7 +274,9 @@ export class DsoLayer {
       .setAttribute("position", new THREE.BufferAttribute(pos, 3))
       .setAttribute("size", new THREE.BufferAttribute(size, 1))
       .setAttribute("mag", new THREE.BufferAttribute(mag, 1))
-      .setAttribute("cls", new THREE.BufferAttribute(cls, 1));
+      .setAttribute("cls", new THREE.BufferAttribute(cls, 1))
+      .setAttribute("seed", new THREE.BufferAttribute(seed, 1))
+      .setAttribute("photo", new THREE.BufferAttribute(new Float32Array(rows.length), 1));
     this.points = new THREE.Points(geom, new THREE.ShaderMaterial({
       uniforms: this.uniforms, vertexShader: DSO_VERT, fragmentShader: DSO_FRAG,
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
@@ -238,6 +286,13 @@ export class DsoLayer {
   }
 
   setRotation(m) { this.uniforms.uRot.value.copy(rotUniform(m)); }
+
+  // 허블 사진이 있는 메시에 천체 — 사진이 보일 만큼 확대하면 그린 빛 대신 사진만 (codes: 메시에 번호 집합)
+  markPhotos(codes) {
+    const attr = this.points.geometry.attributes.photo;
+    this.rows.forEach((r, i) => { attr.array[i] = r[7] && codes.has(r[7]) ? 1 : 0; });
+    attr.needsUpdate = true;
+  }
 
   // 화면 크기 · 화각 · 한계 등급 — 화면에 그려지는 크기를 정한다
   setView({ fov, height, limit }) {

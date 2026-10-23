@@ -268,7 +268,10 @@ export class SkyMode {
   // 사진의 시야 · 방향 정보가 없어 카탈로그 크기(장축)에 맞춰 둥글게 보여 줄 뿐, 북쪽 방향은 맞추지 않는다.
   updatePhotos(fov, height) {
     if (!this.dsos || !this.photoCredits) return;
-    this.photoRows ??= this.dsos.rows.filter((r) => r[7] && this.photoCredits[r[7]] && r[5]);
+    if (!this.photoRows) {
+      this.photoRows = this.dsos.rows.filter((r) => r[7] && this.photoCredits[r[7]] && r[5]);
+      this.dsos.markPhotos(new Set(Object.keys(this.photoCredits)));
+    }
     const pxPerDeg = height / fov;
     for (const row of this.photoRows) {
       const [, , ra, dec, , major, , code] = row;

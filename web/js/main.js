@@ -15,6 +15,7 @@ import { colorWord } from "./skydata.js";
 import { SkyMode } from "./sky.js";
 import { playPrologue, STORAGE_KEY as PROLOGUE_KEY } from "./prologue.js";
 import { igniteBurst } from "./dream.js";
+import { loadBlackHoles, mountBlackHole } from "./blackhole.js";
 import { analogies, countByGroup, growthText, groupLine, knownAndUnknown, newlyInside } from "./worldscale.js";
 import { entryOf, localDate, reachOf, recent, restoreVisited, serialize, todays, WORLD_KEY } from "./journal.js";
 import { UnfoldMode } from "./unfold.js";
@@ -578,6 +579,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
       <div class="sub">${esc(item.kind ?? "")}</div></div>
     ${item.distance_km ? `<div class="reveal" style="animation-delay:180ms">${measureHtml(item.distance_km, { label: surface ? "지표면 위 고도" : "지구로부터" })}</div>` : ""}
     <div class="reveal" id="photo" style="animation-delay:270ms"></div>
+    <div class="reveal" id="blackhole" style="animation-delay:300ms"></div>
     <div class="stack lg reveal intro" id="intro" style="animation-delay:360ms">${statusHtml("이 천체의 이야기를 불러오는 중…")}</div>
     ${departs ? `<div class="card emphasis letter-card reveal" style="animation-delay:540ms">
       <div class="letter-head">${icon("mail", 14)}빛의 편지</div>
@@ -638,10 +640,29 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   bindCollect($("#collect-slot"), item);
   loadIntro(item, alive);
   loadPhoto(item, alive);
+  loadBlackHole(item, alive);
   state.historyLoaded = loadHistory(item, alive, historyGate);   // 넘어온 질문은 기록을 다 그린 뒤에 보낸다
 }
 
 // 천체의 이야기 — 자체 위키 문서 첫머리 · 역사 절 발췌 (LLM 없음). 출처 · 이용 조건을 함께
+// 은하 중심 블랙홀 — 근거(위키 문서 문장 · Wikidata)가 있는 은하에만. 모습은 빛의 경로를 계산한 상상도 (blackhole.js)
+async function loadBlackHole(item, alive) {
+  const data = await loadBlackHoles();
+  const bh = data.galaxies.find((g) => g.id === item.id);
+  const box = $("#blackhole");
+  if (!bh || !alive() || !box || state.item?.id !== item.id) return;
+  const src = [bh.doc && `<a href="${esc(bh.doc.permalink ?? bh.doc.url)}" target="_blank" rel="noopener">위키백과 「${esc(bh.doc.title)}」</a>`,
+               bh.wikidata && `<a href="${esc(bh.wikidata.url)}" target="_blank" rel="noopener">Wikidata ${esc(bh.wikidata.qid)}</a>`].filter(Boolean).join(" · ");
+  box.innerHTML = `<figure class="bh-card">
+    <canvas class="bh-canvas" aria-label="${esc(bh.black_hole ?? "중심 블랙홀")} 상상도 — 블랙홀 둘레에서 휘는 빛을 계산한 그림"></canvas>
+    <figcaption>
+      <div class="eyebrow">중심 블랙홀${bh.black_hole ? ` · <span class="code">${esc(bh.black_hole)}</span>` : ""}</div>
+      ${bh.quote ? `<blockquote>${esc(bh.quote)}</blockquote>` : `<p>Wikidata에 이 은하의 일부인 블랙홀로 기록되어 있습니다.</p>`}
+      <p class="disclaimer">${esc(data.note)} 빛이 블랙홀 둘레에서 휘는 경로를 계산해, 원반 뒤쪽이 그림자 위아래로 보이는 모습(영화 「인터스텔라」의 가르강튀아와 같은 원리)을 그렸습니다. 출처 · ${src}</p>
+    </figcaption></figure>`;
+  mountBlackHole(box.querySelector("canvas"), { still: reducedMotion() });
+}
+
 // 메시에 천체 사진 — NASA 'Hubble's Messier Catalog'의 대표 사진과 출처 표기 (web/data/messier, 없으면 비워 둔다)
 async function loadPhoto(item, alive) {
   const code = item.attrs?.["메시에 번호"];
