@@ -13,7 +13,7 @@ timeout_sec = 60
 embedding_provider = "local"             # Claude에는 임베딩 API가 없어 서버 안에서 계산한다 (fastembed, ONNX)
 # 다국어 모델. 한국어 질문 4개로 비교했을 때 정답 청크 순위: e5-large [1, 1, 1, 1], mpnet-base [17, 1, 9, 2], MiniLM [12, 2, 1, 1]
 # e5-large는 2.2GB · 메모리 약 2.5GB가 필요하다. 서버가 작으면 sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 (0.22GB)
-# 모델을 바꾸면 색인을 다시 만든다 (python -m scripts.deploy_init --rebuild)
+# 모델을 바꾸면 scripts/deploy_init.py가 실행할 때 알아채고 항목 · 서가 · 문서 색인을 모두 새 모델로 다시 만든다
 local_embedding_model = "intfloat/multilingual-e5-large"
 # 아래 셋은 gms 제공자용 — 배포에서는 쓰지 않는다
 base_url = "https://gms.ssafy.io/gmsapi/api.openai.com/v1/"
@@ -55,13 +55,14 @@ min_interval_sec = 0.5
 max_retries = 4
 timeout_sec = 30
 
-# 공개 배포 — 개인 API 키를 지키는 호출 한도 (LLM을 부르는 POST /api/... 요청만 센다)
+# 공개 배포 — 개인 API 키를 지키는 AI 호출 한도 (실제로 LLM을 부르는 요청만 센다. 하늘 계산 · 조회는 세지 않는다)
+# 사용자 주소: 리버스 프록시 뒤라면 환경변수 FORWARDED_ALLOW_IPS(Uvicorn)에 그 프록시의 주소(IP · CIDR)만 적는다.
+# 그 프록시에서 온 연결만 X-Forwarded-For를 오른쪽부터 읽고, 직접 들어온 연결의 전달 헤더는 무시한다
 [limits]
 enabled = true
 per_ip_per_minute = 6
 per_ip_per_day = 60
 global_per_day = 1500
-trust_proxy = false       # 리버스 프록시(Cloudflare Tunnel, Nginx 등) 뒤에서만 true. 프록시 없이 true면 주소를 속여 한도를 피할 수 있다
 
 # 화면을 다른 주소(Cloudflare Pages 등)에 둘 때 허용할 출처. 환경변수 VH_CORS_ORIGINS(쉼표 구분)가 있으면 그 값을 쓴다
 [server]

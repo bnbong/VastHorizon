@@ -3,8 +3,13 @@
 #     docker compose up -d --build
 #
 # .env에 CLAUDE_API_KEY(필수)와 WIKI_CONTACT(권장)를 둔다. 키 값은 이미지에 들어가지 않는다.
-# 리버스 프록시(Cloudflare Tunnel, Nginx 등) 뒤라면 VH_TRUST_PROXY=1 로 사용자 주소를 X-Forwarded-For에서 읽는다.
 # 화면을 Cloudflare Pages 등 다른 주소에 둘 때는 VH_CORS_ORIGINS에 그 주소를 쉼표로 적는다.
+#
+# 사용자 주소(AI 호출 한도의 기준) — 부록 B 3-3
+#   FORWARDED_ALLOW_IPS: 전달 헤더(X-Forwarded-For)를 믿을 프록시의 주소(IP · CIDR, 쉼표). Uvicorn이 이 주소에서 온
+#   연결만 헤더를 오른쪽부터 읽고, 나머지 연결은 접속한 주소 그대로 센다.
+#   - 프록시 없이 바로 공개: "" (아무 헤더도 믿지 않는다)
+#   - 프록시 뒤: 컨테이너가 보는 프록시 주소만 적고, 원본 포트는 바깥에 열지 않는다 (아래 ports 주석)
 
 services:
   vasthorizon:
@@ -12,13 +17,30 @@ services:
     image: vasthorizon:latest
     env_file: .env
     environment:
-      VH_TRUST_PROXY: "0"
+      FORWARDED_ALLOW_IPS: ""
       VH_CORS_ORIGINS: ""
     ports:
-      - "8000:8000"
+      - "8000:8000"            # 같은 서버의 Nginx · Caddy 뒤라면 "127.0.0.1:8000:8000"으로 원본 직접 접근을 막는다
     volumes:
       - vh-data:/app/data/deploy
     restart: unless-stopped
+    networks: [vh]
+
+  # Cloudflare Tunnel로 공개할 때 — 원본 포트를 아예 열지 않는다 (위 ports를 지우고 이 블록의 주석을 푼다).
+  # 그때 FORWARDED_ALLOW_IPS는 "172.30.0.0/24" (이 네트워크, 곧 cloudflared 컨테이너만)
+  # cloudflared:
+  #   image: cloudflare/cloudflared:2026.10.0
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+  #   restart: unless-stopped
+  #   networks: [vh]
+
+networks:
+  vh:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
 
 volumes:
   vh-data:

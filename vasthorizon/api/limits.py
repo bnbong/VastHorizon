@@ -1,9 +1,12 @@
-"""공개 배포에서 개인 API 키를 지키는 호출 한도 — LLM을 부르는 요청(POST /api/...)만 센다.
+"""공개 배포에서 개인 API 키를 지키는 AI 호출 한도 — 실제로 LLM을 부르는 요청만 센다.
 
-  - 사용자(IP)마다 1분 · 하루 한도, 서버 전체 하루 한도. 넘으면 429와 다시 시도할 수 있는 시각 안내
+  - 사용자마다 1분 · 하루 한도, 서버 전체 하루 한도. 넘으면 429와 다시 시도할 수 있는 시각 안내
+  - 무엇을 세는가: 질문 · 조건 탐색 · 빛의 편지 · 마음 한 줄 · 별자리 설명 · 하늘 안내(guide=true).
+    하늘 계산(guide=false) · 조회(GET)는 세지 않는다 — 예산을 다 써도 하늘과 내 세상 보기는 그대로 (app.py의 spend_ai)
+  - 사용자 주소: 전달 헤더(X-Forwarded-For · CF-Connecting-IP)를 여기서 직접 읽지 않는다.
+    Uvicorn이 신뢰할 프록시(FORWARDED_ALLOW_IPS, IP · CIDR)에서 온 연결일 때만 X-Forwarded-For를 오른쪽부터 읽어
+    신뢰하지 않는 첫 주소를 request.client로 정한다. 그 값만 쓴다 — 사용자가 맨 앞에 끼워 넣은 주소는 고를 수 없다
   - 메모리에만 둔다 (서버 한 대 기준). 다시 시작하면 처음부터 센다
-  - 리버스 프록시 뒤라면(trust_proxy) X-Forwarded-For의 첫 주소를 사용자 주소로 본다.
-    프록시가 없는데 이 헤더를 믿으면 누구나 주소를 바꿔 한도를 피할 수 있으므로 기본은 끔
 과제 환경(config.toml)에서는 꺼져 있다. 배포 설정(config.deploy.toml)에서 켠다.
 """
 
@@ -24,6 +27,14 @@ class Verdict:
     allowed: bool
     retry_after: int = 0       # 초
     reason: str = ""           # "minute" | "day" | "global"
+
+
+class RateLimitedError(RuntimeError):
+    """AI 호출 한도를 넘었을 때 — 429와 Retry-After로 바꿔 보낸다."""
+
+    def __init__(self, verdict: Verdict) -> None:
+        super().__init__(message(verdict))
+        self.verdict = verdict
 
 
 class RateLimiter:
@@ -57,16 +68,9 @@ class RateLimiter:
             return Verdict(True)
 
 
-def client_ip(headers, peer: str | None, trust_proxy: bool) -> str:
-    if trust_proxy:
-        forwarded = headers.get("x-forwarded-for", "")
-        first = forwarded.split(",")[0].strip()
-        if first:
-            return first
-        real = headers.get("cf-connecting-ip") or headers.get("x-real-ip")
-        if real:
-            return real.strip()
-    return peer or "unknown"
+def client_key(request) -> str:
+    """한도를 셀 사용자 주소 — Uvicorn이 신뢰 프록시 설정으로 확정한 request.client. 전달 헤더는 다시 읽지 않는다."""
+    return request.client.host if request.client else "unknown"
 
 
 def message(v: Verdict) -> str:

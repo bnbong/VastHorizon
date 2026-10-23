@@ -13,6 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     VH_CONFIG=config.deploy.toml \
     FASTEMBED_CACHE_PATH=/app/models \
     HF_HUB_DISABLE_SYMLINKS_WARNING=1 \
+    FORWARDED_ALLOW_IPS="" \
     PORT=8000
 
 WORKDIR /app
@@ -41,4 +42,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=600s --retries=3 \
     CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"8000\")}/api/health', timeout=4)"
 
-CMD ["sh", "-c", "python -m scripts.deploy_init && exec uvicorn vasthorizon.api.app:app --host 0.0.0.0 --port ${PORT}"]
+# 사용자 주소: Uvicorn이 FORWARDED_ALLOW_IPS(신뢰 프록시)에서 온 연결만 X-Forwarded-For를 읽는다. 기본 ""는 아무 헤더도 믿지 않음
+CMD ["sh", "-c", "python -m scripts.deploy_init && exec uvicorn vasthorizon.api.app:app --host 0.0.0.0 --port ${PORT} --proxy-headers"]

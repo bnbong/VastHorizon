@@ -89,8 +89,8 @@ def run_rebuild(items_by_id: dict[str, dict], collector: Collector, embedding=No
     return 0
 
 
-def main(argv: list[str] | None = None, embedding=None, db=None) -> int:
-    """embedding · db는 테스트에서 가짜 임베딩 · 격리된 Chroma를 넣기 위한 인자다."""
+def main(argv: list[str] | None = None, embedding=None, db=None, collector=None) -> int:
+    """embedding · db · collector는 테스트에서 가짜 임베딩 · 격리된 Chroma · 문서 캐시를 넣기 위한 인자다."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--item", help="항목 이름 (일부만 써도 된다)")
     parser.add_argument("--dry-run", action="store_true", help="임베딩 없이 청크 수만 확인한다")
@@ -102,7 +102,7 @@ def main(argv: list[str] | None = None, embedding=None, db=None) -> int:
 
     items = load_items()
     by_id = {it["id"]: it for it in items}
-    collector = Collector()
+    collector = collector or Collector()
 
     if args.item and args.dry_run:
         item = find_item(items, args.item)

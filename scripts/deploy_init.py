@@ -1,12 +1,16 @@
-"""배포 서버의 첫 준비 — 색인이 없으면 만든다. 서버를 띄우기 전에 한 번 실행한다 (Docker 진입점에서 자동).
+"""배포 서버의 준비 — 색인이 없으면 만들고, 임베딩 모델이 바뀌었으면 다시 만든다. 서버를 띄우기 전에 실행한다 (Docker 진입점에서 자동).
 
-    VH_CONFIG=config.deploy.toml python -m scripts.deploy_init            # 없는 색인만 만든다 (이미 있으면 바로 끝)
-    VH_CONFIG=config.deploy.toml python -m scripts.deploy_init --rebuild  # 임베딩 모델을 바꿨을 때 전부 다시
+    VH_CONFIG=config.deploy.toml python -m scripts.deploy_init                   # 없는 색인 만들기 + 모델이 바뀐 색인 다시 만들기
+    VH_CONFIG=config.deploy.toml python -m scripts.deploy_init --rebuild         # 세 색인을 모두 강제로 다시
+    VH_CONFIG=config.deploy.toml python -m scripts.deploy_init --prefetch-model  # 로컬 임베딩 모델만 내려받기 (이미지 만들 때)
 
 저장소(GitHub)에는 색인(data/chroma)이 없다. 배포 서버는 설정한 임베딩(로컬 모델)으로 직접 만든다.
   1. 항목 색인 (data/items.json 424건) — 임베딩만, LLM 호출 없음
   2. 관점 전환 서가 색인 — 한국어 위키 문서를 받아(캐시 우선) 임베딩
-문서 색인(cosmos_docs)은 비워 둔다. 질문할 때 그 천체의 문서를 모아 색인한다 (첫 질문은 조금 오래 걸린다).
+  3. 문서 색인(cosmos_docs) — 처음에는 비어 있고, 질문할 때 그 천체의 문서를 모아 색인한다.
+     임베딩 모델이 바뀌면 이미 모은 문서를 캐시에서 꺼내 새 모델로 다시 색인한다 (문서를 다시 받지 않는다)
+색인마다 만들 때의 임베딩 모델을 기록해 두므로(store/chroma.py), 지금 설정과 다르면 알아채고 다시 만든다.
+다시 만들기는 임시 컬렉션에서 끝까지 만든 뒤 바꿔 넣는다 — 실패하면 기존 색인이 남고, 이 스크립트는 1로 끝난다.
 키 값은 출력하지 않는다.
 """
 
@@ -16,12 +20,28 @@ import argparse
 import sys
 
 from vasthorizon.config import get_settings
+from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.store import chroma
 
 
-def main(argv: list[str] | None = None) -> int:
+def stale_collections(names: list[str], embedding, db=None) -> list[str]:
+    """비어 있지 않은데 지금 임베딩 설정과 맞지 않는 컬렉션 (모델 · 차원이 다르거나 식별 정보가 없는 예전 색인)."""
+    identity = chroma.embedding_identity(embedding)
+    stale = []
+    for name in names:
+        if chroma.collection_count(name, db) == 0:
+            continue
+        try:
+            chroma.check_identity(chroma.db_for(name, db).get_collection(name), identity)
+        except chroma.EmbeddingMismatchError:
+            stale.append(name)
+    return stale
+
+
+def main(argv: list[str] | None = None, embedding=None, db=None, doc_collector=None, perspective_collector=None) -> int:
+    """embedding · db · 수집기는 테스트에서 가짜 임베딩 · 격리된 Chroma · 캐시를 넣기 위한 인자다."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rebuild", action="store_true", help="항목 · 서가 색인을 모두 다시 만든다")
+    parser.add_argument("--rebuild", action="store_true", help="항목 · 서가 · 문서 색인을 모두 다시 만든다")
     parser.add_argument("--prefetch-model", action="store_true",
                         help="로컬 임베딩 모델만 내려받고 끝낸다 (Docker 이미지를 만들 때 — 첫 실행을 빠르게)")
     args = parser.parse_args(argv)
@@ -36,19 +56,47 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     print(f"설정 {s.config_path.name} · 제공자 {s.llm.provider} · 임베딩 {s.llm.embedding_provider} · 색인 {s.paths.chroma_dir}")
 
-    from scripts import index_items, index_perspective
-    status = 0
-    if args.rebuild or chroma.collection_count(s.collections.items) == 0:
-        print("항목 색인을 만듭니다…")
-        status |= index_items.main(["--rebuild"] if args.rebuild else [])
-    else:
-        print(f"항목 색인 있음 ({chroma.collection_count(s.collections.items)}건)")
-    if args.rebuild or chroma.collection_count(s.collections.perspective) == 0:
-        print("관점 전환 서가 색인을 만듭니다…")
-        status |= index_perspective.main(["--rebuild"] if args.rebuild else [])
-    else:
-        print(f"관점 전환 서가 색인 있음 ({chroma.collection_count(s.collections.perspective)}청크)")
-    return status
+    from scripts import index_docs, index_items, index_perspective
+    try:
+        embedding = embedding or chroma.default_embedding()
+    except MissingApiKeyError as e:
+        print(f"[FAIL] {e}")
+        return 1
+
+    items, perspective, docs = s.collections.items, s.collections.perspective, s.collections.docs
+    stale = stale_collections([items, perspective, docs], embedding, db)
+    rebuild = {items, perspective, docs} if args.rebuild else set(stale)
+    if stale:
+        print(f"임베딩 모델이 바뀐 색인: {', '.join(stale)} — 지금 모델({chroma.embedding_identity(embedding)['embedding_model']})로 다시 만듭니다.")
+
+    failed = []
+
+    def run(label: str, name: str, fn) -> None:
+        count = chroma.collection_count(name, db)
+        if count == 0:
+            if name == docs:
+                print(f"{label}: 비어 있음 — 질문할 때 그 천체의 문서를 모아 색인합니다")
+                return
+            print(f"{label}을(를) 만듭니다…")
+            code = fn([])
+        elif name in rebuild:
+            print(f"{label}을(를) 새 모델로 다시 만듭니다… (기존 {count}건은 끝날 때까지 그대로)")
+            code = fn(["--rebuild"])
+        else:
+            print(f"{label} 있음 ({count}건)")
+            return
+        if code:
+            failed.append(label)
+
+    run("항목 색인", items, lambda a: index_items.main(a, embedding=embedding, db=db))
+    run("관점 전환 서가 색인", perspective, lambda a: index_perspective.main(a, embedding=embedding, db=db, collector=perspective_collector))
+    run("문서 색인", docs, lambda a: index_docs.main(a, embedding=embedding, db=db, collector=doc_collector))
+
+    left = stale_collections([items, perspective, docs], embedding, db)
+    if failed or left:
+        print(f"[FAIL] 색인 준비 실패: {', '.join(failed or left)} — 기존 색인을 그대로 두고 서버를 띄우지 않습니다.")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

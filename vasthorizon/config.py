@@ -48,7 +48,7 @@ class LimitsConfig:
     per_ip_per_minute: int = 6
     per_ip_per_day: int = 60
     global_per_day: int = 1500
-    trust_proxy: bool = False        # 리버스 프록시 뒤라면 X-Forwarded-For의 첫 주소를 사용자 주소로
+    # 사용자 주소는 Uvicorn이 신뢰 프록시(환경변수 FORWARDED_ALLOW_IPS, IP · CIDR)로 확정한 값만 쓴다 (api/limits.py)
 
 
 @dataclass(frozen=True)
@@ -155,17 +155,9 @@ def get_settings() -> Settings:
         collect=CollectConfig(**raw["collect"]),
         http=HttpConfig(**raw["http"]),
         config_path=config_path,
-        limits=_limits(raw.get("limits", {})),
+        limits=LimitsConfig(**raw.get("limits", {})),
         server=ServerConfig(cors_origins=origins),
     )
-
-
-def _limits(raw: dict) -> LimitsConfig:
-    """[limits] — 배포 환경에서 파일을 고치지 않고 VH_TRUST_PROXY=1로 프록시 신뢰를 켤 수 있다."""
-    env = os.environ.get("VH_TRUST_PROXY")
-    if env is not None:
-        raw = {**raw, "trust_proxy": env.strip().lower() in ("1", "true", "yes")}
-    return LimitsConfig(**raw)
 
 
 def get_gms_key() -> str | None:

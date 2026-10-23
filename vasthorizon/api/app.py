@@ -41,7 +41,7 @@ import queue
 import threading
 from pathlib import Path
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -207,23 +207,26 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     errors = {status: {"model": ErrorResponse} for status in (404, 409, 422, 429, 500, 503)}
 
-    # 공개 배포 — LLM을 부르는 요청(POST /api/...)에 호출 한도, 다른 주소의 프런트엔드(Cloudflare Pages 등)에 CORS
+    # 공개 배포 — AI(LLM)를 실제로 부르는 처리기만 예산을 쓴다 (spend_ai). 경로 · 메서드로 세지 않는다:
+    # 하늘 계산(guide=false) · 조회는 예산과 무관하게 늘 된다. 다른 주소의 프런트엔드(Cloudflare Pages 등)에는 CORS
+    from vasthorizon.api.limits import RateLimitedError, RateLimiter, client_key
     from vasthorizon.config import get_settings
     settings = get_settings()
-    if settings.limits.enabled:
-        from vasthorizon.api.limits import RateLimiter, client_ip, message
-        limiter = RateLimiter(settings.limits)
-        app.state.limiter = limiter
+    limiter = RateLimiter(settings.limits) if settings.limits.enabled else None
+    app.state.limiter = limiter
 
-        @app.middleware("http")
-        async def rate_limit(request, call_next):
-            if request.method == "POST" and request.url.path.startswith("/api/"):
-                ip = client_ip(request.headers, request.client.host if request.client else None, settings.limits.trust_proxy)
-                verdict = limiter.check(ip)
-                if not verdict.allowed:
-                    return JSONResponse(status_code=429, headers={"Retry-After": str(verdict.retry_after)},
-                                        content=ErrorResponse(code="rate_limited", message=message(verdict)).model_dump())
-            return await call_next(request)
+    def spend_ai(request: Request) -> None:
+        """AI 호출 한 번 — 한도를 넘으면 LLM을 부르기 전에 429. 요청 형식 검사를 통과한 뒤에만 센다."""
+        if limiter is None:
+            return
+        verdict = limiter.check(client_key(request))
+        if not verdict.allowed:
+            raise RateLimitedError(verdict)
+
+    @app.exception_handler(RateLimitedError)
+    async def handle_limited(request, error: RateLimitedError):
+        return JSONResponse(status_code=429, headers={"Retry-After": str(error.verdict.retry_after)},
+                            content=ErrorResponse(code="rate_limited", message=str(error)).model_dump())
     if settings.server.cors_origins:
         from fastapi.middleware.cors import CORSMiddleware
         app.add_middleware(CORSMiddleware, allow_origins=list(settings.server.cors_origins),
@@ -275,14 +278,16 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         return response
 
     @app.post("/api/ask", response_model=AnswerResponse, responses=errors)
-    def ask(req: AskRequest) -> AnswerResponse:
+    def ask(req: AskRequest, request: Request) -> AnswerResponse:
+        spend_ai(request)
         item, ticket = begin(req)
         return run_ask(req, item, ticket)
 
     @app.post("/api/ask/stream", responses=errors,
               description="SSE 이벤트: progress {message} → result {AnswerResponse} 또는 error {code, message}. "
                           "없는 항목 · 처리 중인 대화는 스트림을 열기 전에 404 · 409")
-    def ask_stream(req: AskRequest) -> StreamingResponse:
+    def ask_stream(req: AskRequest, request: Request) -> StreamingResponse:
+        spend_ai(request)
         item, ticket = begin(req)
         events: queue.Queue = queue.Queue()
 
@@ -328,7 +333,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
                              source_type=r.get("source_type"), notice=r.get("notice"))
 
     @app.post("/api/explore", response_model=ExploreResponse, responses=errors)
-    def explore(req: ExploreRequest) -> ExploreResponse:
+    def explore(req: ExploreRequest, request: Request) -> ExploreResponse:
+        spend_ai(request)
         result = svc().explore(req.query)
         notice = {"no_match": "조건에 맞는 항목을 찾지 못했습니다. 조건을 조금 넓혀 보세요.",
                   "failed": "조건과 대조하지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
@@ -344,9 +350,10 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.post("/api/light-letter", response_model=LetterResponse, responses=errors,
               description="item_id 또는 age 중 하나만 보낸다. age면 나이(광년)와 거리가 가장 가까운 별의 편지")
-    def light_letter(req: LetterRequest) -> LetterResponse:
+    def light_letter(req: LetterRequest, request: Request) -> LetterResponse:
         if (req.item_id is None) == (req.age is None):
             raise LetterUnavailableError("천체(item_id)나 나이(age) 중 하나만 보내 주세요.")
+        spend_ai(request)
         services = svc()
         gap = None
         if req.age is not None:
@@ -388,7 +395,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
             licenses=LICENSES)
 
     @app.post("/api/constellations/{item_id}/unfold", response_model=UnfoldResponse, responses=errors)
-    def constellation_unfold(item_id: str) -> UnfoldResponse:
+    def constellation_unfold(item_id: str, request: Request) -> UnfoldResponse:
+        spend_ai(request)
         services = svc()
         item = services.item(item_id)
         result = services.unfold(item, figure_for(item, services.figures))
@@ -399,14 +407,15 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.post("/api/sky", response_model=SkyResponse, responses=errors,
               description="위치 · 시각의 하늘에 뜬 별자리와 행성. guide=false면 계산만 (LLM 호출 없음)")
-    def sky(req: SkyRequest) -> SkyResponse:
+    def sky(req: SkyRequest, request: Request) -> SkyResponse:
         services = svc()
         view = compute_sky(services.items, services.figures, req.lat, req.lon, req.at)
         body = dict(lat=view.lat, lon=view.lon, at=view.at, sun_alt_deg=view.sun_alt_deg, is_night=view.is_night,
                     constellations=[sky_object(o) for o in view.constellations],
                     planets=[sky_object(o) for o in view.planets])
-        if not req.guide:
+        if not req.guide:                               # 계산만 — AI 예산을 쓰지 않는다
             return SkyResponse(**body, status="skipped", warnings=view.notes)
+        spend_ai(request)
         result = services.sky_guide(view)
         notice = generated_notice(result.status, result.cited) if result.guide is not None else None
         return SkyResponse(**body, guide=result.guide, status=result.status,
@@ -419,7 +428,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.post("/api/perspective", response_model=PerspectiveResponse, responses=errors,
               description="text(마음 한 줄) · theme(감정 버튼) 중 하나 이상. 위기 표현이면 답변 대신 상담 창구 안내")
-    def perspective(req: PerspectiveRequest) -> PerspectiveResponse:
+    def perspective(req: PerspectiveRequest, request: Request) -> PerspectiveResponse:
+        spend_ai(request)
         result = svc().perspective(req.text, req.theme)
         crisis = result.status == "crisis"
         fixed = crisis or result.status in ("not_found", "unchecked")      # 정해진 안내 문구 — 인용 안내 없음

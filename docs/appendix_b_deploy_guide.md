@@ -85,11 +85,21 @@ docker compose logs -f           # 첫 실행: 색인 만들기 (몇 분) → �
 `http://서버:8000`에서 화면이 열리고, `http://서버:8000/api/health`에서 키와 색인 상태를 볼 수 있습니다(키 값은 내보내지 않습니다).
 문서 색인은 비어 있는 채로 시작합니다. 어떤 천체에 처음 질문하면 그 천체의 문서를 모아 색인하므로 첫 답은 30초~1분쯤 걸리고(컨테이너에서 베가 첫 질문 67초), 그다음부터는 빨라집니다.
 
-### 3-3. 리버스 프록시와 HTTPS
+### 3-3. 사용자 주소와 프록시 (AI 호출 한도의 기준)
 
-Nginx, Caddy, Cloudflare Tunnel 같은 프록시 뒤에 두면 HTTPS를 붙일 수 있습니다. 이때 `docker-compose.yml`의 `VH_TRUST_PROXY`를 `"1"`로 바꿉니다.
-그래야 호출 한도가 프록시 주소가 아니라 실제 사용자 주소(`X-Forwarded-For`, Cloudflare는 `CF-Connecting-IP`)로 셉니다.
-프록시 없이 바로 공개할 때는 `"0"`으로 둡니다. 이때 헤더를 믿으면 누구나 주소를 바꿔 한도를 피할 수 있습니다.
+AI 호출 한도는 사용자 주소마다 셉니다. 이 주소는 앱이 전달 헤더(`X-Forwarded-For`, `CF-Connecting-IP`)를 직접 읽어 정하지 않습니다.
+Uvicorn이 **믿을 수 있는 프록시에서 온 연결일 때만** `X-Forwarded-For`를 오른쪽부터 읽고, 믿을 프록시가 아닌 첫 주소를 사용자 주소로 정합니다. 앱은 그 값(`request.client`)만 씁니다.
+믿을 프록시는 환경변수 `FORWARDED_ALLOW_IPS`(IP, CIDR, 쉼표 구분)로 정합니다. 사용자가 헤더 맨 앞에 다른 주소를 끼워 넣어도 오른쪽부터 읽으므로 고를 수 없고, 믿지 않는 연결의 헤더는 통째로 무시합니다.
+
+| 공개 방식 | `FORWARDED_ALLOW_IPS` | 원본 포트 |
+|---|---|---|
+| 프록시 없이 바로 공개 | `""` (기본: 아무 헤더도 믿지 않음) | `8000:8000` |
+| 같은 서버의 Nginx, Caddy 뒤 | 컨테이너가 보는 프록시 주소 (보통 Docker 브리지 게이트웨이, `docker network inspect`로 확인) | `127.0.0.1:8000:8000` (바깥에서 원본에 바로 닿지 않게) |
+| Cloudflare Tunnel (`docker-compose.yml`의 주석 블록) | `172.30.0.0/24` (compose 네트워크, 곧 cloudflared 컨테이너만) | 열지 않음 (`ports` 삭제) |
+| Cloudflare 프록시(주황 구름)로 원본에 바로 연결 | Cloudflare IP 대역 | 방화벽에서 Cloudflare IP 대역만 허용 |
+
+프록시를 믿게 해 두고 원본 포트까지 바깥에 열어 두면, 누군가 프록시를 거치지 않고 원본에 바로 접속해 헤더를 속일 수 있습니다. 프록시를 쓸 때는 원본 포트를 꼭 닫습니다.
+Docker의 포트 공개는 바깥 연결을 브리지 게이트웨이 주소로 바꿔 보이게 하는 경우가 있으므로, 게이트웨이 주소를 믿게 할 때는 더욱 `127.0.0.1`에만 공개합니다.
 
 ### 3-4. 업데이트
 
@@ -127,15 +137,29 @@ docker compose up -d --build     # 색인 볼륨은 그대로 남습니다
 |---|---|---|
 | `llm.anthropic_model` | `claude-sonnet-5-5` | 비용을 줄이려면 `claude-haiku-5-5` |
 | `llm.max_tokens` | 2048 | 답이 잘리면 늘립니다 |
-| `llm.local_embedding_model` | `intfloat/multilingual-e5-large` | 메모리가 작으면 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`. 바꾼 뒤 `python -m scripts.deploy_init --rebuild` |
+| `llm.local_embedding_model` | `intfloat/multilingual-e5-large` | 메모리가 작으면 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`. 바꾼 뒤 컨테이너를 다시 띄우면 됩니다 (아래) |
 | `limits.per_ip_per_minute` | 6 | 한 사용자가 1분에 보낼 수 있는 질문 수 |
 | `limits.per_ip_per_day` | 60 | 한 사용자의 하루 질문 수 |
 | `limits.global_per_day` | 1500 | 서버 전체 하루 질문 수 (개인 키의 하루 비용 상한 역할) |
-| `limits.trust_proxy` | false | 환경변수 `VH_TRUST_PROXY`로도 바꿀 수 있습니다 (3-3) |
+| 환경변수 `FORWARDED_ALLOW_IPS` | `""` | 믿을 프록시 주소 (3-3) |
 | `server.cors_origins` | 없음 | 환경변수 `VH_CORS_ORIGINS`로도 바꿀 수 있습니다 (4절) |
 
-한도는 LLM을 부르는 요청(질문, 조건 탐색, 빛의 편지, 마음 한 줄, 하늘 안내, 별자리 설명)만 셉니다. 하늘, 내 세상 보기, 천체 목록 같은 조회는 세지 않습니다.
+한도는 실제로 LLM을 부르는 요청(질문, 조건 탐색, 빛의 편지, 마음 한 줄, 별자리 설명, 하늘 안내 받기)만 셉니다. 시각을 바꿀 때의 하늘 계산(`/api/sky`의 `guide=false`), 천체 목록, 내 세상 보기 같은 요청은 세지 않으므로, 예산을 다 써도 하늘은 그대로 쓸 수 있습니다. 형식이 잘못된 요청도 세지 않습니다.
 한도를 넘으면 429 응답과 함께 "1분쯤 뒤에 다시 물어봐 주세요", "내일 다시 찾아 주세요" 같은 안내가 화면에 보입니다.
+### 임베딩 모델을 바꿀 때
+
+색인 세 개(항목, 관점 전환 서가, 질문하며 모은 문서)는 만들 때의 임베딩 모델을 기록해 둡니다. 다른 모델의 벡터는 함께 쓸 수 없습니다.
+`scripts/deploy_init.py`는 실행할 때마다 이 기록을 지금 설정과 비교해, 다르면 세 색인을 모두 새 모델로 다시 만듭니다. 모델을 바꾼 뒤 컨테이너를 다시 띄우기만 하면 됩니다 (`docker compose up -d --build`).
+직접 실행할 때는 `python -m scripts.deploy_init --rebuild`로 강제로 다시 만들 수도 있습니다.
+
+| 색인 | 다시 만드는 방법 |
+|---|---|
+| 항목 (424건) | `data/items.json`에서 |
+| 관점 전환 서가 | 서가 문서 캐시에서 (없으면 위키백과에서 다시 받음) |
+| 질문하며 모은 문서 | 문서 캐시(`data/deploy/cache`)에서. 이미 질문했던 천체의 문서를 다시 받지 않습니다 |
+
+세 색인 모두 임시 컬렉션에 새로 만들고 검증한 뒤에 바꿔 넣습니다. 중간에 실패하면 기존 색인은 그대로 남고, `deploy_init`은 실패 코드로 끝나 서버를 띄우지 않습니다(로그에 이유가 남습니다).
+
 한도는 서버 메모리에만 두므로 다시 시작하면 처음부터 셉니다. 더 엄격하게 막으려면 Anthropic 콘솔에서 키의 월 사용 한도도 함께 걸어 두는 것을 권합니다.
 
 ---
@@ -161,7 +185,10 @@ uvicorn vasthorizon.api.app:app --port 8000
 | 실제 질문 | "베가는 왜 밝기의 기준별로 쓰였나?": 문서 수집, 로컬 색인, 근거 인용 답변, 인용 번호 검증 통과 |
 | 실제 질문 | "안드로메다 은하 가운데에 있는 블랙홀 이름은 뭐야?": "M31*"과 질량을 근거(위키백과 「안드로메다 은하」)와 함께 답함 |
 | Claude 응답 형식 | Claude는 답을 내용 블록 목록으로 주고, JSON을 낸 뒤 스스로 고친 JSON을 한 번 더 내기도 합니다. 글만 모으고 마지막 JSON을 쓰도록 맞췄습니다 (테스트 `test_reply_text`, `test_parse_json_reply_takes_self_corrected_last_object`) |
-| 호출 한도, CORS | 1분 한도 초과 시 429와 `Retry-After`, 조회는 세지 않음, 허용한 출처만 CORS 헤더 (테스트 `tests/test_deploy.py`) |
+| 호출 한도, CORS | 1분 한도 초과 시 429와 `Retry-After`, 허용한 출처만 CORS 헤더 (테스트 `tests/test_deploy.py`) |
+| 코드 리뷰 반영: 전달 헤더로 한도 우회 | 신뢰 프록시를 거치며 `X-Forwarded-For` 첫 값만 바꾸던 재현(4회 모두 200)이 이제 200, 200, 429, 429. 신뢰하지 않는 접속자의 `X-Forwarded-For`, `CF-Connecting-IP`는 무시, 여러 프록시 체인은 오른쪽부터, 실제 사용자는 따로 셈 (`ProxyTrustTest`, 배포와 같은 Uvicorn 미들웨어로 확인) |
+| 코드 리뷰 반영: 모델 변경 때 문서 색인 | 이전 모델로 만든 항목, 서가, 문서 색인이 새 모델에서 모두 다시 만들어짐(문서는 캐시에서). 문서 재구축이 실패하면 기존 색인을 남기고 실패 코드 1 (`DeployInitTest`) |
+| 코드 리뷰 반영: 하늘 계산은 예산 밖 | `guide=false` 하늘 계산 5회 뒤에도 질문 2회 가능, 예산을 다 쓴 뒤에도 하늘 계산은 200, 하늘 안내(`guide=true`)는 LLM을 부르기 전에 429. 형식 오류 요청도 세지 않음 (`AiBudgetTest`) |
 | 정적 화면 빌드 | `dist/index.html`에 API 주소가 들어가고, 잘못된 주소는 거부 |
 | Docker 이미지 | 빌드 성공, 5.1GB. 처음 만든 이미지는 모델 폴더의 권한을 바꾸는 단계가 모델을 한 번 더 복사해 12.3GB였습니다. 실행 사용자를 먼저 만들고 그 사용자로 모델을 받도록 바꿨습니다 |
 | 컨테이너 실행 | 첫 실행에 색인을 만든 뒤 서버 시작 (474초), `/api/health` 준비 완료(항목 색인 424건), 실제 질문에 근거 인용 답변 (67초) |
