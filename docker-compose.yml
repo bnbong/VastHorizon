@@ -1,4 +1,4 @@
-# VastHorizon 배포 (개인 서버 · BNGdrasil 등) — 화면과 API를 컨테이너 하나로
+# VastHorizon 배포 (개인 서버 등) — 화면과 API를 컨테이너 하나로
 #
 #     docker compose up -d --build
 #

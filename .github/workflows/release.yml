@@ -1,18 +1,23 @@
-name: Release (GHCR -> VM2 API -> VM1 web)
+name: Release (GHCR -> API host -> web host)
 
-# main에 서비스 코드가 바뀌면 ARM64 image를 build해 GHCR에 올리고, VM2의 API 컨테이너를
-# 교체한 다음 VM1의 정적 화면을 갱신한다. 순서를 API 먼저로 둔 이유는, 새 화면이 새 API에
+# main에 서비스 코드가 바뀌면 ARM64 image를 build해 GHCR에 올리고, API 호스트의 컨테이너를
+# 교체한 다음 Nginx 호스트의 정적 화면을 갱신한다. 순서를 API 먼저로 둔 이유는, 새 화면이 새 API에
 # 기대는 경우가 많고 API 교체가 실패하면 화면을 건드리지 않고 멈추기 위해서다.
 #
 #   build       ubuntu-24.04-arm에서 linux/arm64 image를 build하고 push한다.
-#   deploy-api  VM2에 deploy.sh와 compose 파일을 올리고 digest로 고정한 참조를 배포한다.
+#   deploy-api  API 호스트에 deploy.sh와 compose 파일을 올리고 digest로 고정한 참조를 배포한다.
 #               health 확인, 실패 시 되돌리기는 deploy/vm2/deploy.sh가 담당한다.
-#   deploy-web  VM1에 web/을 rsync하고 Cloudflare를 거치지 않는 원본 경로로 확인한다.
+#   deploy-web  Nginx 호스트에 web/을 rsync하고 Cloudflare를 거치지 않는 원본 경로로 확인한다.
 #
 # 되돌리기: workflow_dispatch의 image_ref에 이전 커밋의 sha- 태그를 넣는다.
 #   ghcr.io/bnbong/vasthorizon:sha-1a2b3c4
-# 이때 build를 건너뛰고 그 image로 VM2를 배포하며, VM1의 화면도 같은 커밋의 web/으로 맞춘다.
+# 이때 build를 건너뛰고 그 image로 API 호스트를 배포하며, 화면도 같은 커밋의 web/으로 맞춘다.
 # 자세한 절차는 docs/appendix_b_deploy_guide.md 3-6절을 따른다.
+#
+# 서버 경로는 저장소에 적지 않고 production environment의 variable로 받는다.
+#   VM2_DEPLOY_DIR  API 호스트에서 compose 파일, .env, deploy.sh가 있는 디렉터리
+#   VM1_WEB_DIR     Nginx 호스트에서 정적 화면을 내보내는 디렉터리
+# 값이 비어 있으면 엉뚱한 경로에 배포하지 않도록 각 job의 첫 단계에서 멈춘다.
 
 on:
   push:
@@ -40,7 +45,7 @@ on:
 permissions:
   contents: read
 
-# VM2와 VM1을 동시에 고치는 실행을 직렬화한다. 진행 중인 배포를 끊으면 .env와
+# 두 서버를 동시에 고치는 실행을 직렬화한다. 진행 중인 배포를 끊으면 .env와
 # 컨테이너가 중간 상태로 남을 수 있으므로 취소하지 않고 기다린다.
 concurrency:
   group: release
@@ -48,14 +53,13 @@ concurrency:
 
 env:
   IMAGE_NAME: ghcr.io/bnbong/vasthorizon
-  DEPLOY_DIR: /opt/bnbong/vasthorizon
 
 jobs:
   build:
     name: Build and push ARM64 image
     # image_ref를 받은 workflow_dispatch(되돌리기)에서는 build하지 않는다.
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.image_ref == '' }}
-    # VM2가 ARM64(aarch64)이므로 네이티브 ARM 러너에서 build한다. QEMU 에뮬레이션이 필요 없다.
+    # API 호스트가 ARM64(aarch64)이므로 네이티브 ARM 러너에서 build한다. QEMU 에뮬레이션이 필요 없다.
     runs-on: ubuntu-24.04-arm
     # image에 임베딩 모델(약 2.2GB) layer가 들어 있다. 캐시가 비어 있으면 모델을 받고
     # layer를 push하는 데 오래 걸리므로 시간을 넉넉히 둔다.
@@ -97,7 +101,7 @@ jobs:
     # 모델 layer는 requirements와 scripts가 바뀌지 않으면 캐시에서 다시 쓴다.
     # 캐시(type=gha)는 저장소당 용량 상한이 있어 모델 layer가 밀려나면 처음부터 받는다.
     # provenance를 끄면 GHCR에 단일 플랫폼 manifest 하나만 올라가고, 출력 digest가
-    # VM2가 pull하는 image의 digest와 그대로 일치한다.
+    # API 호스트가 pull하는 image의 digest와 그대로 일치한다.
     - name: Build and push
       id: push
       uses: docker/build-push-action@v6
@@ -127,7 +131,7 @@ jobs:
         } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-api:
-    name: Deploy API on VM2
+    name: Deploy API
     needs: build
     # build가 건너뛰어진 되돌리기 실행에서도 배포해야 하므로 조건을 직접 적는다.
     if: >-
@@ -144,10 +148,25 @@ jobs:
       contents: read
     env:
       VM2_HOST: ${{ secrets.VM2_HOST }}
+      DEPLOY_DIR: ${{ vars.VM2_DEPLOY_DIR }}
     outputs:
       image_ref: ${{ steps.ref.outputs.image_ref }}
 
     steps:
+    - name: Check deploy settings
+      run: |
+        set -euo pipefail
+        # 기본값을 두지 않는다. 값이 없거나 형식이 다르면 아무것도 올리지 않고 멈춘다.
+        # 이 값은 SSH 원격 명령의 작은따옴표 안에 들어가므로 허용 문자를 좁힌다.
+        if [ -z "${DEPLOY_DIR:-}" ]; then
+          echo "::error::production environment의 variable VM2_DEPLOY_DIR가 비어 있습니다. API 호스트의 배포 디렉터리를 등록한 뒤 다시 실행합니다."
+          exit 1
+        fi
+        if ! printf '%s' "$DEPLOY_DIR" | grep -Eq '^/[A-Za-z0-9._/-]+$'; then
+          echo "::error::VM2_DEPLOY_DIR는 영문, 숫자, '.', '_', '-', '/'로만 이루어진 절대 경로여야 합니다."
+          exit 1
+        fi
+
     - name: Checkout code
       uses: actions/checkout@v6
 
@@ -193,7 +212,7 @@ jobs:
     - name: Upload deploy files
       run: |
         set -euo pipefail
-        # .env는 VM2에서만 관리하므로 올리지 않는다. 임시 이름으로 올린 뒤 mv로 바꿔서,
+        # .env와 docker-compose.override.yml은 서버에서만 관리하므로 올리지 않는다. 임시 이름으로 올린 뒤 mv로 바꿔서,
         # 전송 도중에 끊겨도 반쯤 쓴 compose 파일이나 스크립트가 남지 않게 한다.
         scp -i ~/.ssh/id_deploy deploy/vm2/deploy.sh \
           "ubuntu@${VM2_HOST}:${DEPLOY_DIR}/.deploy.sh.incoming"
@@ -209,20 +228,21 @@ jobs:
         set -euo pipefail
         # 종료 코드: 0 성공, 1 실패했으나 이전 image로 복구, 2 인자 오류, 3 복구도 실패(서비스 중단)
         set +e
-        ssh -i ~/.ssh/id_deploy "ubuntu@${VM2_HOST}" "bash '${DEPLOY_DIR}/deploy.sh' '${IMAGE_REF}'"
+        ssh -i ~/.ssh/id_deploy "ubuntu@${VM2_HOST}" \
+          "env DEPLOY_DIR='${DEPLOY_DIR}' bash '${DEPLOY_DIR}/deploy.sh' '${IMAGE_REF}'"
         rc=$?
         set -e
         case "$rc" in
           0)
-            echo "VM2 배포를 완료했습니다: $IMAGE_REF"
+            echo "API 배포를 완료했습니다: $IMAGE_REF"
             ;;
           1)
-            echo "::error::VM2 배포가 실패했고 이전 image로 되돌렸습니다. VM2의 ${DEPLOY_DIR}/deploy-failures/ 기록을 확인하시기 바랍니다."
+            echo "::error::API 배포가 실패했고 이전 image로 되돌렸습니다. API 호스트의 ${DEPLOY_DIR}/deploy-failures/ 기록을 확인하시기 바랍니다."
             exit 1
             ;;
           3)
-            echo "::error::VM2 배포가 실패했고 이전 image도 health 확인을 통과하지 못했습니다. 서비스가 중단된 상태이므로 즉시 조치해야 합니다."
-            echo "::error::VM2에서 ${DEPLOY_DIR}/deploy-failures/ 기록과 docker compose logs를 확인하시기 바랍니다."
+            echo "::error::API 배포가 실패했고 이전 image도 health 확인을 통과하지 못했습니다. 서비스가 중단된 상태이므로 즉시 조치해야 합니다."
+            echo "::error::API 호스트에서 ${DEPLOY_DIR}/deploy-failures/ 기록과 docker compose logs를 확인하시기 바랍니다."
             exit 3
             ;;
           *)
@@ -238,7 +258,7 @@ jobs:
         rm -f ~/.ssh/id_deploy
 
   deploy-web:
-    name: Deploy web on VM1
+    name: Deploy web
     needs: deploy-api
     if: ${{ !cancelled() && needs.deploy-api.result == 'success' }}
     runs-on: ubuntu-latest
@@ -248,10 +268,24 @@ jobs:
       contents: read
     env:
       VM1_HOST: ${{ secrets.VM1_HOST }}
+      WEB_DIR: ${{ vars.VM1_WEB_DIR }}
       SITE_HOST: vasthorizon.bnbong.com
       INPUT_IMAGE_REF: ${{ inputs.image_ref }}
 
     steps:
+    - name: Check deploy settings
+      run: |
+        set -euo pipefail
+        # rsync --delete의 대상이므로 기본값을 두지 않는다. 값이 없으면 아무것도 지우지 않고 멈춘다.
+        if [ -z "${WEB_DIR:-}" ]; then
+          echo "::error::production environment의 variable VM1_WEB_DIR가 비어 있습니다. Nginx 호스트의 정적 화면 디렉터리를 등록한 뒤 다시 실행합니다."
+          exit 1
+        fi
+        if ! printf '%s' "$WEB_DIR" | grep -Eq '^/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)+/?$'; then
+          echo "::error::VM1_WEB_DIR는 두 단계 이상의 절대 경로여야 하며 영문, 숫자, '.', '_', '-', '/'만 쓸 수 있습니다."
+          exit 1
+        fi
+
     - name: Checkout code
       uses: actions/checkout@v6
       with:
@@ -290,21 +324,21 @@ jobs:
         printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
         chmod 600 ~/.ssh/known_hosts
 
-    - name: Sync web/ to VM1
+    - name: Sync web/ to Nginx host
       run: |
         set -euo pipefail
-        # Nginx 설정은 Bantheon 저장소 소유이므로 정적 파일만 바꾼다. 경로가 그대로라
+        # Nginx 설정은 이 저장소가 관리하지 않으므로 정적 파일만 바꾼다. 경로가 그대로라
         # reload가 필요 없다. 검증용 페이지(_*.html)와 __pycache__는 올리지 않는다.
         rsync -az --delete -e "ssh -i $HOME/.ssh/id_deploy" \
           --exclude '_*.html' --exclude '__pycache__' \
-          web/ "ubuntu@${VM1_HOST}:${DEPLOY_DIR}/web/"
+          web/ "ubuntu@${VM1_HOST}:${WEB_DIR%/}/"
 
-    - name: Origin check on VM1
+    - name: Origin check on Nginx host
       run: |
         set -euo pipefail
-        # --resolve로 Cloudflare를 거치지 않고 VM1 루프백의 Nginx에 직접 요청한다.
-        # 인증서가 Cloudflare origin cert라서 공개 CA 체인으로 검증되지 않으므로 -k가 필요하다.
-        # /api/health는 VM1 Nginx를 지나 VM2까지 가므로 프록시 경로도 함께 확인된다.
+        # --resolve로 Cloudflare를 거치지 않고 Nginx 호스트 루프백의 Nginx에 직접 요청한다.
+        # 원본 인증서는 공개 CA 체인으로 검증되지 않을 수 있으므로 -k를 쓴다.
+        # /api/health는 Nginx를 지나 API 호스트까지 가므로 프록시 경로도 함께 확인된다.
         if ssh -i ~/.ssh/id_deploy "ubuntu@${VM1_HOST}" "bash -s -- ${SITE_HOST}" <<'REMOTE'
         set -euo pipefail
         host="$1"
@@ -324,7 +358,7 @@ jobs:
         then
           echo "오리진 확인을 모두 통과했습니다."
         else
-          echo "::error::오리진 확인이 실패했습니다. VM2의 API는 이미 새 image로 바뀌었습니다."
+          echo "::error::오리진 확인이 실패했습니다. API 호스트의 컨테이너는 이미 새 image로 바뀌었습니다."
           echo "::error::되돌리기: Actions에서 이 워크플로를 workflow_dispatch로 실행하고 image_ref에 이전 커밋의 태그(ghcr.io/bnbong/vasthorizon:sha-<7자리>)를 넣습니다. API와 화면이 함께 그 커밋으로 돌아갑니다."
           exit 1
         fi

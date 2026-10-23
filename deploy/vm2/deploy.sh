@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# VM2 VastHorizon image deployment script (GHCR release entrypoint)
+# VastHorizon API host image deployment script (GHCR release entrypoint)
 #
-# 운영 배치 위치: /opt/bnbong/vasthorizon/deploy.sh (저장소의 deploy/vm2/deploy.sh)
+# 운영 배치 위치: <배포 디렉터리>/deploy.sh (저장소의 deploy/vm2/deploy.sh)
 # 호출 주체: 이 저장소의 .github/workflows/release.yml이 SSH로
-#            `bash /opt/bnbong/vasthorizon/deploy.sh <image_ref>`를 실행한다.
-#            ubuntu 계정으로 실행하며 sudo는 쓰지 않는다. ubuntu는 docker 그룹에
-#            속해 있고 /opt/bnbong/vasthorizon의 소유자다.
+#            `env DEPLOY_DIR=<배포 디렉터리> bash <배포 디렉터리>/deploy.sh <image_ref>`를
+#            실행한다. 배포 디렉터리는 production environment의 variable
+#            VM2_DEPLOY_DIR에서 받는다. ubuntu 계정으로 실행하며 sudo는 쓰지 않는다.
+#            ubuntu는 docker 그룹에 속해 있고 배포 디렉터리의 소유자다.
 #
 # 설계 요지
 #   - 이 스크립트는 소스를 build하지 않는다. GHCR에 이미 올라간 image만 교체한다.
@@ -23,7 +24,7 @@
 #     $DEPLOY_DIR/deploy-failures/<UTC>.log에 남긴다.
 #   - 되돌린 뒤에도 같은 health 확인을 수행한다. 이전 image까지 실패하면 서비스가
 #     중단된 상태이므로 종료 코드 3으로 알린다.
-#   - docker image prune은 실행하지 않는다. VM2에는 다른 stack의 image도 있다.
+#   - docker image prune은 실행하지 않는다. API 호스트에는 다른 stack의 image도 있다.
 #     오래된 VastHorizon image는 사람이 판단하여 지운다.
 #
 # health 대기 시간
@@ -33,12 +34,18 @@
 #
 # 사용법
 #   release.yml은 build 직후에 digest로 고정한 참조를 넘긴다.
-#     bash /opt/bnbong/vasthorizon/deploy.sh ghcr.io/bnbong/vasthorizon@sha256:<64자리>
+#     DEPLOY_DIR=<배포 디렉터리> bash <배포 디렉터리>/deploy.sh ghcr.io/bnbong/vasthorizon@sha256:<64자리>
 #   되돌릴 때 쓰는 workflow_dispatch 실행과 손으로 하는 배포는 태그 참조를 넘긴다.
-#     bash /opt/bnbong/vasthorizon/deploy.sh ghcr.io/bnbong/vasthorizon:sha-1a2b3c4
+#     DEPLOY_DIR=<배포 디렉터리> bash <배포 디렉터리>/deploy.sh ghcr.io/bnbong/vasthorizon:sha-1a2b3c4
 #
-# 환경 변수 (시험용 재정의)
-#   DEPLOY_DIR        기본 /opt/bnbong/vasthorizon. compose 파일과 .env가 있는 디렉터리다.
+# compose 파일
+#   배포 디렉터리에 docker-compose.override.yml이 있으면 docker-compose.yml 뒤에 함께
+#   읽는다. 게이트웨이 등 다른 stack과 통신할 네트워크처럼 저장소에 두지 않는 설정을
+#   그 파일에 둔다. 워크플로는 이 파일을 올리거나 지우지 않는다.
+#
+# 환경 변수 (DEPLOY_DIR 외에는 시험용 재정의)
+#   DEPLOY_DIR        기본 /opt/vasthorizon. compose 파일과 .env가 있는 디렉터리다.
+#                     release.yml은 VM2_DEPLOY_DIR 값을 이 변수로 넘긴다.
 #   HEALTH_URL        기본 http://127.0.0.1:8020/api/health
 #   HEALTH_RETRIES    기본 100
 #   HEALTH_INTERVAL   기본 10 (초)
@@ -49,9 +56,10 @@
 
 set -euo pipefail
 
-DEPLOY_DIR="${DEPLOY_DIR:-/opt/bnbong/vasthorizon}"
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/vasthorizon}"
 ENV_FILE="$DEPLOY_DIR/.env"
 COMPOSE_FILE="$DEPLOY_DIR/docker-compose.yml"
+COMPOSE_OVERRIDE_FILE="$DEPLOY_DIR/docker-compose.override.yml"
 RELEASES_LOG="$DEPLOY_DIR/releases.log"
 LOCK_FILE="$DEPLOY_DIR/.deploy.lock"
 FAILURE_LOG_DIR="${FAILURE_LOG_DIR:-$DEPLOY_DIR/deploy-failures}"
@@ -145,16 +153,24 @@ fi
 unset "$IMAGE_VAR"
 
 # --project-directory를 명시해야 현재 작업 디렉터리와 상관없이 같은 .env를 읽는다.
+# -f를 명시하면 compose가 override 파일을 스스로 찾지 않으므로, 있으면 직접 더한다.
 compose() {
-    "$DOCKER" compose --project-directory "$DEPLOY_DIR" -f "$COMPOSE_FILE" "$@"
+    local files=(-f "$COMPOSE_FILE")
+    if [ -f "$COMPOSE_OVERRIDE_FILE" ]; then
+        files+=(-f "$COMPOSE_OVERRIDE_FILE")
+    fi
+    "$DOCKER" compose --project-directory "$DEPLOY_DIR" "${files[@]}" "$@"
 }
 
-echo "=== VM2 VastHorizon image deployment ==="
+echo "=== VastHorizon API image deployment ==="
 log "image     : $IMAGE_REF ($IMAGE_REF_KIND)"
 log "deploy dir: $DEPLOY_DIR"
+if [ -f "$COMPOSE_OVERRIDE_FILE" ]; then
+    log "override  : $COMPOSE_OVERRIDE_FILE"
+fi
 
 # compose 파일이나 .env가 이미 잘못되어 있으면 운영 컨테이너를 건드리기 전에 멈춘다.
-# VM2_PRIVATE_IP, VM1_PRIVATE_IP처럼 `${VAR:?...}`로 선언한 값이 없을 때 여기에서 걸린다.
+# VM2_PRIVATE_IP(API 호스트), VM1_PRIVATE_IP(Nginx 호스트)처럼 `${VAR:?...}`로 선언한 값이 없을 때 여기에서 걸린다.
 if ! compose config -q; then
     err "docker compose config가 실패했다. ${ENV_FILE}의 필수 값을 먼저 고친다."
     err "운영 컨테이너는 그대로 두고 중단한다."
@@ -398,7 +414,7 @@ echo "  기록   : $RELEASES_LOG"
 echo ""
 if [ -n "$PREV_IMAGE_ID" ]; then
     echo "이 배포를 되돌리려면 release 워크플로를 workflow_dispatch로 실행하고"
-    echo "image_ref에 이전 sha- 태그를 넣는다. VM2에서 직접 되돌리려면 아래를 실행한다."
-    echo "  bash $DEPLOY_DIR/deploy.sh ${IMAGE_REPO}:sha-<이전 커밋 7자리>"
+    echo "image_ref에 이전 sha- 태그를 넣는다. 서버에서 직접 되돌리려면 아래를 실행한다."
+    echo "  DEPLOY_DIR=$DEPLOY_DIR bash $DEPLOY_DIR/deploy.sh ${IMAGE_REPO}:sha-<이전 커밋 7자리>"
     echo "  (이전 image ID: $PREV_IMAGE_ID, 태그 $ROLLBACK_TAG)"
 fi

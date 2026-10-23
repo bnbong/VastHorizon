@@ -13,7 +13,7 @@ timeout_sec = 60
 embedding_provider = "local"             # Claude에는 임베딩 API가 없어 서버 안에서 계산한다 (fastembed, ONNX)
 # 다국어 모델. 한국어 질문 4개로 비교했을 때 정답 청크 순위: e5-large [1, 1, 1, 1], mpnet-base [17, 1, 9, 2], MiniLM [12, 2, 1, 1]
 # 근거 순위가 다소 떨어지지만(한 질문은 12위) 공개 서버의 CPU로는 이 속도가 필요하다. 청크(1,000자, 배치 16) 하나를 임베딩하는 시간은
-# VM2(Oracle A1 ARM 2코어)에서 e5-large 5.3초, mpnet-base 1.6초, MiniLM 0.15초였다. e5-large는 문서가 긴 천체의 첫 질문에 5분 넘게 걸려
+# ARM 2코어 서버에서 e5-large 5.3초, mpnet-base 1.6초, MiniLM 0.15초였다. e5-large는 문서가 긴 천체의 첫 질문에 5분 넘게 걸려
 # 비스트리밍 요청이 Nginx 120초 제한에서 504로 끝났다. e5-large(2.2GB · 메모리 약 2.5GB)는 GPU나 빠른 x86 서버에서 쓴다
 # local_embedding_model = "intfloat/multilingual-e5-large"
 # 모델을 바꾸면 scripts/deploy_init.py가 실행할 때 알아채고 항목 · 서가 · 문서 색인을 모두 새 모델로 다시 만든다
