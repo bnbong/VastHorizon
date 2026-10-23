@@ -11,7 +11,7 @@ VastHorizon을 공개 서버에 올리려는 분을 위한 안내입니다.
 |---|---|---|
 | 설정 파일 | `config.toml` (기본) | `config.deploy.toml` (`VH_CONFIG`로 지정) |
 | 답변 생성 | SSAFY GMS의 GPT (`gpt-6-luna`) | Claude API (`claude-sonnet-5-5`) |
-| 검색용 임베딩 | GMS `text-embedding-3-small` | 서버 안 로컬 모델 `intfloat/multilingual-e5-large` |
+| 검색용 임베딩 | GMS `text-embedding-3-small` | 서버 안 로컬 모델 `paraphrase-multilingual-MiniLM-L12-v2` |
 | 키 | `GMS_KEY` | `CLAUDE_API_KEY` (`ANTHROPIC_API_KEY`도 받습니다) |
 | 의존성 | `requirements.txt` | `requirements-deploy.txt` (위에 `langchain-anthropic`, `anthropic`, `fastembed`를 더함) |
 | 색인 위치 | `data/chroma/` | `data/deploy/chroma/` (임베딩 모델이 달라 벡터를 섞지 않습니다) |
@@ -27,12 +27,20 @@ Claude API에는 임베딩 API가 없습니다. 그런데 이 서비스는 질�
 
 | 모델 | 크기 | 정답 청크 순위 (질문 4개) | 113청크 임베딩 시간 |
 |---|---|---|---|
-| `intfloat/multilingual-e5-large` (기본) | 2.2GB, 1024차원 | 1, 1, 1, 1 | 약 83초 |
+| `intfloat/multilingual-e5-large` | 2.2GB, 1024차원 | 1, 1, 1, 1 | 약 83초 |
 | `paraphrase-multilingual-mpnet-base-v2` | 1.0GB, 768차원 | 17, 1, 9, 2 | 약 17초 |
-| `paraphrase-multilingual-MiniLM-L12-v2` | 0.22GB, 384차원 | 12, 2, 1, 1 | 약 11초 |
+| `paraphrase-multilingual-MiniLM-L12-v2` (기본) | 0.22GB, 384차원 | 12, 2, 1, 1 | 약 11초 |
 
 질문: 안드로메다 은하 중심 블랙홀의 이름, 베가가 밝기 기준별로 쓰인 이유, 궁수자리 A*의 발견, 안드로메다와 우리 은하의 충돌 시기 (Windows 노트북 CPU 기준).
-근거를 정확히 찾는 것이 이 서비스의 핵심이라 e5-large를 기본으로 정했습니다. 서버 메모리가 작으면 MiniLM으로 바꿀 수 있습니다 (5절).
+품질만 보면 e5-large가 가장 정확합니다. 그러나 공개 서버인 VM2(Oracle A1 ARM 2코어)에서 청크 하나(1,000자, 배치 16)를 임베딩하는 시간을 재 보니 아래와 같았습니다.
+
+| 모델 | 청크당 시간 (VM2) |
+|---|---|
+| `intfloat/multilingual-e5-large` | 5.3초 |
+| `paraphrase-multilingual-mpnet-base-v2` | 1.6초 |
+| `paraphrase-multilingual-MiniLM-L12-v2` | 0.15초 |
+
+e5-large로는 문서가 긴 천체의 첫 질문이 5분 넘게 걸렸고, 비스트리밍 요청은 Nginx의 120초 제한에 걸려 504로 끝났습니다. 그래서 근거 순위가 다소 떨어지더라도(한 질문은 12위) 공개 서버의 CPU에서는 속도가 필요하다고 판단해 MiniLM을 기본으로 정했습니다. GPU나 빠른 x86 서버에서는 e5-large를 쓰는 편이 좋습니다 (5절).
 
 ---
 
@@ -49,7 +57,7 @@ Cloudflare Pages만으로는 배포할 수 없습니다. Pages는 정적 파일�
 
 | 항목 | 권장 |
 |---|---|
-| 메모리 | 8GB 이상 (e5-large는 첫 색인을 만들 때 4GB를 넘깁니다. 컨테이너 상한은 7GB를 권합니다. MiniLM이면 2GB면 충분합니다) |
+| 메모리 | 기본 모델(MiniLM)이면 2GB면 충분합니다. e5-large로 바꾸면 첫 색인을 만들 때 4GB를 넘기므로 8GB 이상을 두고 컨테이너 상한을 7GB로 권합니다 |
 | 디스크 | 이미지 약 5.1GB (임베딩 모델 2.25GB, 파이썬 패키지 약 1GB) + 색인과 문서 캐시 수백 MB |
 | 네트워크 | 바깥으로 나가는 HTTPS (Claude API, 위키백과, Wikidata, JPL Horizons) |
 
@@ -257,7 +265,7 @@ ghcr.io/bnbong/vasthorizon:sha-1a2b3c4
 |---|---|---|
 | `llm.anthropic_model` | `claude-sonnet-5-5` | 비용을 줄이려면 `claude-haiku-5-5` |
 | `llm.max_tokens` | 2048 | 답이 잘리면 늘립니다 |
-| `llm.local_embedding_model` | `intfloat/multilingual-e5-large` | 메모리가 작으면 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`. 바꾼 뒤 컨테이너를 다시 띄우면 됩니다 (아래) |
+| `llm.local_embedding_model` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | 근거 순위가 더 좋은 `intfloat/multilingual-e5-large`는 GPU나 빠른 x86 서버에서 쓰세요. 바꾼 뒤 컨테이너를 다시 띄우면 됩니다 (아래) |
 | `llm.local_embedding_batch_size` | 16 | 로컬 임베딩 모델에 한 번에 넣는 문서 수입니다. 키우면 색인을 조금 빨리 만들지만 메모리를 더 씁니다. fastembed 기본값인 256으로 두면 e5-large에서 메모리가 6GB 넘게 올라갑니다 (7절). 값을 바꿔도 결과 벡터는 같으므로 색인을 다시 만들 필요는 없습니다 |
 | `limits.per_ip_per_minute` | 6 | 한 사용자가 1분에 보낼 수 있는 질문 수 |
 | `limits.per_ip_per_day` | 60 | 한 사용자의 하루 질문 수 |
