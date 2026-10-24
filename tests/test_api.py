@@ -1,4 +1,4 @@
-"""API 테스트 (F2009 · F2012 · F2013) — 가짜 질의 함수 · 항목으로 앱을 만든다. 외부 호출 없음.
+"""API 테스트 — 가짜 질의 함수 · 항목으로 앱을 만든다. 외부 호출 없음.
 
     python -m unittest discover -s tests -t .
 """
@@ -37,9 +37,13 @@ def evidence(n: int) -> Evidence:
                     section="경계", url="https://ko.wikipedia.org/wiki/x", text="[태양권계면 > 경계]\n" + "본문 " * 200)
 
 
+INDEX_WARNING = "새 문서 색인 실패(임베딩 API 연결 오류) — 이미 색인된 근거로 답합니다."
+
+
 class FakeAsk:
-    def __init__(self, status="cited", error: Exception | None = None):
+    def __init__(self, status="cited", error: Exception | None = None, warnings: list[str] | None = None):
         self.status, self.error = status, error
+        self.warnings = [INDEX_WARNING] if warnings is None else warnings
         self.calls: list[dict] = []
 
     def __call__(self, item, question, history=None, progress=None, search_type=None):
@@ -53,7 +57,7 @@ class FakeAsk:
         return AnswerResult(question=question, answer=f"{question}에 대한 답 [근거 2]", status=self.status,
                             cited=cited, evidences=[evidence(1), evidence(2)],
                             stages={"collect": Stage("ok", 1.234), "answer": Stage("ok", 2.0)},
-                            warnings=["새 문서 색인 실패(임베딩 API 연결 오류) — 이미 색인된 근거로 답합니다."])
+                            warnings=list(self.warnings))
 
 
 def healthy() -> HealthResponse:
@@ -115,7 +119,7 @@ class AskApiTest(ApiTestBase):
         self.assertEqual(self.ask.calls, [])
 
 
-# ── F2009 항목별 대화 기록 ─────────────────────────────────────────────────
+# ── 항목별 대화 기록 ─────────────────────────────────────────────────
 
 class HistoryApiTest(ApiTestBase):
     def test_history_kept_per_item(self):
@@ -141,7 +145,7 @@ class HistoryApiTest(ApiTestBase):
         self.assertEqual(c.get("/api/history/Q48469", params={"session_id": SESSION}).json()["turns"], [])
 
 
-# ── F2012 진행 상태 · 오류 안내 ────────────────────────────────────────────
+# ── 진행 상태 · 오류 안내 ────────────────────────────────────────────
 
 def sse_events(text: str) -> list[tuple[str, dict]]:
     events = []

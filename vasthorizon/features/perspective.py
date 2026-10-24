@@ -1,7 +1,7 @@
-"""관점 전환 (F2010) — 지금의 마음 한 줄을, 우주의 사실과 잇는다.
+"""관점 전환 — 지금의 마음 한 줄을, 우주의 사실과 잇는다.
 
     마음 한 줄 / 감정 버튼
-      ─① 코드: 위기 표현 검사 ───────────→ 위기면 상담 창구 안내 (LLM · 색인 없이)
+      ─① 코드: 위기 표현 검사 ───────────→ 위기면 상담 창구 안내 (LLM · 색인 · 예산 없이, keyword_crisis)
       ─② LLM: 위기 2차 확인 (글이 있을 때) ─→ 위기면 상담 창구 안내 · 확인 못 하면 unchecked
       ─③ 일반 입력 검증: 감정 버튼 값 · 서가 색인 준비 ─→ 여기서부터만 입력 · 준비 오류
       ─④ cosmos_perspective 검색 (주제의 서가 문서로 필터) → 근거 청크
@@ -10,7 +10,7 @@
 위기 확인은 일반 기능의 입력 · 준비 상태와 분리한다 (관점 전환 리뷰 P1).
 감정 버튼 값이 틀리거나 서가 색인이 없어도 위기 확인 ①②는 끝까지 실행된다.
 
-안전 (기획안 13장)
+안전
 | 상황             | 동작                                                                 |
 |------------------|----------------------------------------------------------------------|
 | 모든 응답        | 고정 안내 "VastHorizon은 전문 심리상담을 대신하지 않습니다." + 상담 창구 |
@@ -158,6 +158,15 @@ def crisis_result(text: str, by: str) -> PerspectiveResult:
     return PerspectiveResult(text=text, status="crisis", answer=CRISIS_MESSAGE, crisis_by=by)
 
 
+def keyword_crisis(text: str | None) -> PerspectiveResult | None:
+    """① 코드 위기 검사만 — 색인 · LLM · 예산 없이 바로 판정한다. 위기 표현이면 상담 창구 안내 결과, 아니면 None.
+
+    API(app.py)는 이것을 캐시 · 예산 · 호출 한도보다 먼저 부른다 — 예산을 다 쓴 뒤에도 위기 안내는 막지 않는다.
+    """
+    text = (text or "").strip()[:MAX_TEXT]
+    return crisis_result(text, "keyword") if text and is_crisis(text) else None
+
+
 def unchecked_result(text: str) -> PerspectiveResult:
     return PerspectiveResult(text=text, status="unchecked", answer=UNCHECKED_MESSAGE,
                              warnings=["위기 여부를 확인하지 못해 답변을 만들지 않았습니다."])
@@ -181,8 +190,8 @@ def perspective(text: str | None = None, theme: str | None = None, items: list[d
         raise PerspectiveInputError("마음 한 줄을 적거나 감정 버튼을 골라 주세요.")
 
     # ① 코드 위기 검사 — 다른 어떤 처리보다 먼저 (감정 버튼 검증 · 색인 · LLM 없이)
-    if is_crisis(text):
-        return crisis_result(text, "keyword")
+    if (urgent := keyword_crisis(text)) is not None:
+        return urgent
 
     # ② 2차 위기 확인 — 글이 있으면 서가 준비 상태와 관계없이 먼저. 버튼만 누른 경우 호출 없음
     warnings: list[str] = []
@@ -190,7 +199,8 @@ def perspective(text: str | None = None, theme: str | None = None, items: list[d
     query = text
     if text:
         try:
-            data = invoke_json(json_llm or json_chat_model(), perspective_classify_messages(text, THEMES))
+            data = invoke_json(json_llm or json_chat_model(), perspective_classify_messages(text, THEMES),
+                               purpose="perspective.classify")
             crisis = crisis_signal(data)
         except CHECK_ERRORS:
             return unchecked_result(text)
@@ -229,7 +239,7 @@ def perspective(text: str | None = None, theme: str | None = None, items: list[d
 
     # ⑤ 근거 사실만으로 관점 넓히기 — 질의응답과 같은 인용 검증 · 재생성
     result = generate_validated(default_chat_model(llm), perspective_messages(text or THEMES[theme].label, evidences),
-                                evidences)
+                                evidences, purpose="perspective.answer")
     warnings += result["notes"]                  # 언어 혼입 등 — 답은 내보내되 알린다
     if result["status"] == "rejected":
         warnings.append("답변이 인용 규칙을 두 번 어겨 내보내지 않았습니다.")

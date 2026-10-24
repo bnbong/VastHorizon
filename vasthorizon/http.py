@@ -1,4 +1,4 @@
-"""외부 API 공용 HTTP 클라이언트. (NF2006)
+"""외부 API 공용 HTTP 클라이언트.
 
 - 출처가 요구하는 식별 정보: `앱이름/버전 (연락처) python-requests/x.y` 형식의 User-Agent
 - 호출 간격: 같은 호스트에는 min_interval_sec 이상 간격을 둔다

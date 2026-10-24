@@ -1,4 +1,4 @@
-"""근거 검색 · 병합 (F2006 · F2014).
+"""근거 검색 · 병합.
 
 1. 외부 문서 청크는 그 항목 범위(item_id 필터)에서 질문과의 의미 유사도로 검색한다.
 2. 선택한 항목의 메타데이터 청크는 검색 없이 ID로 가져와 항상 근거 1번으로 넣는다.
@@ -45,15 +45,15 @@ KIND_DOC = "외부 문서"
 
 
 class IndexMissingError(RuntimeError):
-    """색인이 없거나 선택한 항목의 메타데이터 청크가 없을 때. 화면에서 색인 안내로 바꾼다. (F2012)"""
+    """색인이 없거나 선택한 항목의 메타데이터 청크가 없을 때. 화면에서 색인 안내로 바꾼다."""
 
 
 @dataclass
 class Evidence:
     number: int                 # 근거 번호 — 답변의 [근거 N]
     chunk_id: str
-    kind: str                   # 항목 메타데이터 · 외부 문서 (F2007 출처 유형)
-    source_type: str            # 항목 메타데이터 · 위키백과 · NASA (F2016 출처 종류)
+    kind: str                   # 항목 메타데이터 · 외부 문서 (출처 유형)
+    source_type: str            # 항목 메타데이터 · 위키백과 · NASA (출처 종류)
     title: str
     section: str
     url: str                    # 원문 출처

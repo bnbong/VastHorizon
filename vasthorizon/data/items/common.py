@@ -50,10 +50,10 @@ class Distance:
 
 @dataclass
 class Item:
-    id: str                          # Wikidata QID — 색인 청크 ID로도 쓴다 (F2002)
+    id: str                          # Wikidata QID — 색인 청크 ID로도 쓴다
     group: str
     name: str                        # 한국어 이름 (한국어 위키 문서 제목 기준)
-    wiki_title: str                  # 연결된 한국어 위키 문서 (F2004 항목 자체 문서)
+    wiki_title: str                  # 연결된 한국어 위키 문서 (항목 자체 문서)
     name_en: str | None = None
     kind: str | None = None          # 세부 종류 — 행성 · 산개성단 · 우주 탐사선 …
     distance: Distance | None = None

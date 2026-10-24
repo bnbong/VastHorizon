@@ -8,7 +8,7 @@
 | CelesTrak SATCAT  | 인공위성 궤도 · 운용 상태          | 무료 공개 · 출처 표기 |
 | d3-celestial      | 별 · 별자리 좌표                   | BSD-3-Clause         |
 
-원본 응답은 data/raw/에 캐시한다. 다시 실행해도 외부 호출이 반복되지 않는다. (NF2002)
+원본 응답은 data/raw/에 캐시한다. 다시 실행해도 외부 호출이 반복되지 않는다.
 
 캐시 파일마다 `<파일>.meta.json`에 수집 시각(fetched_at, UTC)을 남긴다.
 기록이 없는 예전 캐시는 파일 수정 시각으로 추정하고 estimated=True로 표시한다.

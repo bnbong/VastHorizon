@@ -125,7 +125,7 @@ class StarLookup:
 
     positions: 히파르코스 번호 → (적경, 적위, 등급, 색지수) — sky_catalog.load_star_index
     fetch:     (SPARQL 문자열) → 행 목록. 실패하면 예외 — StarLookupError로 바꿔 올린다 (캐시하지 않음)
-    거리를 확인할 수 없거나 엔티티가 모호한 별은 None — 내 세상에 담을 수 없다 (거리를 지어내지 않는다).
+    거리를 확인할 수 없거나 엔티티가 모호한 별은 None — 내 세계에 담을 수 없다 (거리를 지어내지 않는다).
     """
 
     def __init__(self, figure_index: dict, positions: dict, cache_dir: Path, fetch: Callable, ref_year: int):

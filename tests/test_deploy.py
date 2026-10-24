@@ -36,7 +36,7 @@ def deploy_settings(**changes):
 
 class ConfigTest(unittest.TestCase):
     def test_submission_config_unchanged(self):
-        # 과제 제출 환경은 GMS 그대로, 한도 · CORS 없음
+        # 기본 설정(config.toml)은 OpenAI 호환(gms) 제공자 그대로, 한도 · CORS 없음
         s = get_settings()
         self.assertEqual((s.llm.provider, s.llm.embedding_provider), ("gms", "gms"))
         self.assertFalse(s.limits.enabled)
@@ -46,7 +46,7 @@ class ConfigTest(unittest.TestCase):
         s = deploy_settings()
         self.assertEqual((s.llm.provider, s.llm.embedding_provider), ("anthropic", "local"))
         self.assertTrue(s.limits.enabled)
-        self.assertIn("deploy", str(s.paths.chroma_dir))            # GMS 색인과 다른 폴더 (벡터를 섞지 않는다)
+        self.assertIn("deploy", str(s.paths.chroma_dir))            # config.toml 색인과 다른 폴더 (벡터를 섞지 않는다)
         self.assertNotEqual(s.paths.chroma_dir, get_settings().paths.chroma_dir)
 
     def test_env_overrides(self):
@@ -96,7 +96,7 @@ class KeyTest(unittest.TestCase):
 HAS_DEPLOY = all(importlib.util.find_spec(m) for m in ("anthropic", "langchain_anthropic", "fastembed"))
 
 
-@unittest.skipUnless(HAS_DEPLOY, "배포 의존성(requirements-deploy.txt)이 없는 과제 환경")
+@unittest.skipUnless(HAS_DEPLOY, "배포 의존성(requirements-deploy.txt)이 없는 환경")
 class ClaudeModelTest(unittest.TestCase):
     def test_chat_model_is_claude_without_openai_options(self):
         from vasthorizon import llm
@@ -265,6 +265,20 @@ class AiBudgetTest(unittest.TestCase):
         self.assertEqual(codes, [200] * 3)                               # 이름만 있는 질문 — LLM을 부르지 않는다
         self.assertEqual([self.c.post("/api/explore", json={"query": "보이저 1호보다 먼 탐사선"}).status_code
                           for _ in range(3)], [200, 200, 429])           # 조건어가 있으면 예산을 쓴다
+
+    def test_rule_complete_explore_does_not_spend_budget(self):
+        # 리뷰 지적: 동의어 표로 완전히 해석돼 LLM을 부르지 않는 조건 탐색도 예산 · 한도를 썼다
+        from vasthorizon.features.explore import ExploreResult
+        calls = []
+        self.c.app.state.services.explore = lambda q: calls.append(q) or ExploreResult(
+            query=q, applied=[], cards=[], candidates=0, status="no_match")
+        queries = ("고리가 있는 행성", "탐사선이 방문하지 않은 행성", "가장 가까운 별", "맨눈으로 보이는 은하", "한국에서 보이는 별자리")
+        codes = [self.c.post("/api/explore", json={"query": q}).status_code for q in queries * 2]
+        self.assertEqual(codes, [200] * len(queries) * 2)                # 1분 한도(2회)를 넘겨도 된다
+        self.assertEqual(len(calls), len(queries) * 2)                   # 결과는 캐시하지 않고 매번 데이터에서
+        self.assertEqual([self.c.post("/api/ask", json=ask_body()).status_code for _ in range(3)], [200, 200, 429])
+        self.assertEqual(self.c.post("/api/explore", json={"query": "고리가 있는 행성"}).status_code, 200)   # 한도를 다 쓴 뒤에도
+        self.assertEqual(self.c.post("/api/explore", json={"query": "신비로운 행성"}).status_code, 429)      # LLM 경로는 막힌다
 
     def test_global_limit_across_users(self):
         codes = []
@@ -444,6 +458,31 @@ class DeployInitTest(unittest.TestCase):
         lib_main.assert_not_called()
         self.assertIn(f"항목 색인 있음 ({self.deploy_init.catalog_size()}건)", out)
         self.assertNotIn("불완전", out)
+        self.assertNotIn("catalog_hash", out)                             # 카탈로그 해시가 같으면 다시 만들지 않는다
+        self.assertEqual(chroma.recorded_catalog_hash(self.s.collections.items, self.db),
+                         self.deploy_init.expected_catalog_hash())
+
+    def test_catalog_change_rebuilds_items_index(self):
+        # 리뷰 지적: 건수 · 모델만 비교해 새 메타데이터(고리 · 블랙홀 등)가 들어간 카탈로그로 바뀌어도 기존 색인을 그대로 뒀다
+        from scripts import index_items, index_perspective
+        items = self.s.collections.items
+        expected = self.deploy_init.expected_catalog_hash()
+        self.assertTrue(expected)
+        for stored in ("0123456789abcdef", None):                          # 다른 해시 · 해시가 없는 예전 색인
+            col = self.db.get_collection(items)
+            meta = {k: v for k, v in col.metadata.items() if k != chroma.CATALOG_HASH_KEY}
+            col.modify(metadata={**meta, chroma.CATALOG_HASH_KEY: stored} if stored else meta)
+            self.assertEqual(chroma.recorded_catalog_hash(items, self.db), stored)
+            with mock.patch.object(index_items, "main", wraps=index_items.main) as items_main, \
+                 mock.patch.object(index_perspective, "main") as lib_main:
+                code, out = self.run_init()
+            self.assertEqual(code, 0, out)
+            items_main.assert_called_once()
+            self.assertEqual(items_main.call_args.args[0], ["--rebuild"])  # 임시 컬렉션에서 만들고 교체
+            lib_main.assert_not_called()
+            self.assertIn("catalog_hash", out)
+            self.assertEqual(chroma.recorded_catalog_hash(items, self.db), expected)
+            self.assertEqual(chroma.recorded_count(items, self.db), self.deploy_init.catalog_size())
 
     def test_same_model_is_noop_and_empty_docs_is_fine(self):
         with mock.patch("sys.stdout"):

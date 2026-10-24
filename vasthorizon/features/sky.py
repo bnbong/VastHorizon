@@ -1,4 +1,4 @@
-"""오늘 밤 나의 하늘 (F2010) — 내가 있는 곳 · 시각의 하늘에 떠 있는 별자리와 행성.
+"""오늘 밤 나의 하늘 — 내가 있는 곳 · 시각의 하늘에 떠 있는 별자리와 행성.
 
 계산 (외부 호출 없음)
 1. 시각 → 율리우스일(JD) → 그리니치 항성시(GMST) → 지방 항성시(LST = GMST + 경도)
@@ -243,7 +243,7 @@ def sky_guide(view: SkyView, items: list[dict], ref_year: int, llm: BaseChatMode
         if obj.item_id in by_id:
             evidences.append(catalog_evidence(by_id[obj.item_id], ref_year, number=len(evidences) + 1))
 
-    result = generate_validated(default_chat_model(llm), sky_messages(view.place(), evidences), evidences)
+    result = generate_validated(default_chat_model(llm), sky_messages(view.place(), evidences), evidences, purpose="sky")
     warnings = list(view.notes)
     warnings += result["notes"]                  # 언어 혼입 등 — 답은 내보내되 알린다
     if result["status"] == "rejected":

@@ -24,6 +24,9 @@ LICENSES = {
     "JPL Horizons": "미국 정부 저작물 (NASA/JPL, 공개)",
     "CelesTrak SATCAT": "무료 공개 데이터 (출처 표기)",
     "d3-celestial": "BSD-3-Clause (© 2015 Olaf Frohn)",
+    # 보강 데이터(vasthorizon/data/enrich.json)의 출처 — 블랙홀 · 고리 · 위성 수 · 탐사선 방문
+    "영어 위키백과": "CC BY-SA 4.0",
+    "NASA NSSDCA": "미국 정부 저작물 (NASA, 공개)",
 }
 
 

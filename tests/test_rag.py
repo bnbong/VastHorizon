@@ -1,4 +1,4 @@
-"""근거 검색 · 병합 · LangGraph · 답변 검증 · 장애 처리 테스트 (F2006 · F2007 · F2008 · F2014).
+"""근거 검색 · 병합 · LangGraph · 답변 검증 · 장애 처리 테스트.
 
 가짜 임베딩 · 가짜 LLM · 메모리 전용 Chroma를 쓴다. 외부 호출 · 토큰 사용 없음.
 
@@ -105,7 +105,7 @@ class IsolatedRagTest(unittest.TestCase):
         return retrieve_evidence(VOYAGER, question, embedding=kw.pop("embedding", self.emb), db=self.db, **kw)
 
 
-# ── F2006 근거 검색 · 병합 ─────────────────────────────────────────────────
+# ── 근거 검색 · 병합 ─────────────────────────────────────────────────
 
 class RetrievalTest(IsolatedRagTest):
     def test_item_metadata_always_first(self):
@@ -194,7 +194,7 @@ class RetrievalTest(IsolatedRagTest):
             self.retrieve(embedding=FakeEmbedding(model="fake-b"))
 
 
-# ── F2008 인용 해석 · 답변 검증 ─────────────────────────────────────────────
+# ── 인용 해석 · 답변 검증 ─────────────────────────────────────────────
 
 class CitationTest(unittest.TestCase):
     def test_cited_kept_with_original_numbers(self):
@@ -237,7 +237,7 @@ class CitationTest(unittest.TestCase):
         self.assertFalse(is_not_found("보이저 1호는 2012년에 태양권계면을 지났습니다 [근거 2]."))
 
 
-# ── F2007 LangGraph · 답변 생성 · 재생성 정책 ─────────────────────────────────
+# ── LangGraph · 답변 생성 · 재생성 정책 ─────────────────────────────────
 
 class GraphTest(IsolatedRagTest):
     def run_graph(self, *replies):

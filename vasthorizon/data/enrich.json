@@ -1,0 +1,583 @@
+{
+ "note": "카탈로그 수집(scripts/collect_items.py) 뒤에 덧붙이는 사실 데이터. 수집 · 색인 때 vasthorizon/data/enrich.py가 합친다. 값마다 출처를 sources에 남긴다. 위성 수는 NASA 행성 자료표의 값이며 새 위성이 발견되면 달라질 수 있다. '서울에서_관측'은 여기 적지 않고 적위로 계산한다 (enrich.py).",
+ "items": {
+  "Q2469": {
+   "name": "안드로메다 은하",
+   "attrs": {
+    "블랙홀": "M31*",
+    "블랙홀 질량": "약 1억 4,000만 태양질량"
+   },
+   "sources": [
+    {
+     "name": "한국어 위키백과",
+     "url": "https://ko.wikipedia.org/w/index.php?oldid=42684715",
+     "used_for": "블랙홀 (중심 초대질량 블랙홀 M31*, 질량)"
+    }
+   ],
+   "quote": "은하의 핵은 중심부에 있는 초대질량 블랙홀 M31*을 중심으로 하고 있으며, 질량은 태양 질량의 약 1억 4,000만 배로 추산되는데"
+  },
+  "Q13720": {
+   "name": "메시에 32",
+   "attrs": {
+    "블랙홀": "초대질량 블랙홀",
+    "블랙홀 질량": "약 250만 태양질량"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Messier_32",
+     "used_for": "블랙홀 (중심 초대질량 블랙홀, 질량)"
+    }
+   ]
+  },
+  "Q13976": {
+   "name": "메시에 60",
+   "attrs": {
+    "블랙홀": "초대질량 블랙홀",
+    "블랙홀 질량": "약 45억 태양질량"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Messier_60",
+     "used_for": "블랙홀 (중심 초대질량 블랙홀, 질량)"
+    }
+   ]
+  },
+  "Q81102410": {
+   "name": "보데 은하",
+   "attrs": {
+    "블랙홀": "초대질량 블랙홀",
+    "블랙홀 질량": "약 7,000만 태양질량"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Messier_81",
+     "used_for": "블랙홀 (중심 초대질량 블랙홀, 질량)"
+    }
+   ]
+  },
+  "Q92258118": {
+   "name": "메시에 84",
+   "attrs": {
+    "블랙홀": "초대질량 블랙홀",
+    "블랙홀 질량": "약 18억 태양질량"
+   },
+   "sources": [
+    {
+     "name": "한국어 위키백과",
+     "url": "https://ko.wikipedia.org/w/index.php?oldid=41743653",
+     "used_for": "블랙홀 (중심 초대질량 블랙홀, 질량)"
+    }
+   ],
+   "quote": "여기서 은하핵에 있는 초대질량 블랙홀의 질량을 계산하면 1.8 × 109M☉이다."
+  },
+  "Q14041": {
+   "name": "처녀자리 A 은하",
+   "attrs": {
+    "블랙홀": "M87*",
+    "블랙홀 질량": "약 65억 태양질량"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Messier_87",
+     "used_for": "블랙홀 (M87*, 사건의 지평선 망원경 2019년 관측 질량)"
+    },
+    {
+     "name": "한국어 위키백과",
+     "url": "https://ko.wikipedia.org/w/index.php?oldid=42571719",
+     "used_for": "블랙홀 (근거 문장)"
+    },
+    {
+     "name": "Wikidata",
+     "url": "https://www.wikidata.org/wiki/Q3841190",
+     "used_for": "블랙홀 (M87* 항목)"
+    }
+   ]
+  },
+  "Q91461627": {
+   "name": "솜브레로 은하",
+   "attrs": {
+    "블랙홀": "초대질량 블랙홀",
+    "블랙홀 질량": "약 10억 태양질량"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Sombrero_Galaxy",
+     "used_for": "블랙홀 (중심 초대질량 블랙홀, 질량)"
+    },
+    {
+     "name": "한국어 위키백과",
+     "url": "https://ko.wikipedia.org/w/index.php?oldid=42158573",
+     "used_for": "블랙홀 (근거 문장)"
+    }
+   ],
+   "quote": "하지만 핵에서 초대질량블랙홀이 발견되었기 때문에"
+  },
+  "Q4658": {
+   "name": "메시에 106",
+   "attrs": {
+    "블랙홀": "초대질량 블랙홀",
+    "블랙홀 질량": "약 4,000만 태양질량"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Messier_106",
+     "used_for": "블랙홀 (중심 초대질량 블랙홀, 물 메이저로 잰 질량)"
+    }
+   ]
+  },
+  "Q308": {
+   "name": "수성",
+   "attrs": {
+    "고리": false,
+    "위성 수": 0,
+    "탐사선 방문": "마리너 10호 (1974~1975 근접 비행), 메신저 (2011~2015 궤도 탐사)"
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/mercuryfact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    },
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/MESSENGER",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q313": {
+   "name": "금성",
+   "attrs": {
+    "고리": false,
+    "위성 수": 0,
+    "탐사선 방문": "베네라 착륙선 (1970~1982), 마젤란 (1990~1994 궤도 탐사)"
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/venusfact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    },
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Magellan_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q2": {
+   "name": "지구",
+   "attrs": {
+    "고리": false,
+    "위성 수": 1
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    }
+   ]
+  },
+  "Q111": {
+   "name": "화성",
+   "attrs": {
+    "고리": false,
+    "위성 수": 2,
+    "탐사선 방문": "바이킹 1·2호 (1976 착륙), 큐리오시티 (2012년부터), 퍼서비어런스 (2021년부터)"
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    },
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Exploration_of_Mars",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q319": {
+   "name": "목성",
+   "attrs": {
+    "고리": true,
+    "위성 수": 95,
+    "탐사선 방문": "보이저 1·2호 (1979 근접 비행), 갈릴레오 (1995~2003 궤도 탐사), 주노 (2016년부터 궤도 탐사)"
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/jupiterfact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    },
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Juno_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q193": {
+   "name": "토성",
+   "attrs": {
+    "고리": true,
+    "위성 수": 146,
+    "탐사선 방문": "보이저 1·2호 (1980~1981 근접 비행), 카시니-하위헌스 (2004~2017 궤도 탐사)"
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/saturnfact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    },
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Cassini%E2%80%93Huygens",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q324": {
+   "name": "천왕성",
+   "attrs": {
+    "고리": true,
+    "위성 수": 28,
+    "탐사선 방문": "보이저 2호 (1986 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/uranusfact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    },
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Voyager_2",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q332": {
+   "name": "해왕성",
+   "attrs": {
+    "고리": true,
+    "위성 수": 16,
+    "탐사선 방문": "보이저 2호 (1989 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/neptunefact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    },
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Voyager_2",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q339": {
+   "name": "명왕성",
+   "attrs": {
+    "고리": false,
+    "위성 수": 5,
+    "탐사선 방문": "뉴허라이즌스 (2015 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "NASA NSSDCA",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/plutofact.html",
+     "used_for": "고리 · 위성 수 (NASA 행성 자료표 Ring System? · Number of Moons)"
+    },
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/New_Horizons",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q601": {
+   "name": "하우메아",
+   "attrs": {
+    "고리": true
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Haumea",
+     "used_for": "고리 (2017년 항성 엄폐 관측으로 발견)"
+    }
+   ]
+  },
+  "Q525": {
+   "name": "태양",
+   "attrs": {
+    "탐사선 방문": "파커 태양 탐사선 (2018년 발사, 코로나 근접 통과)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Parker_Solar_Probe",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q405": {
+   "name": "달",
+   "attrs": {
+    "탐사선 방문": "아폴로 계획 (1969~1972 유인 착륙), 다누리 (2022년부터 궤도 탐사)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Exploration_of_the_Moon",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q7547": {
+   "name": "포보스",
+   "attrs": {
+    "탐사선 방문": "바이킹 1호 · 마스 익스프레스 (근접 관측)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Phobos_(moon)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q7548": {
+   "name": "데이모스",
+   "attrs": {
+    "탐사선 방문": "바이킹 2호 (1977 근접 관측)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Deimos_(moon)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q3123": {
+   "name": "이오",
+   "attrs": {
+    "탐사선 방문": "갈릴레오 (1995~2003 근접 비행), 주노 (2023~2024 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Galileo_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q3143": {
+   "name": "유로파",
+   "attrs": {
+    "탐사선 방문": "갈릴레오 (1995~2003 근접 비행), 주노 (2022 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Galileo_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q3169": {
+   "name": "가니메데",
+   "attrs": {
+    "탐사선 방문": "갈릴레오 (1995~2003 근접 비행), 주노 (2021 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Galileo_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q3134": {
+   "name": "칼리스토",
+   "attrs": {
+    "탐사선 방문": "보이저 1·2호 (1979 근접 비행), 갈릴레오 (1995~2003 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Galileo_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q2565": {
+   "name": "타이탄",
+   "attrs": {
+    "탐사선 방문": "카시니 (2004~2017 근접 비행), 하위헌스 (2005 착륙)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Cassini%E2%80%93Huygens",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q3303": {
+   "name": "엔셀라두스",
+   "attrs": {
+    "탐사선 방문": "카시니 (2005~2015 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Cassini%E2%80%93Huygens",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q3359": {
+   "name": "트리톤",
+   "attrs": {
+    "탐사선 방문": "보이저 2호 (1989 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Voyager_2",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q6604": {
+   "name": "카론",
+   "attrs": {
+    "탐사선 방문": "뉴허라이즌스 (2015 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/New_Horizons",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q596": {
+   "name": "세레스",
+   "attrs": {
+    "탐사선 방문": "돈 (2015~2018 궤도 탐사)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Dawn_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q3030": {
+   "name": "베스타",
+   "attrs": {
+    "탐사선 방문": "돈 (2011~2012 궤도 탐사)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Dawn_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q11558": {
+   "name": "베누",
+   "attrs": {
+    "탐사선 방문": "OSIRIS-REx (2018~2021 궤도 탐사 · 표본 채취)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/OSIRIS-REx",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q1385178": {
+   "name": "류구",
+   "attrs": {
+    "탐사선 방문": "하야부사2 (2018~2019 착륙 · 표본 채취)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Hayabusa2",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q18325885": {
+   "name": "아로코트",
+   "attrs": {
+    "탐사선 방문": "뉴허라이즌스 (2019 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/New_Horizons",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q23054": {
+   "name": "핼리 혜성",
+   "attrs": {
+    "탐사선 방문": "지오토 · 베가 1·2호 · 스이세이 · 사키가케 (1986 근접 비행)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Giotto_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q844672": {
+   "name": "추류모프-게라시멘코 혜성",
+   "attrs": {
+    "탐사선 방문": "로제타 (2014~2016 궤도 탐사), 필레 (2014 착륙)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/Rosetta_(spacecraft)",
+     "used_for": "탐사선 방문"
+    }
+   ]
+  },
+  "Q118931": {
+   "name": "아포피스",
+   "attrs": {
+    "탐사선 방문": null,
+    "탐사 계획": "OSIRIS-APEX (2029년 도착 예정)"
+   },
+   "sources": [
+    {
+     "name": "영어 위키백과",
+     "url": "https://en.wikipedia.org/wiki/OSIRIS-REx",
+     "used_for": "탐사 계획 (OSIRIS-APEX, 아직 방문 전)"
+    }
+   ]
+  }
+ }
+}

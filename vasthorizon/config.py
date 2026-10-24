@@ -4,10 +4,10 @@
 설정 파일 경로는 VH_CONFIG 환경변수로 바꿀 수 있다. (청크 · Top-k 비교 실험용 · 배포용 config.deploy.toml)
 
 LLM 제공자
-  - gms (기본, 과제 제출 환경): SSAFY GMS의 GPT 채팅 + text-embedding-3-small, 키는 GMS_KEY
+  - gms (config.toml 기본값): OpenAI 호환 엔드포인트의 채팅 + 임베딩, 키는 GMS_KEY
   - anthropic (배포): Claude 채팅, 키는 CLAUDE_API_KEY (ANTHROPIC_API_KEY도 받는다)
 임베딩 제공자
-  - gms: GMS 임베딩 API
+  - gms: OpenAI 호환 임베딩 API
   - local: 서버 안에서 fastembed(ONNX)로 다국어 모델을 돌린다. 키 · 호출 비용 없음 (Claude에는 임베딩 API가 없다)
 """
 
@@ -26,6 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 PROVIDERS = ("gms", "anthropic")
 EMBEDDING_PROVIDERS = ("gms", "local")
+EFFORTS = ("", "low", "medium", "high", "xhigh", "max")   # Claude output_config.effort — 빈 값이면 모델 기본값
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,10 @@ class LLMConfig:
     embedding_model: str
     timeout_sec: int
     provider: str = "gms"
-    anthropic_model: str = "claude-sonnet-5-5"
+    anthropic_model: str = "claude-sonnet-5-5"       # 답변 모델 — 사용자에게 보이는 긴 글 (질의응답 · 편지 · 마음 한 줄 · 펼치기 · 하늘 안내)
+    anthropic_fast_model: str = "claude-haiku-5-5"   # 구조화 모델 — 짧은 JSON (검색어 · 선별 · 필터 · 분류). 비우면 답변 모델을 쓴다
+    answer_effort: str = "medium"                    # output_config.effort (low · medium · high · xhigh · max). 비우면 모델 기본값
+    fast_effort: str = "low"
     max_tokens: int = 2048
     embedding_provider: str = "gms"
     local_embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
@@ -44,12 +48,47 @@ class LLMConfig:
 
 @dataclass(frozen=True)
 class LimitsConfig:
-    """공개 배포에서 개인 API 키를 지키는 한도 — LLM을 부르는 요청만 센다. 기본은 꺼짐 (과제 환경)."""
+    """공개 배포에서 개인 API 키를 지키는 한도 — LLM을 부르는 요청만 센다. 기본은 꺼짐 (config.toml)."""
     enabled: bool = False
     per_ip_per_minute: int = 6
     per_ip_per_day: int = 60
     global_per_day: int = 1500
+    daily_cost_usd: float = 0.0     # 하루(한국 시각) 추정 비용 상한 — 넘으면 LLM 요청에 429. 0이면 끈다 (usage.py 기록 기준)
     # 사용자 주소는 Uvicorn이 신뢰 프록시(환경변수 FORWARDED_ALLOW_IPS, IP · CIDR)로 확정한 값만 쓴다 (api/limits.py)
+
+
+@dataclass(frozen=True)
+class ModelPrice:
+    """모델 가격 ($/100만 토큰). 캐시 쓰기 · 읽기를 비우면 입력 단가의 1.25배 · 0.1배로 계산한다."""
+    input: float
+    output: float
+    cache_read: float | None = None
+    cache_write: float | None = None
+
+
+@dataclass(frozen=True)
+class UsageConfig:
+    """LLM 호출 기록 (usage.py) — 호출마다 JSONL 한 줄. 프롬프트 · 응답 본문은 남기지 않는다."""
+    enabled: bool = True
+    log_path: Path | None = None                     # 없으면 cache_dir/usage.jsonl
+    prices: tuple[tuple[str, ModelPrice], ...] = ()  # 모델 이름 → 가격. 표에 없는 모델은 비용 0으로 센다
+
+    def price(self, model: str) -> ModelPrice | None:
+        return dict(self.prices).get(model)
+
+
+@dataclass(frozen=True)
+class CacheConfig:
+    """서버 응답 캐시 (cache.py) — 같은 입력이면 LLM을 부르지 않고 저장한 응답을 돌려준다."""
+    enabled: bool = False
+    dir: Path | None = None                          # 없으면 cache_dir/responses
+    memory_items: int = 512                          # 메모리 LRU 크기 (디스크는 크기 제한 없이 TTL로 만료)
+    explore_days: float = 7
+    letter_days: float = 7
+    unfold_days: float = 30
+    perspective_days: float = 1
+    ask_days: float = 7
+    ask_live_days: float = 1                         # 근거에 '오늘 기준' 값(실시간 위치 · 거리)이 들어간 답변
 
 
 @dataclass(frozen=True)
@@ -116,6 +155,8 @@ class Settings:
     config_path: Path
     limits: LimitsConfig = LimitsConfig()
     server: ServerConfig = ServerConfig()
+    usage: UsageConfig = UsageConfig()
+    cache: CacheConfig = CacheConfig()
 
 
 def _resolve(path: str) -> Path:
@@ -143,6 +184,16 @@ def get_settings() -> Settings:
         raise ValueError(f"llm.provider는 {' 또는 '.join(PROVIDERS)}여야 합니다: {llm.provider}")
     if llm.embedding_provider not in EMBEDDING_PROVIDERS:
         raise ValueError(f"llm.embedding_provider는 {' 또는 '.join(EMBEDDING_PROVIDERS)}여야 합니다: {llm.embedding_provider}")
+    for name in ("answer_effort", "fast_effort"):
+        if getattr(llm, name) not in EFFORTS:
+            raise ValueError(f"llm.{name}는 {' · '.join(e or '(빈 값)' for e in EFFORTS)} 중 하나여야 합니다: {getattr(llm, name)}")
+    usage_raw = dict(raw.get("usage", {}))
+    prices = tuple(sorted((name, ModelPrice(**p)) for name, p in usage_raw.pop("prices", {}).items()))
+    if usage_raw.get("log_path"):
+        usage_raw["log_path"] = _resolve(usage_raw["log_path"])
+    cache_raw = dict(raw.get("cache", {}))
+    if cache_raw.get("dir"):
+        cache_raw["dir"] = _resolve(cache_raw["dir"])
     server = raw.get("server", {})
     cors = os.environ.get("VH_CORS_ORIGINS")          # 배포 환경에서 파일을 고치지 않고 바꿀 수 있게
     origins = tuple(o.strip() for o in (cors.split(",") if cors is not None else server.get("cors_origins", [])) if o.strip())
@@ -158,11 +209,13 @@ def get_settings() -> Settings:
         config_path=config_path,
         limits=LimitsConfig(**raw.get("limits", {})),
         server=ServerConfig(cors_origins=origins),
+        usage=UsageConfig(**usage_raw, prices=prices),
+        cache=CacheConfig(**cache_raw),
     )
 
 
 def get_gms_key() -> str | None:
-    """GMS 키. 없으면 None — 호출하는 쪽에서 안내 메시지를 띄운다. (F2012)"""
+    """GMS 키. 없으면 None — 호출하는 쪽에서 안내 메시지를 띄운다."""
     load_dotenv(PROJECT_ROOT / ".env")
     key = os.environ.get("GMS_KEY", "").strip()
     return key or None
@@ -186,7 +239,7 @@ def get_llm_key() -> str | None:
 
 
 def get_contact() -> str | None:
-    """외부 API User-Agent에 넣을 연락처. (NF2006)"""
+    """외부 API User-Agent에 넣을 연락처."""
     load_dotenv(PROJECT_ROOT / ".env")
     contact = os.environ.get("WIKI_CONTACT", "").strip()
     return contact or None

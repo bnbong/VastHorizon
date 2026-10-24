@@ -1,9 +1,9 @@
 """실행 환경 점검 — 설정 · 키 · 외부 API 연결을 한 번에 확인한다.
 
     python -m scripts.check_env            # 설정 · 외부 API만 확인 (토큰 사용 없음)
-    python -m scripts.check_env --llm      # GMS 채팅 · 임베딩도 1회씩 호출
+    python -m scripts.check_env --llm      # 채팅 · 임베딩도 1회씩 호출
 
-키 값은 출력하지 않는다. (NF2004)
+키 값은 출력하지 않는다.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ EXTERNAL = {
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--llm", action="store_true", help="GMS 채팅 · 임베딩을 실제로 1회 호출한다")
+    parser.add_argument("--llm", action="store_true", help="채팅 · 임베딩을 실제로 1회 호출한다")
     args = parser.parse_args()
     failed = False
 

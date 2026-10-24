@@ -10,6 +10,8 @@
   3. 문서 색인(cosmos_docs) — 처음에는 비어 있고, 질문할 때 그 천체의 문서를 모아 색인한다.
      임베딩 모델이 바뀌면 이미 모은 문서를 캐시에서 꺼내 새 모델로 다시 색인한다 (문서를 다시 받지 않는다)
 색인마다 만들 때의 임베딩 모델을 기록해 두므로(store/chroma.py), 지금 설정과 다르면 알아채고 다시 만든다.
+항목 색인에는 색인한 카탈로그 내용의 해시(catalog_hash — data/items.json + enrich.json 보강 + 색인 텍스트 생성 코드의 결과)도
+기록한다. 건수 · 모델이 같아도 해시가 다르거나 없으면(예전 색인) 항목 색인을 다시 만든다 — 새 메타데이터(고리 · 블랙홀 등)가 반영되게.
 항목 · 서가 색인은 끝까지 성공했을 때만 완성 표식(index_complete · index_count)을 남긴다. 건수가 있어도 표식이 없거나
 기록된 건수 · 카탈로그 건수와 다르면 도중에 끊긴 색인(메모리 부족으로 죽은 첫 실행 등)으로 보고 다시 만든다.
 다시 만들기는 임시 컬렉션에서 끝까지 만든 뒤 바꿔 넣는다 — 실패하면 기존 색인이 남고, 이 스크립트는 1로 끝난다.
@@ -64,6 +66,25 @@ def catalog_size() -> int | None:
         return None
 
 
+def expected_catalog_hash() -> str | None:
+    """지금 카탈로그(보강 포함)로 색인하면 남을 catalog_hash. 읽을 수 없으면 None (그때는 비교하지 않는다)."""
+    from vasthorizon.data.catalog import load_catalog
+    from vasthorizon.data.enrich import enrich_items
+    from vasthorizon.store.item_index import catalog_hash
+    try:
+        catalog = load_catalog()
+        return catalog_hash(enrich_items(catalog.get("items", [])), int(catalog["meta"]["collected_at"][:4]))
+    except (FileNotFoundError, ValueError, KeyError):
+        return None
+
+
+def catalog_outdated(name: str, db=None, expected: str | None = None) -> bool:
+    """비어 있지 않은 항목 색인의 catalog_hash가 지금 카탈로그와 다른가 (해시가 없는 예전 색인도 다르다고 본다)."""
+    if expected is None or chroma.collection_count(name, db) == 0:
+        return False
+    return chroma.recorded_catalog_hash(name, db) != expected
+
+
 def main(argv: list[str] | None = None, embedding=None, db=None, doc_collector=None, perspective_collector=None) -> int:
     """embedding · db · 수집기는 테스트에서 가짜 임베딩 · 격리된 Chroma · 캐시를 넣기 위한 인자다."""
     parser = argparse.ArgumentParser()
@@ -96,6 +117,10 @@ def main(argv: list[str] | None = None, embedding=None, db=None, doc_collector=N
         print(f"임베딩 모델이 바뀐 색인: {', '.join(stale)} — 지금 모델({chroma.embedding_identity(embedding)['embedding_model']})로 다시 만듭니다.")
 
     expected = {items: catalog_size(), perspective: None}
+    catalog = expected_catalog_hash()
+    if items not in rebuild and catalog_outdated(items, db, catalog):
+        rebuild.add(items)
+        print("항목 카탈로그 내용이 색인과 다릅니다 (catalog_hash) — 항목 색인을 다시 만듭니다.")
 
     def incomplete() -> dict[str, str]:
         return {n: r for n, e in expected.items() if (r := incomplete_reason(n, db, e))}
@@ -112,7 +137,7 @@ def main(argv: list[str] | None = None, embedding=None, db=None, doc_collector=N
             print(f"{label}을(를) 만듭니다…")
             code = fn([])
         elif name in rebuild:
-            print(f"{label}을(를) 새 모델로 다시 만듭니다… (기존 {count}건은 끝날 때까지 그대로)")
+            print(f"{label}을(를) 다시 만듭니다… (기존 {count}건은 끝날 때까지 그대로)")
             code = fn(["--rebuild"])
         elif name in partial:
             print(f"{label}이 불완전합니다 ({partial[name]}) — 다시 만듭니다…")
@@ -127,7 +152,8 @@ def main(argv: list[str] | None = None, embedding=None, db=None, doc_collector=N
     run("관점 전환 서가 색인", perspective, lambda a: index_perspective.main(a, embedding=embedding, db=db, collector=perspective_collector))
     run("문서 색인", docs, lambda a: index_docs.main(a, embedding=embedding, db=db, collector=doc_collector))
 
-    left = list(dict.fromkeys(stale_collections([items, perspective, docs], embedding, db) + list(incomplete())))
+    left = list(dict.fromkeys(stale_collections([items, perspective, docs], embedding, db) + list(incomplete())
+                              + ([items] if catalog_outdated(items, db, catalog) else [])))
     if failed or left:
         print(f"[FAIL] 색인 준비 실패: {', '.join(failed or left)} — 기존 색인을 그대로 두고 서버를 띄우지 않습니다.")
         return 1

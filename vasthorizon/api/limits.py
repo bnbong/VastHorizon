@@ -2,12 +2,12 @@
 
   - 사용자마다 1분 · 하루 한도, 서버 전체 하루 한도. 넘으면 429와 다시 시도할 수 있는 시각 안내
   - 무엇을 세는가: 질문 · 조건 탐색 · 빛의 편지 · 마음 한 줄 · 별자리 설명 · 하늘 안내(guide=true).
-    하늘 계산(guide=false) · 조회(GET)는 세지 않는다 — 예산을 다 써도 하늘과 내 세상 보기는 그대로 (app.py의 spend_ai)
+    하늘 계산(guide=false) · 조회(GET)는 세지 않는다 — 예산을 다 써도 하늘과 내 세계 보기는 그대로 (app.py의 spend_ai)
   - 사용자 주소: 전달 헤더(X-Forwarded-For · CF-Connecting-IP)를 여기서 직접 읽지 않는다.
     Uvicorn이 신뢰할 프록시(FORWARDED_ALLOW_IPS, IP · CIDR)에서 온 연결일 때만 X-Forwarded-For를 오른쪽부터 읽어
     신뢰하지 않는 첫 주소를 request.client로 정한다. 그 값만 쓴다 — 사용자가 맨 앞에 끼워 넣은 주소는 고를 수 없다
   - 메모리에만 둔다 (서버 한 대 기준). 다시 시작하면 처음부터 센다
-과제 환경(config.toml)에서는 꺼져 있다. 배포 설정(config.deploy.toml)에서 켠다.
+기본 설정(config.toml)에서는 꺼져 있다. 배포 설정(config.deploy.toml)에서 켠다.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ DAY = 86400.0
 class Verdict:
     allowed: bool
     retry_after: int = 0       # 초
-    reason: str = ""           # "minute" | "day" | "global"
+    reason: str = ""           # "minute" | "day" | "global" | "budget" (하루 예산 — app.py의 spend_ai)
 
 
 class RateLimitedError(RuntimeError):
@@ -79,4 +79,6 @@ def message(v: Verdict) -> str:
         return "질문이 너무 빠르게 이어지고 있습니다. 1분쯤 뒤에 다시 물어봐 주세요."
     if v.reason == "day":
         return f"오늘 이 기기에서 물을 수 있는 횟수를 다 썼습니다. 약 {minutes // 60 or 1}시간 뒤에 다시 이용해 주세요."
-    return "오늘 서비스가 답할 수 있는 횟수를 모두 썼습니다. 내일 다시 찾아 주세요. 하늘과 내 세상 보기는 그대로 쓸 수 있습니다."
+    if v.reason == "budget":
+        return "오늘의 예산을 다 썼습니다. 내일 다시 찾아 주세요. 하늘과 내 세계 보기는 그대로 쓸 수 있습니다."
+    return "오늘 서비스가 답할 수 있는 횟수를 모두 썼습니다. 내일 다시 찾아 주세요. 하늘과 내 세계 보기는 그대로 쓸 수 있습니다."

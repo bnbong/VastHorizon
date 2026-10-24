@@ -1,4 +1,4 @@
-"""RAG 그래프 (F2007) — LangGraph의 retrieve · generate 두 노드.
+"""RAG 그래프 — LangGraph의 retrieve · generate 두 노드.
 
     START → retrieve → generate → END
 
@@ -75,13 +75,13 @@ def retry_message(issue: str) -> HumanMessage:
         f"근거로 답할 수 없으면 \"{NOT_FOUND_SENTENCE}\"로 시작하라.")
 
 
-# 모델이 가끔 붙이는 제어 표식 — 화면에 그대로 나가지 않게 지운다 (F2015 비교에서 '⟦END⟧' 발견)
+# 모델이 가끔 붙이는 제어 표식 — 화면에 그대로 나가지 않게 지운다 (RAG 전후 비교에서 '⟦END⟧' 발견)
 _CONTROL_MARKS = re.compile(r"⟦[^⟧]{0,20}⟧|<\|[a-z_]{1,20}\|>")
 
 
-# 한국어 답에 근거에 없는 다른 문자 조각이 섞이는 경우 (F2015 비교에서 구자라트 문자 'એટલે' 발견).
+# 한국어 답에 근거에 없는 다른 문자 조각이 섞이는 경우 (RAG 전후 비교에서 구자라트 문자 'એટલે' 발견).
 # 내용을 지우지 않는다 — 근거 속 원어 이름 · 직접 인용은 정당하다. 근거에 없는 조각일 때만 재생성을 요청하고,
-# 재생성 뒤에도 남으면 답은 그대로 두고 경고를 붙인다. (F2015 리뷰 P2 — 문자권 일괄 삭제 금지)
+# 재생성 뒤에도 남으면 답은 그대로 두고 경고를 붙인다. (리뷰 P2 — 문자권 일괄 삭제 금지)
 _FOREIGN_SCRIPT = re.compile(r"[\u0900-\u0DFF\u0E00-\u0E7F]+")    # 데바나가리 ~ 싱할라 · 태국
 
 
@@ -103,7 +103,7 @@ def language_retry_message(issue: str) -> HumanMessage:
         "근거에 적힌 고유 명칭의 원어 표기는 그대로 써도 된다. 근거 번호 규칙은 그대로 지킨다.")
 
 
-def generate_validated(model: BaseChatModel, messages: list, evidences: list[Evidence]) -> dict:
+def generate_validated(model: BaseChatModel, messages: list, evidences: list[Evidence], purpose: str = "answer") -> dict:
     """답변 생성 + 인용 검증 + 1회 재생성 (모듈 설명의 '답변 검증 정책').
 
     질의응답과 특화 기능(빛의 편지 등)이 같은 정책을 쓴다.
@@ -111,11 +111,13 @@ def generate_validated(model: BaseChatModel, messages: list, evidences: list[Evi
 
     - 인용 규칙 위반: 재생성, 끝내 위반이면 답을 내보내지 않는다 (rejected)
     - 근거에 없는 다른 문자 혼입: 재생성, 끝내 남으면 답은 그대로 두고 notes에 경고 (내용 삭제 없음)
+    purpose는 사용량 기록의 호출 용도 (재생성은 '<purpose>.retry')
     """
+    from vasthorizon.usage import tracked_invoke
     issues: list[str] = []
     raw = ""
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        raw = reply_text(model.invoke(messages))
+        raw = reply_text(tracked_invoke(model, messages, purpose if attempt == 1 else f"{purpose}.retry"))
         cited = resolve_citations(clean_reply(raw), evidences)
         not_found = is_not_found(cited.text)
         issue = citation_issue(cited, not_found)
@@ -139,15 +141,16 @@ def generate_validated(model: BaseChatModel, messages: list, evidences: list[Evi
 
 
 def default_chat_model(llm: BaseChatModel | None) -> BaseChatModel:
+    """넘겨받은 모델, 없으면 답변 모델 (vasthorizon.llm.llm)."""
     if llm is not None:
         return llm
-    from vasthorizon.llm import chat_model
-    return chat_model()
+    from vasthorizon.llm import llm as answer_llm
+    return answer_llm()
 
 
 def build_graph(llm: BaseChatModel | None = None, embedding: Embeddings | None = None,
                 db: chromadb.ClientAPI | None = None, live=None):
-    """llm · embedding · db를 넘기지 않으면 실행할 때 GMS · 기본 Chroma를 쓴다 (테스트는 가짜를 넣는다).
+    """llm · embedding · db를 넘기지 않으면 실행할 때 설정한 제공자 · 기본 Chroma를 쓴다 (테스트는 가짜를 넣는다).
     live는 실시간 근거 함수 (features/live_position.live_evidence) — 없으면 색인 근거만 쓴다."""
 
     def retrieve(state: RagState) -> dict:
@@ -158,7 +161,7 @@ def build_graph(llm: BaseChatModel | None = None, embedding: Embeddings | None =
 
     def generate(state: RagState) -> dict:
         messages = answer_messages(state["item"], state["question"], state["evidences"], state.get("history"))
-        return generate_validated(default_chat_model(llm), messages, state["evidences"])
+        return generate_validated(default_chat_model(llm), messages, state["evidences"], purpose="ask.answer")
 
     graph = StateGraph(RagState)
     graph.add_node("retrieve", retrieve)

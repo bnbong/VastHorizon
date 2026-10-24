@@ -1,4 +1,4 @@
-"""빛의 편지 (F2010 대표 기능) — "지금 당신에게 닿은 이 빛이 출발했을 때, 지구에서는…"
+"""빛의 편지 (대표 기능) — "지금 당신에게 닿은 이 빛이 출발했을 때, 지구에서는…"
 
 근거
 1. 항목 메타데이터 (거리 · 빛이 걸리는 시간 · 출발 시점)
@@ -120,7 +120,8 @@ def write_letter(item: dict, ref_year: int, llm: BaseChatModel | None = None,
         else:
             warnings.append(f"「{departure.year_label}」 문서를 받지 못해 그 해의 사건 없이 편지를 씁니다.")
 
-    result = generate_validated(default_chat_model(llm), letter_messages(item, departure.summary(), evidences), evidences)
+    result = generate_validated(default_chat_model(llm), letter_messages(item, departure.summary(), evidences), evidences,
+                                purpose="letter")
     warnings += result["notes"]                  # 언어 혼입 등 — 답은 내보내되 알린다
     if result["status"] == "rejected":
         warnings.append("편지가 인용 규칙을 두 번 어겨 내보내지 않았습니다.")

@@ -202,7 +202,7 @@ export class MapMode {
     return this.byId.get(id) ?? this.extra?.get(id) ?? null;
   }
 
-  // 첫 화면 연출 — 지구 위 '나'에서 시작해 우주 전체로 시야를 넓힌다 (기획안 장면 1 · 2)
+  // 첫 화면 연출 — 지구 위 '나'에서 시작해 우주 전체로 시야를 넓힌다
   zoomOut(ms = 6000) {
     this.stage.flyTo(new THREE.Vector3(70, 120, 210), new THREE.Vector3(0, 0, 0), ms);
   }

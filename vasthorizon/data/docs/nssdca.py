@@ -1,4 +1,4 @@
-"""NASA NSSDCA 마스터 카탈로그 — 탐사선 · 위성 미션 설명(영문). (F2016 두 번째 출처 종류)
+"""NASA NSSDCA 마스터 카탈로그 — 탐사선 · 위성 미션 설명(영문). (두 번째 출처 종류)
 
 COSPAR ID로 https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=<ID> 의
 'Description' 절을 읽는다. 미국 정부 저작물이라 공개 이용이 가능하다.

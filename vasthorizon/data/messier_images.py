@@ -49,7 +49,7 @@ def pick_image(text: str, og: str) -> str:
 
 
 def to_jpeg(data: bytes, size: int = WIDTH) -> bytes:
-    """JPEG · PNG · WebP → 긴 변 size px 이하의 JPEG (Pillow — Streamlit 의존성으로 함께 설치된다)."""
+    """JPEG · PNG · WebP → 긴 변 size px 이하의 JPEG (Pillow(requirements.txt))."""
     from PIL import Image
     img = Image.open(io.BytesIO(data)).convert("RGB")
     img.thumbnail((size, size))

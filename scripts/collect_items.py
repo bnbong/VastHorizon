@@ -1,4 +1,4 @@
-"""항목 메타데이터 수집 (F2001) — 5개 그룹을 모아 data/items.json으로 저장한다.
+"""항목 메타데이터 수집 — 5개 그룹을 모아 data/items.json으로 저장한다.
 
     python -m scripts.collect_items              # data/raw 캐시가 있으면 재사용
     python -m scripts.collect_items --refresh    # 외부 출처에서 다시 받기
@@ -18,6 +18,7 @@ from datetime import date
 
 from vasthorizon.data import sources
 from vasthorizon.data.catalog import CatalogValidationError, save_items
+from vasthorizon.data.enrich import enrich_items
 from vasthorizon.data.items import constellations, human_made, messier, solar_system, stars
 from vasthorizon.data.items.common import GROUPS, Item
 
@@ -83,7 +84,8 @@ def main(argv: list[str] | None = None) -> int:
         ),
     }
     try:
-        path = save_items([it.to_dict() for it in items], meta)
+        # 보강(블랙홀 · 고리 · 탐사선 방문 · 서울 관측)은 enrich.json에 있어 다시 수집해도 사라지지 않는다
+        path = save_items(enrich_items([it.to_dict() for it in items]), meta)
     except CatalogValidationError as e:
         print(f"[FAIL] 검증 실패 — 기존 카탈로그를 유지합니다.")
         for err in e.errors[:20]:

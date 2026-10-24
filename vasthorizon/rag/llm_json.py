@@ -15,12 +15,13 @@ from langchain_core.language_models import BaseChatModel
 
 
 class JsonReplyError(ValueError):
-    """LLM 응답을 JSON으로 읽을 수 없거나 스키마와 다를 때. 화면에는 원문을 보여주지 않는다. (NF2004)"""
+    """LLM 응답을 JSON으로 읽을 수 없거나 스키마와 다를 때. 화면에는 원문을 보여주지 않는다."""
 
 
 def json_chat_model() -> BaseChatModel:
-    from vasthorizon.llm import json_chat_model as make
-    return make()
+    """구조화 모델 (vasthorizon.llm.fast_llm)."""
+    from vasthorizon.llm import fast_llm
+    return fast_llm()
 
 
 def parse_json_reply(content: str):
@@ -58,9 +59,11 @@ def parse_json_reply(content: str):
     raise JsonReplyError("LLM 응답을 JSON으로 읽을 수 없습니다.")
 
 
-def invoke_json(llm: BaseChatModel, messages: list) -> dict:
-    """JSON 객체 하나를 받는다. 배열 · 문자열 같은 다른 최상위 타입은 스키마 오류."""
-    reply = llm.invoke(messages)
+def invoke_json(llm: BaseChatModel, messages: list, purpose: str = "json") -> dict:
+    """JSON 객체 하나를 받는다. 배열 · 문자열 같은 다른 최상위 타입은 스키마 오류.
+    purpose는 사용량 기록의 호출 용도 (usage.py — 예: ask.query · explore.filter)."""
+    from vasthorizon.usage import tracked_invoke
+    reply = tracked_invoke(llm, messages, purpose)
     from vasthorizon.llm import reply_text
     data = parse_json_reply(reply_text(reply))
     if not isinstance(data, dict):

@@ -1,4 +1,4 @@
-"""관점 전환 서가 색인 (F2010) — 서가 문서(한국어 위키) → cosmos_perspective 컬렉션.
+"""관점 전환 서가 색인 — 서가 문서(한국어 위키) → cosmos_perspective 컬렉션.
 
     python -m scripts.index_perspective             # 서가 문서를 받아(캐시 우선) 바뀐 청크만 반영
     python -m scripts.index_perspective --rebuild   # 임시 컬렉션에서 전체 재구축 후 교체

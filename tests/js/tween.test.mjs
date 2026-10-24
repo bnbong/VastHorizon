@@ -1,4 +1,4 @@
-// 애니메이션 대기열 테스트 — 완료 콜백에서 등록한 다음 애니메이션이 이어지는지 (F2014 리뷰 P1).
+// 애니메이션 대기열 테스트 — 완료 콜백에서 등록한 다음 애니메이션이 이어지는지 (리뷰 P1).
 //     node --test "tests/js/*.test.mjs"
 import assert from "node:assert/strict";
 import test from "node:test";

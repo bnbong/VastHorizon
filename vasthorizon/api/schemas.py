@@ -1,6 +1,6 @@
-"""요청 · 응답 형식 (F2013). FastAPI가 이 정의로 /docs에 API 문서를 만든다.
+"""요청 · 응답 형식. FastAPI가 이 정의로 /docs에 API 문서를 만든다.
 
-화면에 내보내지 않는 것 (NF2004): API 키, 프롬프트 전문, 오류 추적 정보(스택 트레이스), 외부 요청 주소.
+화면에 내보내지 않는 것: API 키, 프롬프트 전문, 오류 추적 정보(스택 트레이스), 외부 요청 주소.
 """
 
 from __future__ import annotations
@@ -22,6 +22,18 @@ class Notice(BaseModel):
     message: str
 
 
+class UsageToday(BaseModel):
+    day: str = Field(description="집계 날짜 (한국 시각)")
+    calls: int = Field(description="LLM 호출 수 (실패 포함)")
+    input_tokens: int
+    output_tokens: int = Field(description="출력 토큰 (추론 포함)")
+    reasoning_tokens: int
+    cache_read_tokens: int = Field(description="프롬프트 캐시에서 읽은 입력 토큰")
+    cost_usd: float = Field(description="설정 가격표로 계산한 추정 비용 ($)")
+    budget_usd: float | None = Field(None, description="하루 예산 ($) — 없으면 예산 제한 없음")
+    cache_hits: int = Field(description="서버 응답 캐시 적중 수 (LLM 호출 없음)")
+
+
 class HealthResponse(BaseModel):
     ready: bool = Field(description="질문을 받을 수 있는 상태인가 (키 설정 + 항목 색인 있음)")
     gms_key: bool = Field(description="LLM 키(GMS_KEY 또는 CLAUDE_API_KEY)가 설정됐는가 (값은 노출하지 않는다, 필드 이름은 호환을 위해 유지)")
@@ -29,6 +41,7 @@ class HealthResponse(BaseModel):
     items_indexed: int
     docs_indexed: int
     notices: list[Notice] = []
+    usage: UsageToday | None = Field(None, description="오늘(한국 시각) LLM 사용량 · 추정 비용 — 기록이 꺼져 있으면 없음")
 
 
 # ── 항목 ──────────────────────────────────────────────────────────────────
@@ -98,6 +111,7 @@ class AnswerResponse(BaseModel):
     warnings: list[str] = []
     stages: dict[str, StageInfo] = {}
     recorded: bool = Field(True, description="대화 기록에 남았는가 — 답변하는 동안 기록이 지워졌으면 false")
+    cached: bool = Field(False, description="서버 응답 캐시에서 꺼낸 응답인가 (LLM을 부르지 않았다)")
 
 
 class HistoryTurn(BaseModel):
@@ -117,7 +131,7 @@ class ErrorResponse(BaseModel):
     message: str
 
 
-# ── 조건 기반 탐색 (F2011) ────────────────────────────────────────────────
+# ── 조건 기반 탐색 ────────────────────────────────────────────────
 
 class ExploreRequest(BaseModel):
     query: str = Field(min_length=1, max_length=200, description="자연어 조건 — 예: 맨눈으로 볼 수 있는 은하")
@@ -129,6 +143,7 @@ class ExploreCardOut(BaseModel):
     group: str
     kind: str
     reason: str = Field(description="조건과 맞는 메타데이터 속성")
+    source_url: str | None = Field(None, description="카드 설명의 근거 URL (조건 탐색의 결정적 경로 — 블랙홀 · 고리 · 탐사선 방문 등)")
 
 
 class ExploreMention(BaseModel):
@@ -147,9 +162,10 @@ class ExploreResponse(BaseModel):
     mentioned: list[ExploreMention] = Field([], description="질문에 이름이 나온 카탈로그 천체 — 그 천체에게 직접 물을 수 있다")
     notice: str | None = None
     warnings: list[str] = []
+    cached: bool = Field(False, description="서버 응답 캐시에서 꺼낸 응답인가 (LLM을 부르지 않았다)")
 
 
-# ── 빛의 편지 (F2010) ─────────────────────────────────────────────────────
+# ── 빛의 편지 ─────────────────────────────────────────────────────
 
 class LetterRequest(BaseModel):
     item_id: str | None = Field(None, pattern=r"^(Q\d+|hip:\d+)$", description="편지를 받을 천체")
@@ -177,9 +193,10 @@ class LetterResponse(BaseModel):
     matched_age: int | None = Field(None, description="나이로 찾은 경우 입력한 나이")
     age_gap_ly: float | None = Field(None, description="나이와 별까지 거리(광년)의 차이")
     warnings: list[str] = []
+    cached: bool = Field(False, description="서버 응답 캐시에서 꺼낸 응답인가 (LLM을 부르지 않았다)")
 
 
-# ── 별자리 펼치기 (F2010) ──────────────────────────────────────────────────
+# ── 별자리 펼치기 ──────────────────────────────────────────────────
 
 class FigureStar(BaseModel):
     hip: int = Field(description="히파르코스 번호")
@@ -219,9 +236,10 @@ class UnfoldResponse(BaseModel):
     cited: list[CitedEvidence]
     notice: str | None = None
     warnings: list[str] = []
+    cached: bool = Field(False, description="서버 응답 캐시에서 꺼낸 응답인가 (LLM을 부르지 않았다)")
 
 
-# ── 오늘 밤 나의 하늘 (F2010) ──────────────────────────────────────────────
+# ── 오늘 밤 나의 하늘 ──────────────────────────────────────────────
 
 class SkyRequest(BaseModel):
     lat: float = Field(ge=-90, le=90, description="위도 (북위 +)")
@@ -254,7 +272,7 @@ class SkyResponse(BaseModel):
     warnings: list[str] = []
 
 
-# ── 관점 전환 (F2010) ──────────────────────────────────────────────────────
+# ── 관점 전환 ──────────────────────────────────────────────────────
 
 class ThemeOut(BaseModel):
     key: str
@@ -290,9 +308,10 @@ class PerspectiveResponse(BaseModel):
     support: list[SupportLine]
     notice: str | None = None
     warnings: list[str] = []
+    cached: bool = Field(False, description="서버 응답 캐시에서 꺼낸 응답인가 (LLM을 부르지 않았다)")
 
 
-# ── 천체 소개 (읽고 나서 내 세상에 담기) ─────────────────────────────────────
+# ── 천체 소개 (읽고 나서 내 세계에 담기) ─────────────────────────────────────
 
 class IntroSection(BaseModel):
     heading: str = Field(description="소개 · 관측 역사 등 — 문서의 절 제목")

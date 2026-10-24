@@ -1,4 +1,4 @@
-"""외부 문서 수집 (F2003 · F2004 · NF2002).
+"""외부 문서 수집.
 
 흐름 — 항목 1개 + 질문 1개
   0. 항목 자체 문서(위키 문서 · NASA 미션 설명)를 먼저 확보한다. 어떤 제외 규칙보다 우선한다.
@@ -141,7 +141,7 @@ class Collector:
         return docs
 
     def prefetch_own(self, item: dict) -> tuple[list[Document], list[str]]:
-        """항목 자체 문서만 미리 받아 둔다 — LLM 호출 없음. 첫 질문의 응답 시간을 줄인다. (NF2001)"""
+        """항목 자체 문서만 미리 받아 둔다 — LLM 호출 없음. 첫 질문의 응답 시간을 줄인다."""
         manifest = self.cache.get_manifest(item["id"])
         failures: list[StepFailure] = []
         docs = self.own_documents(item, manifest, lambda msg: None, failures)
@@ -290,7 +290,7 @@ class Collector:
         progress("검색어를 뽑는 중")
         result.llm_calls += 1
         try:
-            data = invoke_json(self.llm, query_messages(item, question, self.cfg.max_queries))
+            data = invoke_json(self.llm, query_messages(item, question, self.cfg.max_queries), purpose="ask.query")
             queries = string_list(data, "queries", self.cfg.max_queries)
         except LLM_ERRORS as e:
             result.failures.append(StepFailure("검색어 추출", question, type(e).__name__))
@@ -304,7 +304,8 @@ class Collector:
         """선택된 후보 ID. 응답이 스키마와 다르거나 호출이 실패하면 None — 빈 선택과 구분한다."""
         result.llm_calls += 1
         try:
-            data = invoke_json(self.llm, select_messages(item, question, candidates, self.cfg.max_selected))
+            data = invoke_json(self.llm, select_messages(item, question, candidates, self.cfg.max_selected),
+                               purpose="ask.select")
             picked = string_list(data, "selected", len(candidates))
         except LLM_ERRORS as e:
             result.failures.append(StepFailure("선별", f"후보 {len(candidates)}건", type(e).__name__))

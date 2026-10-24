@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from vasthorizon.api.schemas import HealthResponse, Notice
+from vasthorizon.api.schemas import HealthResponse, Notice, UsageToday
 from vasthorizon.api.sessions import SessionStore
 
 
@@ -33,6 +33,8 @@ class Services:
     intro: Callable | None = None               # (item) → features.intro.item_intro 결과
     stars: Callable | None = None               # (item_id) → 별 임시 항목 hip:… | None (features/star_items.StarLookup)
     map_cache: dict | None = None               # /api/map 응답 — 항목이 바뀌지 않으므로 한 번만 계산
+    cache: object | None = None                 # 서버 응답 캐시 (cache.ResponseCache) — 없으면 캐시하지 않는다
+    usage: object | None = None                 # LLM 사용량 기록 (usage.UsageLog) — 하루 예산 · 상태 점검에 쓴다
 
     def __post_init__(self) -> None:
         self._by_id = {it["id"]: it for it in self.items}
@@ -44,8 +46,18 @@ class Services:
         return found
 
 
-def check_health(items: list[dict], ref_year: int) -> HealthResponse:
-    """키 · 색인 상태를 점검해 화면 안내로 바꾼다 (F2012). 키 값은 보지도 내보내지도 않는다.
+def usage_today(usage, budget_usd: float = 0.0) -> UsageToday | None:
+    """오늘 사용량 요약 — 토큰 수와 추정 비용만 (키 · 프롬프트는 없다)."""
+    if usage is None:
+        return None
+    t = usage.today()
+    return UsageToday(day=t.day, calls=t.calls, input_tokens=t.input_tokens, output_tokens=t.output_tokens,
+                      reasoning_tokens=t.reasoning_tokens, cache_read_tokens=t.cache_read_tokens,
+                      cost_usd=round(t.cost_usd, 4), budget_usd=budget_usd or None, cache_hits=t.cache_hits)
+
+
+def check_health(items: list[dict], ref_year: int, usage=None) -> HealthResponse:
+    """키 · 색인 상태를 점검해 화면 안내로 바꾼다. 키 값은 보지도 내보내지도 않는다.
 
     카탈로그와 항목 색인이 같은 데이터인지도 본다 — 카탈로그에서 다시 만든 텍스트 해시와
     색인에 저장된 text_hash를 비교한다 (임베딩 호출 없음).
@@ -91,7 +103,7 @@ def check_health(items: list[dict], ref_year: int) -> HealthResponse:
                               message="문서 색인이 비어 있습니다. 첫 질문은 문서 수집 · 색인 때문에 오래 걸릴 수 있습니다."))
     return HealthResponse(ready=has_key and items_indexed > 0 and items_loaded > 0, gms_key=has_key,
                           items_loaded=items_loaded, items_indexed=items_indexed, docs_indexed=docs_indexed,
-                          notices=notices)
+                          notices=notices, usage=usage_today(usage, settings.limits.daily_cost_usd))
 
 
 def default_services() -> Services:
@@ -110,6 +122,8 @@ def default_services() -> Services:
     from vasthorizon.data.sky_catalog import load_star_index
     from vasthorizon.features.star_items import StarLookup, star_index
     from vasthorizon.rag.pipeline import ask
+    from vasthorizon.cache import default_cache
+    from vasthorizon.usage import default_log
 
     try:
         catalog = load_catalog()
@@ -118,7 +132,9 @@ def default_services() -> Services:
         items, ref_year = [], date.today().year
     figures = load_figures()
     stars = star_index(figures)
-    return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year),
+    usage = default_log()
+    return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year, usage),
+                    cache=default_cache(), usage=usage,
                     explore=lambda query: explore(query, items=items),
                     letter=lambda item: write_letter(item, ref_year), ref_year=ref_year, figures=figures,
                     stars=StarLookup(stars, load_star_index(PROJECT_ROOT / "web" / "data"),

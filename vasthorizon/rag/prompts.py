@@ -6,7 +6,7 @@
 | ② 후보 선별     | 제목 · 요약만 보고 색인할 문서를 고름          | {"selected": ["후보 ID", ...], "reason": ""} |
 | ③ 답변 생성     | 검색된 근거만으로 답하고 주장마다 근거 번호를 붙임 | 본문 + [근거 N] 표기                        |
 
-서비스 기능 보조 프롬프트 (F2010 · F2011)
+서비스 기능 보조 프롬프트
 | 조건 필터 추출  | 자연어 조건 → 메타데이터 필터                  | {"semantic_query", "group", …} JSON          |
 | 조건 항목 선별  | 후보 메타데이터만 보고 조건에 맞는 항목 선택    | {"selected": [{"id", "reason"}]} JSON        |
 | 빛의 편지       | 근거만으로 빛의 여정을 편지로                  | 본문 + [근거 N] 표기 (③과 같은 검증)         |
@@ -27,7 +27,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from vasthorizon.data.docs import Candidate
 from vasthorizon.data.domain import ANSWER_PERSONA, EXPERT_DESCRIPTION, NOT_FOUND_SENTENCE, item_brief
 
-# ── ① 검색어 추출 (F2003) ───────────────────────────────────────────────────
+# ── ① 검색어 추출 ───────────────────────────────────────────────────
 
 QUERY_SYSTEM = f"""{EXPERT_DESCRIPTION}
 
@@ -48,7 +48,7 @@ def query_messages(item: dict, question: str, max_queries: int) -> list:
     ]
 
 
-# ── ② 후보 선별 (F2004) ─────────────────────────────────────────────────────
+# ── ② 후보 선별 ─────────────────────────────────────────────────────
 
 SELECT_SYSTEM = f"""{EXPERT_DESCRIPTION}
 
@@ -75,7 +75,7 @@ def select_messages(item: dict, question: str, candidates: list[Candidate], max_
     ]
 
 
-# ── ③ 답변 생성 (F2007 · F2008) ─────────────────────────────────────────────
+# ── ③ 답변 생성 ─────────────────────────────────────────────
 
 ANSWER_SYSTEM = f"""{ANSWER_PERSONA}
 
@@ -113,7 +113,7 @@ def answer_messages(item: dict, question: str, evidences: list, history: list[di
     return messages
 
 
-# ── 조건 기반 탐색 (F2011) ──────────────────────────────────────────────────
+# ── 조건 기반 탐색 ──────────────────────────────────────────────────
 # 서비스 기능용 보조 프롬프트. 감성 표현도 받지만, 선별은 항상 검증 가능한 속성으로 한다.
 
 def _era_table() -> str:
@@ -136,9 +136,21 @@ EXPLORE_FILTER_SYSTEM = """너는 우주 항목 카탈로그의 검색 도우미
 - ecliptic: 황도 별자리인가 (true/false)
 - distance_ly_min · distance_ly_max: 지구로부터 거리(광년). 1광년 = 약 9.46조 km, 1천문단위 = 약 0.0000158광년
 - departure_year_min · departure_year_max: 지금 보는 빛이 출발한 해 (기원전은 음수)
+- has_black_hole: 중심에 초대질량 블랙홀이 있다고 알려진 천체인가 (true/false). 예: "블랙홀이 발견된 천체" → true
+- has_rings: 고리가 있는가 (true/false). 예: "고리가 있는 행성" → true, categories ["행성"]
+- visited_by_probe: 탐사선이 방문(근접 비행 · 궤도 탐사 · 착륙)한 천체인가 (true/false). 예: "탐사선이 다녀간 소행성" → true, categories ["소천체"]
+- visible_from_korea: 한국(서울)에서 관측할 수 있는가 (true/false). "한국에서 보이는" · "서울에서 볼 수 있는"은 이 필드다.
+  korean(한국과 관련된 항목: 한국이 쏘아 올린 위성 등)과 구분한다.
+- sort_by: "가장 가까운 · 먼 · 밝은 · 큰"처럼 순서를 물으면 "distance"(거리) · "brightness"(겉보기 밝기) · "size"(크기)
+- order: "asc" · "desc". 가까운 · 밝은 · 작은 순은 "asc", 먼 · 어두운 · 큰 순은 "desc"
+  (밝기는 겉보기 등급이 작을수록 밝으므로 "가장 밝은"은 brightness · asc)
+- limit: 정렬 결과를 몇 개 보여 줄지 (1~20). "가장 ~한" 하나를 물으면 5, 개수를 말하면 그 수
+  예: "가장 가까운 별" → categories ["별"], sort_by "distance", order "asc", limit 5
+      "가장 먼 은하 3개" → categories ["은하"], sort_by "distance", order "desc", limit 3
 - asks_fact: 조건으로 천체를 찾는 요청이 아니라, 이름을 댄 특정 천체에 대한 사실 질문이면 true. 아니면 false.
   예: "안드로메다 은하 가운데에 있는 블랙홀 이름은?" → true, "보이저 1호는 지금 어디 있어?" → true,
       "안드로메다 은하보다 가까운 은하" → false, "맨눈으로 볼 수 있는 은하" → false
+- 종류를 말했으면 categories만 채우고 group은 비워 둔다 (둘이 겹친다). group은 종류 없이 무리만 말했을 때 쓴다.
 - members: 질문이 카탈로그에 없는 성군 · 별 무리 · 묶음의 이름이면(예: "오리온의 허리띠", "여름 삼각형") 그 묶음을 이루는
   천체의 한국어 이름 배열. 널리 알려진 구성 천체만 쓰고, 확실하지 않거나 묶음 이름이 아니면 null.
   예: "오리온의 허리띠" → ["알니타크", "알닐람", "민타카"], "맨눈으로 볼 수 있는 은하" → null
@@ -169,14 +181,32 @@ EXPLORE_SELECT_SYSTEM = """너는 우주 항목 카탈로그의 검색 도우미
 - JSON 객체 하나만 출력한다. 형식: {"selected": [{"id": "Q…", "reason": "…"}]}"""
 
 
+# 선별 후보 요약 — 색인 텍스트(평균 400~600자)에서 조건 확인에 쓰는 줄만 남긴다 (선별 입력 토큰 절약)
+SELECT_TEXT_CHARS = 220
+_SELECT_SKIP = ("종류:", "데이터 출처:", "빛이 걸리는 시간:", "약어:", "라틴어 이름:", "히파르코스 번호:", "분광형:",
+                "바이어 명칭:", "메시에 번호:", "COSPAR ID:", "NORAD", "면적(제곱도):", "저녁에 잘 보이는 달:",
+                "블랙홀:", "블랙홀 질량:", "고리:", "위성 수:", "탐사선 방문:", "서울에서 보임:", "별자리:",
+                "색:", "거리:")
+
+
+def compact_item_text(text: str, limit: int = SELECT_TEXT_CHARS) -> str:
+    """제목 · 요약 문장(거리 · 종류 · 맨눈 · 블랙홀 · 고리 · 탐사 · 서울 관측이 들어 있다)과 요약에 없는 속성 줄만.
+    요약 문장에 이미 있는 속성 줄 · 식별 번호 · 출처 줄은 뺀다."""
+    lines = [ln for ln in text.split("\n") if ln.strip()]
+    head = lines[:2]
+    rest = [ln for ln in lines[2:] if not ln.startswith(_SELECT_SKIP)]
+    out = " / ".join(head + rest)
+    return out if len(out) <= limit else out[: limit - 1].rstrip() + "…"
+
+
 def explore_select_messages(query: str, candidates: list[tuple[str, str]], max_results: int) -> list:
     """candidates = [(항목 ID, 색인 텍스트)]"""
-    listing = [{"id": cid, "metadata": text[:500]} for cid, text in candidates]
+    listing = [{"id": cid, "metadata": compact_item_text(text)} for cid, text in candidates]
     return [SystemMessage(EXPLORE_SELECT_SYSTEM.replace("{max_results}", str(max_results))),
             HumanMessage(f"조건: {query}\n후보:\n" + json.dumps(listing, ensure_ascii=False, indent=1))]
 
 
-# ── 빛의 편지 (F2010) ──────────────────────────────────────────────────────
+# ── 빛의 편지 ──────────────────────────────────────────────────────
 
 LETTER_SYSTEM = f"""{ANSWER_PERSONA}
 
@@ -198,7 +228,7 @@ def letter_messages(item: dict, light: str, evidences: list) -> list:
             HumanMessage(f"천체: {item_brief(item)}\n빛의 여정(계산값): {light}\n\n[근거]\n{format_evidence(evidences)}")]
 
 
-# ── 별자리 펼치기 (F2010) ──────────────────────────────────────────────────
+# ── 별자리 펼치기 ──────────────────────────────────────────────────
 
 UNFOLD_SYSTEM = f"""{ANSWER_PERSONA}
 
@@ -218,7 +248,7 @@ def unfold_messages(item: dict, evidences: list) -> list:
             HumanMessage(f"별자리: {item_brief(item)}\n\n[근거]\n{format_evidence(evidences)}")]
 
 
-# ── 오늘 밤 나의 하늘 (F2010) ──────────────────────────────────────────────
+# ── 오늘 밤 나의 하늘 ──────────────────────────────────────────────
 
 SKY_SYSTEM = f"""{ANSWER_PERSONA}
 
@@ -237,7 +267,7 @@ def sky_messages(place: str, evidences: list) -> list:
     return [SystemMessage(SKY_SYSTEM), HumanMessage(f"관측 조건: {place}\n\n[근거]\n{format_evidence(evidences)}")]
 
 
-# ── 관점 전환 (F2010) ──────────────────────────────────────────────────────
+# ── 관점 전환 ──────────────────────────────────────────────────────
 
 PERSPECTIVE_CLASSIFY_SYSTEM = """너는 VastHorizon 관점 전환 기능의 분류기다. 사용자의 마음 한 줄을 읽고 JSON으로 분류한다.
 
@@ -275,7 +305,7 @@ def perspective_messages(text: str, evidences: list) -> list:
             HumanMessage(f"마음 한 줄: {text}\n\n[근거]\n{format_evidence(evidences)}")]
 
 
-# ── RAG 전후 비교 (F2015) — 근거 없이 답하는 기준 ───────────────────────────
+# ── RAG 전후 비교 — 근거 없이 답하는 기준 ───────────────────────────
 # RAG 답변과 같은 모델 · 말투 · 길이로, 근거 문서만 빼고 묻는다. 차이가 '근거의 유무'만 되도록.
 
 BASELINE_SYSTEM = """너는 천체 · 별자리 · 우주 탐사를 일반인에게 설명하는 천문학 해설사다.

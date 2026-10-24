@@ -1,4 +1,4 @@
-"""항목 메타데이터 색인 (RAG 1, F2002).
+"""항목 메타데이터 색인 (RAG 1).
 
 - 컬렉션 cosmos_items에 항목당 1청크, 청크 ID = Wikidata QID
 - 다시 실행해도 같은 ID로 덮어쓰기(upsert)만 일어나 중복 저장되지 않는다
@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -48,6 +50,19 @@ def prepare(items: list[dict], ref_year: int) -> list[tuple[str, str, dict]]:
         meta["meta_hash"] = meta_hash(meta)
         prepared.append((item["id"], text, meta))
     return prepared
+
+
+def catalog_hash(items: list[dict], ref_year: int) -> str:
+    """색인에 들어갈 내용(텍스트 · 메타데이터)의 해시.
+
+    data/items.json · vasthorizon/data/enrich.json(보강)을 합친 항목을 색인 텍스트 생성 코드(item_text.py)로
+    바꾼 결과를 해시한다. 셋 중 무엇이 바뀌어 색인 내용이 달라지면 값이 달라진다 — 코드의 주석만 바뀐 경우는 그대로다.
+    항목 색인 메타데이터의 catalog_hash와 비교해 scripts/deploy_init.py가 기존 색인을 다시 만들지 정한다.
+    """
+    h = hashlib.sha256()
+    for cid, text, meta in sorted(prepare(items, ref_year), key=lambda p: p[0]):
+        h.update(json.dumps([cid, text, meta], ensure_ascii=False, sort_keys=True, default=str).encode("utf-8"))
+    return h.hexdigest()[:16]
 
 
 @dataclass

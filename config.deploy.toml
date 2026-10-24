@@ -2,12 +2,18 @@
 #
 #     VH_CONFIG=config.deploy.toml
 #
-# 과제 제출 환경은 config.toml(GMS)을 그대로 쓴다. 이 파일은 공개 배포용이다.
-# 색인 · 캐시는 GMS 색인과 섞이지 않게 data/deploy/ 아래에 따로 둔다 (임베딩 모델이 달라 벡터를 함께 쓸 수 없다).
+# 기본 실행 · 공개 배포용 설정이다. 다른 OpenAI 호환 API를 쓰려면 config.toml을 쓴다.
+# 색인 · 캐시는 config.toml 색인과 섞이지 않게 data/deploy/ 아래에 따로 둔다 (임베딩 모델이 달라 벡터를 함께 쓸 수 없다).
 
 [llm]
 provider = "anthropic"                   # 채팅: Claude (키: CLAUDE_API_KEY)
-anthropic_model = "claude-sonnet-5-5"    # 비용을 줄이려면 "claude-haiku-5-5"
+# 답변 모델(사용자에게 보이는 긴 글: 질의응답 · 편지 · 마음 한 줄 · 별자리 펼치기 · 하늘 안내)과
+# 구조화 모델(짧은 JSON: 검색어 추출 · 후보 선별 · 조건 탐색 필터 · 선별 · 마음 한 줄 분류)을 나눈다
+anthropic_model = "claude-sonnet-5-5"
+anthropic_fast_model = "claude-haiku-5-5"   # 비우면 답변 모델을 쓴다
+# output_config.effort (low · medium · high · xhigh · max, 비우면 모델 기본값). effort를 모르는 모델에는 보내지 않는다
+answer_effort = "medium"
+fast_effort = "low"
 max_tokens = 2048
 timeout_sec = 60
 embedding_provider = "local"             # Claude에는 임베딩 API가 없어 서버 안에서 계산한다 (fastembed, ONNX)
@@ -69,7 +75,42 @@ enabled = true
 per_ip_per_minute = 6
 per_ip_per_day = 60
 global_per_day = 1500
+daily_cost_usd = 3.3                     # 하루(한국 시각) 추정 비용 상한 — 넘으면 LLM 요청에 429 (월 $100 기준). 0이면 끈다
 
 # 화면을 다른 주소(Cloudflare Pages 등)에 둘 때 허용할 출처. 환경변수 VH_CORS_ORIGINS(쉼표 구분)가 있으면 그 값을 쓴다
 [server]
 cors_origins = []
+
+# LLM 호출 기록 (vasthorizon/usage.py) — 호출마다 모델 · 용도 · 토큰 · 소요 시간 · 추정 비용을 JSONL 한 줄로. 프롬프트 · 응답 본문은 남기지 않는다
+# 오늘(한국 시각) 합계는 /api/health의 usage에 나온다
+[usage]
+enabled = true
+log_path = "data/deploy/usage.jsonl"
+
+# 모델 가격 ($/100만 토큰, 2026-10 Anthropic API 기준). cache_read · cache_write를 비우면 입력 단가의 0.1배 · 1.25배
+# Haiku 5.5는 프롬프트가 10만 토큰 이하일 때 가격이다 (넘으면 입력 $0.50 · 출력 $2.50 — 이 앱의 호출은 넘지 않는다)
+# 표에 없는 모델(예: OpenAI 호환 엔드포인트의 모델)은 비용 0으로 센다 — 하루 예산도 그 호출은 세지 않는다
+[usage.prices.claude-sonnet-5-5]
+input = 2.0
+output = 10.0
+cache_read = 0.2
+cache_write = 2.5
+
+[usage.prices.claude-haiku-5-5]
+input = 0.1
+output = 0.5
+cache_read = 0.01
+cache_write = 0.125
+
+# 서버 응답 캐시 (vasthorizon/cache.py) — 같은 요청이면 LLM을 부르지 않고 저장한 응답을 돌려준다 (호출 한도 · 하루 예산도 쓰지 않는다)
+# 모델 · effort · 프롬프트 파일 · 항목 카탈로그가 바뀌면 키가 달라져 예전 응답은 쓰지 않는다. 비우려면 dir 폴더를 지운다
+[cache]
+enabled = true
+dir = "data/deploy/cache/responses"
+memory_items = 512
+explore_days = 7          # 조건 탐색 결과
+letter_days = 7           # 빛의 편지 (항목별 — 나이로 찾은 별도 같은 항목이면 같은 편지)
+unfold_days = 30          # 별자리 펼치기 설명
+perspective_days = 1      # 마음 한 줄 (키는 문장의 해시)
+ask_days = 7              # 질의응답 답변 (대화 기록이 없는 첫 질문만)
+ask_live_days = 1         # 근거에 오늘 기준 실시간 위치 · 거리가 들어간 답변

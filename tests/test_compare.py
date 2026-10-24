@@ -1,4 +1,4 @@
-"""검색 방식 비교 테스트 (F2014) — 유사도 · MMR 분기 · 필터 · 상태 안내, Streamlit 화면.
+"""검색 방식 비교 테스트 — 유사도 · MMR 분기 · 필터 · 상태 안내, Streamlit 화면.
 
 가짜 임베딩 · 격리된 색인(임시 폴더)을 쓴다. 외부 호출 · 토큰 사용 없음.
 
@@ -109,7 +109,7 @@ class StreamlitAppTest(unittest.TestCase):
         at.button[0].click().run()
         self.assertFalse(at.exception)
         headers = [m.value for m in at.markdown if m.value.startswith("####")]
-        self.assertEqual(headers[:2], ["#### 유사도 검색", "#### MMR 검색 (정확 비교로 재계산)"])   # 뒤는 F2015 탭
+        self.assertEqual(headers[:2], ["#### 유사도 검색", "#### MMR 검색 (정확 비교로 재계산)"])   # 뒤는 RAG 전후 비교 탭
         self.assertEqual(at.metric[0].value, "1개")                                     # 공통 근거 1개 (a)
         self.assertTrue(any("두 방식 공통" in m.value for m in at.markdown))
         self.assertTrue(any("top-k 2 · fetch-k 8 · lambda 0.5" in c.value for c in at.caption))

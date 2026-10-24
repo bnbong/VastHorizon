@@ -1,4 +1,4 @@
-"""별자리 펼치기 (F2010) — 별자리는 지구에서만 보이는 모양이다.
+"""별자리 펼치기 — 별자리는 지구에서만 보이는 모양이다.
 
 화면은 별자리 선을 이루는 별들을 실제 거리 위치로 펼치고, 설명은 그 거리 차이를 근거와 함께 알려준다.
 
@@ -95,7 +95,7 @@ def unfold(item: dict, figure: dict, ref_year: int, llm: BaseChatModel | None = 
     else:
         warnings.append(f"「{item['wiki_title']}」 문서를 받지 못해 거리 데이터만으로 설명합니다.")
 
-    result = generate_validated(default_chat_model(llm), unfold_messages(item, evidences), evidences)
+    result = generate_validated(default_chat_model(llm), unfold_messages(item, evidences), evidences, purpose="unfold")
     warnings += result["notes"]                  # 언어 혼입 등 — 답은 내보내되 알린다
     if result["status"] == "rejected":
         warnings.append("설명이 인용 규칙을 두 번 어겨 내보내지 않았습니다.")

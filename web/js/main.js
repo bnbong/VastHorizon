@@ -51,7 +51,7 @@ function answerHtml(text, scope) {
     .replace(/\n/g, "<br>");
 }
 
-// 근거 목록 — 제목 · 원문 링크 · 출처 종류 태그(F2016: 메타데이터 / 외부 문서) · 발췌
+// 근거 목록 — 제목 · 원문 링크 · 출처 종류 태그(메타데이터 / 외부 문서) · 발췌
 function evidenceHtml(cited, scope) {
   return `<div><div class="evidence-title">근거</div><ol class="evidence" id="ev-${scope}">${cited.map((ev) => {
     const meta = ev.kind === "항목 메타데이터";
@@ -119,10 +119,14 @@ const errorText = (e) => e?.message || "처리 중 문제가 생겼습니다.";
 
 // ── 서랍 — 패널 세대 ─────────────────────────────────────────────────────
 // 서랍 내용을 바꾸는 기능마다 새 세대를 받는다. await 뒤에는 자기 세대가 아직 살아 있는지 보고,
-// 지난 세대의 응답(성공 · 오류 모두)은 화면 · state에 반영하지 않는다. (F2014 리뷰 P2 — 응답 순서 · 화면 수명)
+// 지난 세대의 응답(성공 · 오류 모두)은 화면 · state에 반영하지 않는다. (리뷰 P2 — 응답 순서 · 화면 수명)
 let panelGen = 0;
+let panelLeave = null;                         // 지금 서랍 화면이 떠날 때 정리할 일 (예: 오늘 밤 하늘의 시각 막대 타이머)
 function claimPanel() {
   const gen = ++panelGen;
+  const leave = panelLeave;
+  panelLeave = null;
+  leave?.();
   return () => gen === panelGen;
 }
 
@@ -139,8 +143,10 @@ function openDrawer(kind, html) {
   stopDrawerView();
   state.drawer = kind;
   drawerBody.dataset.kind = kind;
+  const hadFocus = drawerBody.contains(document.activeElement);   // 서랍 안에서 다른 화면으로 — 교체로 사라질 포커스를 새 화면 제목으로
   drawerBody.innerHTML = html;
   drawerBody.scrollTop = 0;
+  if (hadFocus) focusDrawerHeading();
   drawerBody.classList.remove("entering");
   void drawerBody.offsetWidth;                 // 내용이 바뀔 때마다 떠오르는 연출을 다시
   drawerBody.classList.add("entering");
@@ -154,6 +160,15 @@ function openDrawer(kind, html) {
   drawer.setAttribute("aria-hidden", "false");
   stage?.setInset(window.innerWidth > 650 ? drawer.offsetWidth + 32 : 0);   // 서랍(폭 + 여백 16 × 2) 만큼 시야를 비킨다 (650px 이하는 아래 시트)
   renderChrome();
+}
+
+// 새 서랍 화면의 첫 제목(h2 · .name)으로 포커스 — 제목이 없으면 닫기 버튼으로
+function focusDrawerHeading() {
+  const head = drawerBody.querySelector("h2, .name");
+  if (head) {
+    head.tabIndex = -1;
+    head.focus({ preventScroll: true });
+  } else $("#drawer-close").focus({ preventScroll: true });
 }
 
 // ── 서랍 — 뒤로 가기 ─────────────────────────────────────────────────────
@@ -459,11 +474,29 @@ function renderWorldHeading() {
   $("#world-foot").classList.toggle("away", !shown);
   el.inert = !shown;
   if (!shown) return;
-  const h = worldHeading(world.visited, localDate());
+  headingDay = localDate();
+  if (!midnightTimer) scheduleHeadingDay();
+  const h = worldHeading(world.visited, headingDay);
   $("#world-kicker").textContent = h.kicker;
   $("#world-title").innerHTML = `${esc(h.lines[0])}<br><em>${esc(h.lines[1])}</em>`;
   $("#map-legend").innerHTML = `<li>${markHtml(true)}<span>${esc(h.known)}</span></li><li>${markHtml(false)}<span>${esc(h.unknown)}</span></li>`;
 }
+
+// 자정이 지나면 '오늘 새로 알아간 빛'이 어제 것을 세지 않게 — 자정 타이머와 탭이 다시 보일 때(잠든 탭은 타이머가 늦다) 날짜를 본다
+let headingDay = null;
+let midnightTimer = null;
+function scheduleHeadingDay() {
+  clearTimeout(midnightTimer);
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(24, 0, 1, 0);                  // 다음 날 0시 0분 1초
+  midnightTimer = setTimeout(checkHeadingDay, next - now);
+}
+function checkHeadingDay() {
+  scheduleHeadingDay();
+  if (headingDay !== null && headingDay !== localDate()) renderWorldHeading();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkHeadingDay(); });
 
 // 첫 하늘 — 하늘 보기에서 서랍 · 장면이 닫혀 있을 때만. 이미 알아간 빛이 있으면 다음 빛을 권한다
 function renderFirstSky() {
@@ -685,6 +718,7 @@ function journeyEnd() {
 // ── 서랍: 천체 ────────────────────────────────────────────────────────────
 
 const ATTR_LIMIT = 12;
+const ATTR_LABELS = { "서울에서_관측": "서울에서 관측" };     // 저장 키(밑줄) → 화면 이름
 
 // 거리를 확인할 수 없는 별 — 거리는 지어내지 않는다. 화면 데이터(등급 · 색)를 보여 주고, 지도 대신 알아간 빛 기록에는 남길 수 있다
 function unknownStar(id, hint) {
@@ -730,7 +764,9 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   const code = a["메시에 번호"] ?? a["약어"] ?? a["바이어 명칭"] ?? a["COSPAR ID"] ?? (item.attrs["별자리"] && item.id.startsWith("hip:") ? item.attrs["별자리"] : "");
   const surface = item.distance?.reference === "지표면 위 궤도 고도";
   const departs = (item.group === "star" || item.group === "messier") && item.distance_km ? departureLabel(item.distance_km, state.refYear) : null;
-  const attrs = Object.entries(a).filter(([k, v]) => v !== null && v !== "" && !/horizons_id/.test(k)).slice(0, ATTR_LIMIT);
+  // 서울에서_관측(참거짓)은 "서울에서 관측"으로 보인다 — 별자리처럼 같은 이름의 문구 속성이 있으면 문구만
+  const attrs = Object.entries(a).filter(([k, v]) => v !== null && v !== "" && !/horizons_id/.test(k) && !(k === "서울에서_관측" && a["서울에서 관측"]))
+    .map(([k, v]) => [ATTR_LABELS[k] ?? k, v]).slice(0, ATTR_LIMIT);
   const isCon = item.group === "constellation";
   const suggestions = departs ? [`${item.name}의 빛은 언제 출발했나요?`, "맨눈으로 볼 수 있나요?"]
     : isCon ? [`${item.name}에서 가장 밝은 별은 무엇인가요?`, "언제 잘 보이나요?"]
@@ -955,7 +991,7 @@ async function loadHistory(item, alive, gate) {
   }
 }
 
-// 진행 상태(F2012) — 서버가 보내는 단계 메시지를 차례로 쌓고, 지난 단계는 완료(초록)로
+// 진행 상태 — 서버가 보내는 단계 메시지를 차례로 쌓고, 지난 단계는 완료(초록)로
 function progressSteps(out) {
   const steps = [];
   const draw = () => {
@@ -984,7 +1020,7 @@ async function ask(item, question, composer, alive) {
   }
 }
 
-// ── 서랍: 천체 목록 (F2009) ───────────────────────────────────────────────
+// ── 서랍: 천체 목록 ───────────────────────────────────────────────
 
 async function showCatalog({ group: startGroup = "all", q: startQ = "" } = {}) {
   enterView({ kind: "catalog", group: startGroup, q: startQ });
@@ -1082,7 +1118,8 @@ function showExplore({ query = "" } = {}) {
               <p class="sub">"${esc(res.query)}"</p></button>`).join("")}</div>` : "";
       const cardsHtml = res.cards.map((c) => `<button type="button" class="card explore-card" data-id="${esc(c.item_id)}">
             <div class="top"><span class="nm">${markHtml(isObserved(c.item_id))}${esc(c.name)}</span>${dist(c.item_id) ? `<span class="badge neutral">${esc(distanceText(dist(c.item_id)))}</span>` : ""}</div>
-            <p class="sub">${c.kind ? `${esc(c.kind)} · ` : ""}${esc(c.reason)}</p></button>`).join("");
+            <p class="sub">${c.kind ? `${esc(c.kind)} · ` : ""}${esc(c.reason)}</p></button>${c.source_url && /^https?:\/\//.test(c.source_url)
+              ? `<p class="disclaimer" style="margin-top:-4px;text-align:right"><a href="${esc(c.source_url)}" target="_blank" rel="noopener">근거 ↗</a></p>` : ""}`).join("");
       out.innerHTML = `
         ${res.applied.length ? `<p class="sub">적용한 조건: ${res.applied.map(esc).join(" · ")}</p>` : ""}
         ${res.notice ? `<p class="status warn">${esc(res.notice)}</p>` : ""}
@@ -1215,7 +1252,12 @@ async function showSkyGuide() {
   const gate = requestGate();
   const sky = (guide, progress, render) => runLatest(gate, alive, {
     work: () => api.sky(req(guide)),
-    onStart: () => { out.innerHTML = statusHtml(progress); $("#guide-btn").disabled = guide; },
+    onStart: () => {
+      const guideBtn = $("#guide-btn");
+      if (!guideBtn) return;                  // 이미 다른 서랍 화면 — runLatest는 onStart를 세대와 상관없이 부른다
+      out.innerHTML = statusHtml(progress);
+      guideBtn.disabled = guide;
+    },
     onSuccess: render,
     onError: (e) => { out.innerHTML = statusHtml(errorText(e), "err"); },
     onSettled: () => { $("#guide-btn").disabled = false; },
@@ -1228,16 +1270,26 @@ async function showSkyGuide() {
   };
   showHours();
   let listTimer;
+  let skyPending = false;
+  panelLeave = () => {                         // 서랍을 닫거나 다른 화면을 열면 — 시각 막대의 남은 타이머를 거둔다
+    clearTimeout(skyTimer);
+    clearTimeout(listTimer);
+    if (skyPending && state.mode === "sky") refreshSky();   // 하늘 배경은 막대가 고른 시각에 맞춰 둔다 (목록은 그리지 않는다)
+    skyPending = false;
+  };
   $("#hours").addEventListener("input", () => {
     showHours();
     state.skyHours = Number($("#hours").value);
     clearTimeout(skyTimer);
+    skyPending = true;
     skyTimer = setTimeout(async () => {
+      skyPending = false;
+      if (!alive()) return;
       await refreshSky();
       if (!alive()) return;
       $("#sky-when").textContent = fmt(state.sky.date);
       clearTimeout(listTimer);
-      listTimer = setTimeout(loadList, 100);
+      listTimer = setTimeout(() => alive() && loadList(), 100);
     }, 150);
   });
   $("#locate-btn").addEventListener("click", () => locate(() => { if (alive()) showSkyGuide(); }));
@@ -1391,7 +1443,7 @@ function bindStage() {
   el.addEventListener("pointerleave", () => { tip.hidden = true; });
 }
 
-// ── 상태 점검 (F2002 색인 건수 · F2012 안내) ─────────────────────────────
+// ── 상태 점검 (색인 건수 · 키, 색인 안내) ─────────────────────────────
 
 const NOTICE_COPY = {
   index_missing: "색인된 항목이 없습니다 — 색인 스크립트를 먼저 실행해 주세요. 그동안 하늘은 볼 수 있지만 답변은 만들 수 없습니다.",

@@ -2,7 +2,7 @@
 
 - 검색: generator=search 한 번으로 제목 · 요약(앞 2문장) · 길이 · 동음이의 여부를 함께 받는다
 - 본문: TextExtracts 평문. '각주' · '외부 링크' 같은 꼬리 절은 지운다
-- 예절(NF2006): 공용 HTTP 클라이언트(User-Agent 연락처 · 호출 간격 · 재시도), maxlag 준수
+- 예절: 공용 HTTP 클라이언트(User-Agent 연락처 · 호출 간격 · 재시도), maxlag 준수
 
 오류 처리
 - 응답 본문의 error는 SourceError로 올린다. 정상적인 '검색 결과 0건' · '문서 없음'과 구분한다.

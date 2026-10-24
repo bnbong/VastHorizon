@@ -11,6 +11,8 @@
   증분 반영을 시작하기 전에는 표식을 내린다. 그래서 도중에 죽은 색인(메모리 부족 등)은 건수가 있어도
   표식이 없거나 기록된 건수와 실제 건수가 달라, scripts/deploy_init.py가 불완전한 색인으로 알아챈다.
 - 재구축은 임시 컬렉션에서 만들고 교체한 뒤 활성 컬렉션에 표식을 남긴다 (임시 컬렉션에는 남기지 않는다).
+- 항목 색인은 표식과 함께 색인한 카탈로그 내용의 해시(catalog_hash)를 남긴다. 건수 · 모델이 같아도
+  카탈로그 · 보강(enrich.json) · 색인 텍스트 생성 코드가 바뀌어 해시가 다르면 deploy_init이 다시 만든다.
 
 재구축 · 교체 정책 (Chroma에는 트랜잭션이 없다)
 1. 임시 컬렉션 <이름>__staging 에 처음부터 색인한다. 활성 컬렉션은 이 동안 그대로 조회된다.
@@ -132,14 +134,25 @@ def record_dimension(collection, dim: int) -> None:
 
 COMPLETE_KEY = "index_complete"
 COUNT_KEY = "index_count"
+CATALOG_HASH_KEY = "catalog_hash"      # 항목 색인 — 색인한 카탈로그 내용의 해시 (item_index.catalog_hash)
 
 
-def mark_complete(name: str, db: chromadb.ClientAPI | None = None) -> int:
-    """색인이 끝까지 성공했다는 표식과 지금 건수를 남긴다 (모듈 설명의 '완성 표식')."""
+def mark_complete(name: str, db: chromadb.ClientAPI | None = None, catalog_hash: str | None = None) -> int:
+    """색인이 끝까지 성공했다는 표식과 지금 건수를 남긴다 (모듈 설명의 '완성 표식').
+    catalog_hash를 주면 함께 남긴다 — 다음 준비(scripts/deploy_init.py)가 카탈로그 내용이 바뀌었는지 비교한다."""
     collection = db_for(name, db).get_collection(name)
     count = collection.count()
-    collection.modify(metadata={**(collection.metadata or {}), COMPLETE_KEY: True, COUNT_KEY: count})
+    extra = {CATALOG_HASH_KEY: catalog_hash} if catalog_hash else {}
+    collection.modify(metadata={**(collection.metadata or {}), COMPLETE_KEY: True, COUNT_KEY: count, **extra})
     return count
+
+
+def recorded_catalog_hash(name: str, db: chromadb.ClientAPI | None = None) -> str | None:
+    """완성 표식과 함께 남긴 카탈로그 해시. 컬렉션이나 해시가 없으면(예전 색인) None."""
+    db = db_for(name, db)
+    if not _exists(name, db):
+        return None
+    return (db.get_collection(name).metadata or {}).get(CATALOG_HASH_KEY)
 
 
 def mark_incomplete(name: str, db: chromadb.ClientAPI | None = None) -> None:
@@ -205,7 +218,7 @@ def raw_metadatas(name: str, db: chromadb.ClientAPI | None = None) -> list[dict]
 
 
 def collection_count(name: str, db: chromadb.ClientAPI | None = None) -> int:
-    """색인 건수. 컬렉션이 없으면 0 — 임베딩 · API 키 없이도 조회할 수 있다. (F2012 색인 없음 안내)"""
+    """색인 건수. 컬렉션이 없으면 0 — 임베딩 · API 키 없이도 조회할 수 있다. (색인 없음 안내)"""
     db = db_for(name, db)
     if not _exists(name, db):
         return 0

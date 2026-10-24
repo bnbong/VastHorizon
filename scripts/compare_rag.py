@@ -1,12 +1,12 @@
-"""RAG 전후 비교 실행 (F2015) — 기획안 7장 질문을 근거 없이 · 근거와 함께 답하게 하고 저장한다.
+"""RAG 전후 비교 실행 — 근거가 필요한 대표 질문을 근거 없이 · 근거와 함께 답하게 하고 저장한다.
 
-    python -m scripts.compare_rag              # 질문 8개 전부 (GMS 호출: 질문당 약 4~5회)
+    python -m scripts.compare_rag              # 질문 8개 전부 (LLM 호출: 질문당 약 4~5회)
     python -m scripts.compare_rag --only 3 7   # 일부만 — 같은 (번호, 버전)만 바꾸고 나머지는 실행 정보째 둔다
 
 전체 실행은 이전 결과를 data/eval/archive/ 에 보관한 뒤 새로 쓴다.
 
 결과: data/eval/rag_comparison.json — Streamlit 검증 페이지의 'RAG 전후 비교' 탭이 읽는다.
-판정과 해설은 docs/05_rag_comparison.md 에 사람이 적는다.
+판정은 사람이 근거와 대조해 내린다.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None, items: list[dict] | None = None, ask_fn=
          path: Path | None = None) -> int:
     """items · ask_fn · llm · path 는 테스트에서 가짜 질의응답 · LLM · 임시 파일을 넣기 위한 인자다."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", type=int, nargs="*", help="질문 번호 (기획안 7장)")
+    parser.add_argument("--only", type=int, nargs="*", help="질문 번호")
     args = parser.parse_args(argv)
     try:
         data = run_all(items if items is not None else load_items(), ask_fn or ask, llm=llm,

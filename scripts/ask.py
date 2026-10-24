@@ -1,4 +1,4 @@
-"""질문 하나를 끝까지 실행해 답변과 근거를 확인하는 CLI. (F2006 · F2007 · F2008 · F2014 검증용)
+"""질문 하나를 끝까지 실행해 답변과 근거를 확인하는 CLI. (검증용)
 
     python -m scripts.ask --item "보이저 1호" --question "보이저 1호는 태양계를 벗어났나?"
     python -m scripts.ask --item "보이저 1호" --question "…" --no-collect   # 수집 없이 기존 색인만

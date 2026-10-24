@@ -1,4 +1,4 @@
-"""항목 메타데이터 색인 (F2001 · F2002) — data/items.json → cosmos_items 컬렉션.
+"""항목 메타데이터 색인 — data/items.json → cosmos_items 컬렉션.
 
     python -m scripts.index_items                    # 바뀐 항목만 반영 (텍스트 → 재임베딩, 메타데이터 → 갱신)
     python -m scripts.index_items --dry-run          # 임베딩 없이 색인 텍스트만 확인 (토큰 사용 없음)
@@ -7,7 +7,7 @@
 
 컬렉션을 건드리기 전에 카탈로그 검증과 API 키 확인을 먼저 끝낸다.
 --rebuild는 실패해도 기존 컬렉션이 그대로 남는다 (vasthorizon/store/chroma.py 교체 정책 참고).
-끝까지 성공하고 건수가 맞을 때만 완성 표식을 남긴다 (같은 파일의 '완성 표식').
+끝까지 성공하고 건수가 맞을 때만 완성 표식을 남긴다 (같은 파일의 '완성 표식'). 이때 색인한 카탈로그 내용의 해시(catalog_hash)도 남긴다.
 """
 
 from __future__ import annotations
@@ -17,9 +17,10 @@ import sys
 
 from vasthorizon.config import get_settings
 from vasthorizon.data.catalog import load_catalog, validate_items
+from vasthorizon.data.enrich import enrich_items
 from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.store import chroma
-from vasthorizon.store.item_index import IndexingError, prepare, rebuild_items, sync_items
+from vasthorizon.store.item_index import IndexingError, catalog_hash, prepare, rebuild_items, sync_items
 
 
 def main(argv: list[str] | None = None, embedding=None, db=None) -> int:
@@ -43,6 +44,14 @@ def main(argv: list[str] | None = None, embedding=None, db=None) -> int:
         for err in errors[:10]:
             print(f"  - {err}")
         return 1
+    # 보강(vasthorizon/data/enrich.json · 서울 관측 계산)을 합쳐 색인한다. 카탈로그 파일은 여기서 고치지 않는다 —
+    # 화면(항목 상세)도 같은 속성을 보도록 파일에 반영하는 일은 python -m scripts.enrich_items 가 한다
+    enriched = enrich_items(items)
+    if enriched != items:
+        changed = sum(a != b for a, b in zip(enriched, items))
+        print(f"[WARN] data/items.json에 보강이 반영되지 않은 항목 {changed}건 — 색인에는 합쳐 넣습니다. "
+              "python -m scripts.enrich_items 로 파일에도 반영하세요.")
+    items = enriched
     ref_year = int(catalog["meta"]["collected_at"][:4])
     name = get_settings().collections.items
 
@@ -88,7 +97,7 @@ def main(argv: list[str] | None = None, embedding=None, db=None) -> int:
     if count != report.loaded:
         print(f"[FAIL] 로드한 항목 {report.loaded}건과 색인된 청크 {count}건이 다릅니다.")
         return 1
-    chroma.mark_complete(name, db)
+    chroma.mark_complete(name, db, catalog_hash=catalog_hash(items, ref_year))   # deploy_init이 카탈로그 변경을 알아챈다
     print(f"[ OK ] 로드 {report.loaded}건 = 색인 {count}건")
     return 0
 

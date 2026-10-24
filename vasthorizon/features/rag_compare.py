@@ -1,20 +1,20 @@
-"""RAG 전후 비교 (F2015) — 같은 질문을 근거 없이 · 근거와 함께 답하게 하고 나란히 기록한다.
+"""RAG 전후 비교 — 같은 질문을 근거 없이 · 근거와 함께 답하게 하고 나란히 기록한다.
 
 | 쪽       | 방법                                                             |
 |----------|------------------------------------------------------------------|
 | RAG 없이 | 같은 모델 · 말투 · 길이, 근거 문서 없이 (prompts.BASELINE_SYSTEM) |
 | RAG      | 서비스 질의응답 전체 — 문서 수집 · 색인 · 검색 · 인용 검증 (pipeline.ask) |
 
-질문은 기획안 7장 '근거가 필요한 질문'이다 — 근거 없이 답하면 틀리기 쉬운 질문.
+질문은 '근거가 필요한 질문'이다 — 근거 없이 답하면 틀리기 쉬운 질문.
 결과는 data/eval/rag_comparison.json 에 남기고, 판정(맞음 · 틀림 · 확인 불가와 그 사유)은 사람이 근거와 대조해
-docs/05_rag_comparison.md 에 적는다. 자동 지표(인용 수 · 수치 포함 · 확인되지 않음 표현)는 판정의 보조다.
+따로 기록한다. 자동 지표(인용 수 · 수치 포함 · 확인되지 않음 표현)는 판정의 보조다.
 
 결과 형식 (schema 2)
 - 문항마다 실행 정보(run)를 둔다 — 실행 ID · 시각 · 모델 · 검색 · 청킹 설정 · 프롬프트 지문 · 코드 버전.
   같은 조건이면 conditions_id 가 같다. 부분 재실행으로 합쳐도 기존 문항의 실행 정보는 그대로 남는다.
 - 문항은 (번호, 버전)으로 구분한다. 질문을 고치면 버전을 올려, 고치기 전 결과와 섞이지 않게 한다.
 - 실행 정보가 없는 이전 형식의 문항은 run=None 그대로 둔다 (현재 설정으로 추정해 채우지 않는다).
-(F2015 리뷰 P2)
+(리뷰 P2)
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from vasthorizon.rag.prompts import ANSWER_SYSTEM, BASELINE_SYSTEM, baseline_mes
 
 SCHEMA = 2
 
-# 기획안 7장 — (번호, 문항 버전, 기준 항목 이름, 질문). 항목은 질의응답의 범위(근거 1 · 문서 수집 대상)를 정한다.
+# 근거가 필요한 질문 — (번호, 문항 버전, 기준 항목 이름, 질문). 항목은 질의응답의 범위(근거 1 · 문서 수집 대상)를 정한다.
 # 6번 v1 "내 생일에 태양은 정말 내 '별자리'에 있었나?"는 생일 날짜 · 기준이 없어 답할 수 없는 질문이었다
 # (RAG 답: "생일 날짜와 기준으로 삼는 별자리가 제시되지 않아 판단할 수 없습니다"). v2는 날짜 · 기준을 담은 일반 개념 질문.
 QUESTIONS = [
@@ -98,7 +98,8 @@ def run_info(run_id: str | None = None, started_at: str | None = None) -> dict:
 
 def baseline_answer(item_name: str, question: str, llm: BaseChatModel | None = None) -> dict:
     t = time.perf_counter()
-    reply = default_chat_model(llm).invoke(baseline_messages(item_name, question))
+    from vasthorizon.usage import tracked_invoke
+    reply = tracked_invoke(default_chat_model(llm), baseline_messages(item_name, question), "compare.baseline")
     text = reply_text(reply)
     return {"answer": text, "seconds": round(time.perf_counter() - t, 2), "metrics": metrics(text)}
 

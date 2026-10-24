@@ -1,4 +1,4 @@
-"""항목 1건 → 색인 텍스트 1개 · 검색 필터용 메타데이터. (F2001)
+"""항목 1건 → 색인 텍스트 1개 · 검색 필터용 메타데이터.
 
 사용자가 무엇으로 항목을 찾을지를 기준으로 속성을 묶는다.
 - 이름 · 영문명 · 종류 → "안드로메다", "산개 성단"
@@ -22,7 +22,9 @@ YEAR_S = 365.25 * 24 * 3600
 # 색인 텍스트에 넣지 않는 내부용 속성
 HIDDEN_ATTRS = {"horizons_id", "별자리 약어", "발사일 출처", "Horizons 위치 기준일", "SATCAT 스냅샷"}
 # '아니오'도 정보가 되는 속성 — 나머지 거짓 값은 검색 잡음이라 뺀다
-SHOW_FALSE_ATTRS = {"맨눈 관측", "황도 별자리"}
+SHOW_FALSE_ATTRS = {"맨눈 관측", "황도 별자리", "고리", "서울에서_관측"}
+# 색인 텍스트에서 다른 이름으로 보여 줄 속성 (속성 키는 데이터 · 필터용 이름)
+TEXT_LABELS = {"서울에서_관측": "서울에서 보임"}
 
 
 # ── 숫자 · 시간 표현 ────────────────────────────────────────────────────────
@@ -231,6 +233,32 @@ def summary_sentence(item: dict) -> str:
     return text
 
 
+def fact_sentences(item: dict) -> str:
+    """보강 속성(vasthorizon/data/enrich.py)을 문장으로 — "블랙홀이 있는 은하" 같은 질문이 의미 검색에 걸리게.
+    속성에 없는 내용은 쓰지 않는다."""
+    attrs, out = item.get("attrs", {}), []
+    if attrs.get("블랙홀"):
+        name = attrs["블랙홀"]
+        what = "초대질량 블랙홀" if name == "초대질량 블랙홀" else f"초대질량 블랙홀 {name}"
+        mass = f"(질량 {attrs['블랙홀 질량']})" if attrs.get("블랙홀 질량") else ""
+        out.append(f"중심에 {josa(what, '이가')} 있다{mass}.")
+    if attrs.get("고리") is True:
+        out.append("고리가 있다.")
+    if isinstance(attrs.get("위성 수"), int):
+        out.append(f"알려진 위성은 {attrs['위성 수']}개다." if attrs["위성 수"] else "위성이 없다.")
+    if attrs.get("탐사선 방문"):
+        out.append(f"탐사선이 방문했다: {attrs['탐사선 방문']}.")
+    elif attrs.get("탐사 계획"):
+        out.append("아직 탐사선이 방문하지 않았다.")
+    seoul = attrs.get("서울에서_관측")
+    if seoul is True:
+        out.append("서울(한국)에서 볼 수 있다.")
+    elif seoul is False:
+        out.append("서울(한국)에서는 일부만 보인다." if attrs.get("서울에서 관측") == "일부만 관측 가능"
+                   else "서울(한국)에서는 지평선 위로 떠오르지 않는다.")
+    return " ".join(out)
+
+
 def _attr_value(value) -> str:
     if isinstance(value, bool):
         return "예" if value else "아니오"
@@ -292,14 +320,15 @@ def item_category(item: dict) -> str:
 def build_item_text(item: dict, ref_year: int) -> str:
     group = GROUPS[item["group"]]
     title = item["name"] + (f" ({item['name_en']})" if item.get("name_en") and item["name_en"] != item["name"] else "")
-    lines = [f"[{group}] {title}", summary_sentence(item), f"종류: {item.get('kind') or group}"]
+    summary = " ".join(s for s in (summary_sentence(item), fact_sentences(item)) if s)
+    lines = [f"[{group}] {title}", summary, f"종류: {item.get('kind') or group}"]
 
     for key, value in item.get("attrs", {}).items():
         if key in HIDDEN_ATTRS or value in (None, ""):
             continue
         if value is False and key not in SHOW_FALSE_ATTRS:
             continue
-        lines.append(f"{key}: {_attr_value(value)}")
+        lines.append(f"{TEXT_LABELS.get(key, key)}: {_attr_value(value)}")
 
     dist = item.get("distance")
     if dist:
@@ -340,6 +369,7 @@ def build_item_metadata(item: dict, ref_year: int, text: str) -> dict:
         "ecliptic": bool(attrs.get("황도 별자리", False)),
         "text_hash": hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
     }
+    meta.update(_fact_metadata(item))
     if dist:
         meta["distance_km"] = float(dist["km"])
         meta["distance_ly"] = float(dist["ly"])
@@ -350,4 +380,36 @@ def build_item_metadata(item: dict, ref_year: int, text: str) -> dict:
     for key in ("ra_deg", "dec_deg"):
         if item.get(key) is not None and math.isfinite(item[key]):
             meta[key] = float(item[key])
+    return meta
+
+
+def _source_for(item: dict, prefix: str) -> str:
+    """보강 속성의 근거 — '출처 이름 URL' (sources의 used_for가 prefix로 시작하는 첫 출처)."""
+    src = next((s for s in item.get("sources", []) if (s.get("used_for") or "").startswith(prefix)), None)
+    return f"{src['name']} {src['url']}" if src else ""
+
+
+def _fact_metadata(item: dict) -> dict:
+    """보강 속성 · 정렬 기준 메타데이터 (조건 탐색 필터 · 정렬 · 카드 설명용). 모르는 값은 넣지 않는다."""
+    attrs, meta = item.get("attrs", {}), {}
+    meta["black_hole"] = bool(attrs.get("블랙홀"))
+    if attrs.get("블랙홀"):
+        meta["black_hole_name"] = attrs["블랙홀"]
+        meta["black_hole_mass"] = attrs.get("블랙홀 질량") or ""
+        meta["black_hole_source"] = _source_for(item, "블랙홀")
+    meta["rings"] = attrs.get("고리") is True
+    if isinstance(attrs.get("고리"), bool) or isinstance(attrs.get("위성 수"), int):
+        meta["rings_source"] = _source_for(item, "고리")
+    if isinstance(attrs.get("위성 수"), int):
+        meta["moons"] = attrs["위성 수"]
+    meta["visited"] = bool(attrs.get("탐사선 방문"))
+    if attrs.get("탐사선 방문"):
+        meta["visit"] = attrs["탐사선 방문"]
+        meta["visit_source"] = _source_for(item, "탐사선 방문")
+    if isinstance(attrs.get("서울에서_관측"), bool):
+        meta["seoul_visible"] = attrs["서울에서_관측"]
+    for key, attr in (("magnitude", "겉보기 등급"), ("radius_km", "평균 반지름(km)"), ("area_sqdeg", "면적(제곱도)")):
+        value = attrs.get(attr)
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
+            meta[key] = float(value)
     return meta

@@ -1,4 +1,4 @@
-"""외부 문서 색인 (RAG 2, F2005 · F2016) — 수집한 문서를 청킹해 cosmos_docs에 넣는다.
+"""외부 문서 색인 (RAG 2) — 수집한 문서를 청킹해 cosmos_docs에 넣는다.
 
 - 항목 메타데이터(cosmos_items)와 분리된 컬렉션
 - 청크 ID = "항목 ID:문서 ID:순번" — 여러 항목이 같은 문서를 수집해도 서로 덮어쓰지 않는다
@@ -80,7 +80,7 @@ def build_records(item: dict, docs: list[Document], links: dict[str, dict],
                 "title": doc.title,
                 "section": chunk.section,
                 "seq": chunk.seq,
-                "source_type": doc.source_type,              # 위키백과 · NASA (F2016 출처 종류)
+                "source_type": doc.source_type,              # 위키백과 · NASA (출처 종류)
                 "source_url": doc.url,
                 "permalink": doc.permalink,
                 "license": doc.license,

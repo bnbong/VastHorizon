@@ -1,4 +1,4 @@
-"""문서 청킹 · cosmos_docs 색인 테스트 (F2005 · F2016) — 가짜 임베딩 · 메모리 전용 Chroma.
+"""문서 청킹 · cosmos_docs 색인 테스트 — 가짜 임베딩 · 메모리 전용 Chroma.
 
     python -m unittest discover -s tests -t .
 """
@@ -102,7 +102,7 @@ class DocIndexTest(unittest.TestCase):
         for key in ("title", "source_url", "permalink", "item_id", "query", "fetched_at", "source_type", "license"):
             self.assertIn(key, meta)
         self.assertEqual((meta["role"], meta["query"], meta["source_type"]), ("관련 문서", "태양권계면", "위키백과"))
-        self.assertEqual(set(report.by_source), {"위키백과", "NASA"})                  # F2016 출처 종류 구분
+        self.assertEqual(set(report.by_source), {"위키백과", "NASA"})                  # 출처 종류 구분
 
     def test_same_document_for_two_items_does_not_overwrite(self):
         self.sync(VOYAGER, [WIKI, HELIO])

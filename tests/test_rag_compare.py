@@ -1,4 +1,4 @@
-"""RAG 전후 비교 테스트 (F2015) — 가짜 LLM · 가짜 질의응답 · 임시 결과 파일. 외부 호출 · 토큰 사용 없음.
+"""RAG 전후 비교 테스트 — 가짜 LLM · 가짜 질의응답 · 임시 결과 파일. 외부 호출 · 토큰 사용 없음.
 
     python -m unittest discover -s tests -t .
 """
@@ -267,7 +267,7 @@ class RagCompareTabTest(unittest.TestCase):
         self.assertIn("#### RAG 없이 — 근거 없이 답함", headers)
         self.assertTrue(any("[근거 1] 보이저 1호" in e.label for e in at.expander))
         self.assertTrue(any("이 문항의 실행: r1" in c.value for c in at.caption))
-        self.assertFalse([w for w in at.warning if "섞여" in w.value])          # 한 조건 — 섞임 경고 없음 (F2014 탭 경고는 별개)
+        self.assertFalse([w for w in at.warning if "섞여" in w.value])          # 한 조건 — 섞임 경고 없음 (검색 방식 비교 탭 경고는 별개)
 
     def test_mixed_conditions_warned(self):
         a = run_info("r1", "t1")

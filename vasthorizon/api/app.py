@@ -1,35 +1,44 @@
-"""VastHorizon API 서버 (F2009 · F2012 · F2013).
+"""VastHorizon API 서버.
 
     uvicorn vasthorizon.api.app:app --port 8000
     → http://localhost:8000/docs  (요청 · 응답 형식 문서)
 
 | 메서드 · 경로                         | 역할                                             |
 |---------------------------------------|--------------------------------------------------|
-| GET  /api/health                      | 키 · 색인 상태와 화면 안내 (F2012)               |
+| GET  /api/health                      | 키 · 색인 상태와 화면 안내                       |
 | GET  /api/items                       | 항목 목록 (그룹 · 이름 필터)                     |
 | GET  /api/items/{item_id}             | 항목 상세                                        |
 | GET  /api/items/{item_id}/intro       | 천체 소개 — 자체 위키 문서 첫머리 · 역사 절 발췌   |
-| POST /api/ask                         | 질문 → 근거 기반 답변 (F2007 · F2008)            |
-| POST /api/ask/stream                  | 같은 질문을 진행 상태와 함께 SSE로 (F2012)       |
-| GET  /api/history/{item_id}           | 항목별 대화 기록 (F2009)                         |
+| POST /api/ask                         | 질문 → 근거 기반 답변                            |
+| POST /api/ask/stream                  | 같은 질문을 진행 상태와 함께 SSE로               |
+| GET  /api/history/{item_id}           | 항목별 대화 기록                                 |
 | DELETE /api/history/{item_id}         | 항목별 대화 기록 지우기                          |
-| POST /api/explore                     | 자연어 조건으로 항목 찾기 (F2011)                |
-| POST /api/light-letter                | 빛의 편지 — 천체 또는 나이로 (F2010)             |
+| POST /api/explore                     | 자연어 조건으로 항목 찾기                        |
+| POST /api/light-letter                | 빛의 편지 — 천체 또는 나이로                     |
 | GET  /api/map                         | 3D 우주 지도 — 항목별 방향 · 거리 · 배치 방식    |
 | GET  /api/constellations              | 별자리 88개의 선과 별 (천구 · 펼치기 화면)       |
 | GET  /api/constellations/{id}/figure  | 별자리 선과 별들의 실제 거리 (3D 펼치기용)       |
-| POST /api/constellations/{id}/unfold  | 별자리 펼치기 설명 — 근거 인용 (F2010)           |
-| POST /api/sky                         | 오늘 밤 나의 하늘 — 위치 계산 + 안내 (F2010)     |
+| POST /api/constellations/{id}/unfold  | 별자리 펼치기 설명 — 근거 인용                   |
+| POST /api/sky                         | 오늘 밤 나의 하늘 — 위치 계산 + 안내             |
 | GET  /api/perspective/themes          | 관점 전환 감정 버튼 (주제 · 서가 문서)           |
 | POST /api/perspective                 | 관점 전환 — 위기 표현이면 상담 창구 안내 먼저    |
 
-오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다. (NF2004)
+오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다.
 
 동시성 정책
 - 서비스 초기화: 첫 요청에서 한 번만 만든다 (잠금으로 보호). 모든 요청이 같은 Services를 쓴다.
 - 대화(세션 + 항목)마다 한 번에 한 질문 — 처리 중이면 409 conversation_busy (sessions.py 참고).
   일반 질문과 SSE가 같은 begin · finish 절차를 쓴다. SSE는 스트림을 열기 전에 검사한다.
 - 처리 중 기록 삭제: 그 질문의 답변은 돌려주되 recorded=false — 지운 기록에 다시 섞이지 않는다.
+
+비용 정책 (LLM을 부르는 처리기)
+0. 코드로 바로 정해지는 응답은 캐시 · 예산 · 한도 앞에서 돌려준다 — 마음 한 줄의 위기 표현(상담 창구 안내),
+   이름만 있는 · 동의어 표로 완전히 해석되는 조건 탐색(LLM 0회, explore.uses_llm). 예산을 다 써도 된다.
+1. 서버 응답 캐시(cache.py)를 먼저 본다. 적중하면 LLM · 호출 한도 · 하루 예산을 쓰지 않고 cached=true로 돌려준다.
+   질문(ask)은 대화 기록이 없을 때만 캐시한다 — 이전 대화에 기대는 질문은 같은 문장이라도 답이 다르다.
+2. 캐시에 없으면 spend_ai: 하루 예산([limits] daily_cost_usd, usage.py 기록 기준) → 호출 한도(limits.py) 순서로 검사.
+3. 실패 · 근거 부족 · 경고가 있는 결과는 캐시하지 않는다 (다음 요청에서 다시 만든다).
+4. 실시간 근거(오늘 UTC 기준 위치 · 거리)가 들어간 답은 ask_live_days와 다음 UTC 자정 중 이른 때에 만료된다.
 """
 
 from __future__ import annotations
@@ -39,6 +48,7 @@ import logging
 import mimetypes
 import queue
 import threading
+import hashlib
 from pathlib import Path
 
 from fastapi import FastAPI, Query, Request
@@ -55,16 +65,18 @@ from vasthorizon.api.schemas import (
     StageInfo, SupportLine, ThemeOut, UnfoldResponse,
 )
 from vasthorizon.api.services import ItemNotFoundError, Services, default_services
+from vasthorizon import usage as usage_log
+from vasthorizon.cache import normalize_text, text_hash
 from vasthorizon.features.star_items import StarLookupError
 from vasthorizon.api.sessions import ConversationBusyError, Ticket
 from vasthorizon.config import PROJECT_ROOT
 from vasthorizon.data.constellation_figures import LICENSES, figure_stats
 from vasthorizon.data.items.common import GROUPS
 from vasthorizon.features.constellation import FigureUnavailableError, figure_for
-from vasthorizon.features.explore import names_only
+from vasthorizon.features.explore import uses_llm
 from vasthorizon.data.perspective_library import THEMES
 from vasthorizon.features.light_letter import LetterUnavailableError, star_for_age
-from vasthorizon.features.perspective import PerspectiveInputError
+from vasthorizon.features.perspective import PerspectiveInputError, keyword_crisis
 from vasthorizon.features.sky import SkyInputError, compute_sky
 from vasthorizon.features.space_map import constellation_list, map_points
 from vasthorizon.llm import MissingApiKeyError
@@ -90,7 +102,7 @@ NOT_RECORDED_NOTICE = "답변하는 동안 대화 기록이 지워져, 이 답�
 KEEPALIVE_SECONDS = 15.0
 
 
-# ── 오류 → 안내 (F2012 · NF2004) ───────────────────────────────────────────
+# ── 오류 → 안내 ───────────────────────────────────────────
 
 def error_payload(error: Exception) -> tuple[int, ErrorResponse]:
     if isinstance(error, StarLookupError):
@@ -162,6 +174,35 @@ def sky_object(obj) -> SkyObjectOut:
                         az_deg=obj.az_deg, direction=obj.direction)
 
 
+# 응답 캐시의 판 — 아래 값이 바뀌면 캐시 키가 달라져 예전 응답을 쓰지 않는다
+CACHE_VERSION = 1
+PROMPT_FILES = ("vasthorizon/rag/prompts.py", "vasthorizon/data/domain.py")
+
+
+def cache_fingerprint(items: list[dict], ref_year: int) -> str:
+    """모델 · effort · 프롬프트 파일 · 항목 카탈로그의 해시."""
+    from vasthorizon.config import get_settings
+    cfg = get_settings().llm
+    h = hashlib.sha256(json.dumps([CACHE_VERSION, cfg.provider, cfg.chat_model, cfg.anthropic_model, cfg.anthropic_fast_model,
+                                   cfg.answer_effort, cfg.fast_effort, ref_year]).encode())
+    for name in PROMPT_FILES:
+        path = PROJECT_ROOT / name
+        h.update(path.read_bytes() if path.exists() else b"")
+    h.update(json.dumps(items, ensure_ascii=False, sort_keys=True, default=str).encode())
+    return h.hexdigest()[:16]
+
+
+def cacheable_answer(result) -> bool:
+    """질의응답 결과를 캐시해도 되는가 — 근거 검증을 통과했고 수집 · 색인 · 검색이 모두 정상이며 경고가 없을 때만."""
+    return (result.status in ("cited", "not_found") and not result.warnings
+            and all(s.status in ("ok", "skipped") for s in result.stages.values()))
+
+
+def has_live_evidence(result) -> bool:
+    """근거에 '오늘 기준' 값(실시간 위치 · 거리, features/live_position.py — 기준일은 UTC)이 들어갔는가."""
+    return any(ev.chunk_id.startswith("live:") for ev in result.evidences)
+
+
 def answer_response(item: dict, result) -> AnswerResponse:
     if result.status == "rejected":
         notice = REJECTED_NOTICE
@@ -213,19 +254,48 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     # 공개 배포 — AI(LLM)를 실제로 부르는 처리기만 예산을 쓴다 (spend_ai). 경로 · 메서드로 세지 않는다:
     # 하늘 계산(guide=false) · 조회는 예산과 무관하게 늘 된다. 다른 주소의 프런트엔드(Cloudflare Pages 등)에는 CORS
-    from vasthorizon.api.limits import RateLimitedError, RateLimiter, client_key
+    from vasthorizon.api.limits import RateLimitedError, RateLimiter, Verdict, client_key
     from vasthorizon.config import get_settings
     settings = get_settings()
     limiter = RateLimiter(settings.limits) if settings.limits.enabled else None
     app.state.limiter = limiter
 
     def spend_ai(request: Request) -> None:
-        """AI 호출 한 번 — 한도를 넘으면 LLM을 부르기 전에 429. 요청 형식 검사를 통과한 뒤에만 센다."""
+        """AI 호출 한 번 — 하루 예산 · 한도를 넘으면 LLM을 부르기 전에 429. 요청 형식 검사를 통과한 뒤에만 센다.
+        캐시 적중은 여기까지 오지 않는다 (예산 · 한도를 쓰지 않는다)."""
+        budget, usage = settings.limits.daily_cost_usd, svc().usage
+        if budget > 0 and usage is not None and usage.today_cost() >= budget:
+            raise RateLimitedError(Verdict(False, usage_log.seconds_until_tomorrow(), "budget"))
         if limiter is None:
             return
         verdict = limiter.check(client_key(request))
         if not verdict.allowed:
             raise RateLimitedError(verdict)
+
+    fingerprint: dict[str, str] = {}
+
+    def cache_parts(parts) -> list | None:
+        services = svc()
+        if services.cache is None:
+            return None
+        if "value" not in fingerprint:
+            fingerprint["value"] = cache_fingerprint(services.items, services.ref_year)
+        return [fingerprint["value"], parts]
+
+    def cache_get(namespace: str, parts) -> dict | None:
+        """저장한 응답. 적중하면 사용량 기록에 캐시 적중 한 줄을 남긴다 (LLM 호출 없음)."""
+        key = cache_parts(parts)
+        hit = svc().cache.get(namespace, key) if key is not None else None
+        if hit is not None and svc().usage is not None:
+            with usage_log.feature(namespace):
+                svc().usage.record_cache_hit(namespace)
+        return hit
+
+    def cache_put(namespace: str, parts, response, days: float, day_boundary: bool = False) -> None:
+        """day_boundary=True면 days와 다음 UTC 자정 중 이른 때에 만료 (실시간 근거의 기준일이 UTC)."""
+        key = cache_parts(parts)
+        if key is not None and days > 0:
+            svc().cache.put(namespace, key, response.model_dump(mode="json"), days, day_boundary=day_boundary)
 
     @app.exception_handler(RateLimitedError)
     async def handle_limited(request, error: RateLimitedError):
@@ -261,16 +331,41 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         item = services.item(req.item_id)
         return item, services.sessions.begin(req.session_id, req.item_id)
 
-    def run_ask(req: AskRequest, item: dict, ticket: Ticket, progress=None) -> AnswerResponse:
+    def prepare_ask(req: AskRequest, request: Request) -> tuple[dict, Ticket, list | None, AnswerResponse | None]:
+        """항목 · 처리권 → 캐시 조회 → (없으면) 예산 · 한도. 돌려주는 값: 항목 · 처리권 · 캐시 키 · 캐시 응답.
+        대화 기록이 있는 질문은 캐시하지 않는다 (키 None)."""
+        item, ticket = begin(req)
+        try:
+            parts = None if ticket.history else [item["id"], normalize_text(req.question), req.search_type]
+            hit = cache_get("ask", parts) if parts is not None else None
+            if hit is None:
+                spend_ai(request)
+                return item, ticket, parts, None
+            hit.update(question=req.question, cached=True, recorded=True)
+            return item, ticket, parts, AnswerResponse(**hit)
+        except BaseException:
+            svc().sessions.abort(ticket)
+            raise
+
+    def run_ask(req: AskRequest, item: dict, ticket: Ticket, parts: list | None = None, progress=None) -> AnswerResponse:
         """처리권(ticket)을 받은 질문을 끝까지 처리한다. 성공 · 실패 모두 처리 중 표시를 푼다."""
         sessions = svc().sessions
         try:
             history = [{"role": t["role"], "content": t["content"]} for t in ticket.history]
-            result = svc().ask(item, req.question, history=history, progress=progress, search_type=req.search_type)
+            with usage_log.feature("ask"):
+                result = svc().ask(item, req.question, history=history, progress=progress, search_type=req.search_type)
             response = answer_response(item, result)
+            if parts is not None and cacheable_answer(result):
+                live = has_live_evidence(result)              # 오늘(UTC) 값 — 날짜가 바뀌면 다시 만든다
+                cache_put("ask", parts, response, settings.cache.ask_live_days if live else settings.cache.ask_days,
+                          day_boundary=live)
         except BaseException:
             sessions.abort(ticket)
             raise
+        return record_turn(req, ticket, response)
+
+    def record_turn(req: AskRequest, ticket: Ticket, response: AnswerResponse) -> AnswerResponse:
+        sessions = svc().sessions
         response.recorded = sessions.finish(
             ticket,
             {"role": "user", "content": req.question},
@@ -283,21 +378,27 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.post("/api/ask", response_model=AnswerResponse, responses=errors)
     def ask(req: AskRequest, request: Request) -> AnswerResponse:
-        spend_ai(request)
-        item, ticket = begin(req)
-        return run_ask(req, item, ticket)
+        item, ticket, parts, hit = prepare_ask(req, request)
+        if hit is not None:
+            return record_turn(req, ticket, hit)
+        return run_ask(req, item, ticket, parts)
 
     @app.post("/api/ask/stream", responses=errors,
               description="SSE 이벤트: progress {message} → result {AnswerResponse} 또는 error {code, message}. "
-                          "없는 항목 · 처리 중인 대화는 스트림을 열기 전에 404 · 409")
+                          "없는 항목 · 처리 중인 대화는 스트림을 열기 전에 404 · 409. 캐시에 있는 답은 progress 없이 result만")
     def ask_stream(req: AskRequest, request: Request) -> StreamingResponse:
-        spend_ai(request)
-        item, ticket = begin(req)
+        item, ticket, parts, hit = prepare_ask(req, request)
+        headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+        if hit is not None:
+            data = record_turn(req, ticket, hit).model_dump()
+            return StreamingResponse(iter([f"event: result\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"]),
+                                     media_type="text/event-stream", headers=headers)
         events: queue.Queue = queue.Queue()
 
         def worker() -> None:
             try:
-                result = run_ask(req, item, ticket, progress=lambda msg: events.put(("progress", {"message": msg})))
+                result = run_ask(req, item, ticket, parts,
+                                 progress=lambda msg: events.put(("progress", {"message": msg})))
                 events.put(("result", result.model_dump()))
             except Exception as e:  # 오류도 이벤트로 알린다 — 내용은 error_payload가 정리
                 events.put(("error", error_payload(e)[1].model_dump()))
@@ -318,8 +419,7 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
                 name, data = event
                 yield f"event: {name}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
-        return StreamingResponse(stream(), media_type="text/event-stream",
-                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        return StreamingResponse(stream(), media_type="text/event-stream", headers=headers)
 
     @app.get("/api/history/{item_id}", response_model=HistoryResponse, responses=errors)
     def history(item_id: str, session_id: str = Query(min_length=8, max_length=64)) -> HistoryResponse:
@@ -335,7 +435,7 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         svc().sessions.clear(session_id, item_id)
 
     @app.get("/api/items/{item_id}/intro", response_model=IntroResponse, responses=errors,
-             description="천체를 내 세상에 담기 전에 읽는 소개 — 자체 위키 문서에서 발췌 (LLM 호출 없음, 캐시 우선)")
+             description="천체를 내 세계에 담기 전에 읽는 소개 — 자체 위키 문서에서 발췌 (LLM 호출 없음, 캐시 우선)")
     def item_intro(item_id: str) -> IntroResponse:
         services = svc()
         r = services.intro(services.item(item_id))
@@ -345,43 +445,63 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.post("/api/explore", response_model=ExploreResponse, responses=errors)
     def explore(req: ExploreRequest, request: Request) -> ExploreResponse:
-        if not names_only(req.query, svc().items):     # 이름만 있는 질문("베가")은 LLM을 부르지 않는다
+        # 이름만 있는 질문("베가") · 동의어 표로 완전히 해석되는 조건("고리가 있는 행성")은 LLM을 부르지 않는다 —
+        # 예산 · 한도를 쓰지 않고, 데이터만으로 정해지므로 캐시하지도 않는다
+        uses_ai = uses_llm(req.query, svc().items)
+        parts = [normalize_text(req.query)]
+        if uses_ai:
+            hit = cache_get("explore", parts)
+            if hit is not None:
+                return ExploreResponse(**{**hit, "query": req.query, "cached": True})
             spend_ai(request)
-        result = svc().explore(req.query)
+        with usage_log.feature("explore"):
+            result = svc().explore(req.query)
         notice = {"no_match": "조건에 맞는 항목을 찾지 못했습니다. 조건을 조금 넓혀 보세요.",
                   "failed": "조건과 대조하지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
                   "ask": "조건으로 찾는 질문이 아니라 특정 천체에 대한 질문입니다. 그 천체에게 물으면 문서 근거와 함께 답합니다.",
                   }.get(result.status)
-        return ExploreResponse(
+        response = ExploreResponse(
             query=result.query, applied=result.applied, candidates=result.candidates, status=result.status,
             notice=notice, warnings=result.warnings,
-            cards=[ExploreCardOut(item_id=c.item_id, name=c.name, group=c.group, kind=c.kind, reason=c.reason)
-                   for c in result.cards],
+            cards=[ExploreCardOut(item_id=c.item_id, name=c.name, group=c.group, kind=c.kind, reason=c.reason,
+                                  source_url=c.source_url) for c in result.cards],
             mentioned=[ExploreMention(item_id=m["id"], name=m["name"], group=m["group"], kind=m.get("kind", ""))
                        for m in getattr(result, "mentioned", [])])
+        if uses_ai and result.status != "failed" and not result.warnings:
+            cache_put("explore", parts, response, settings.cache.explore_days)
+        return response
 
     @app.post("/api/light-letter", response_model=LetterResponse, responses=errors,
               description="item_id 또는 age 중 하나만 보낸다. age면 나이(광년)와 거리가 가장 가까운 별의 편지")
     def light_letter(req: LetterRequest, request: Request) -> LetterResponse:
         if (req.item_id is None) == (req.age is None):
             raise LetterUnavailableError("천체(item_id)나 나이(age) 중 하나만 보내 주세요.")
-        spend_ai(request)
         services = svc()
         gap = None
         if req.age is not None:
             item, gap = star_for_age(services.items, req.age)
         else:
             item = services.item(req.item_id)
-        result = services.letter(item)
+        matched = dict(matched_age=req.age, age_gap_ly=round(gap, 2) if gap is not None else None)
+        parts = [item["id"]]                         # 나이로 찾은 별도 같은 항목이면 같은 편지
+        hit = cache_get("letter", parts)
+        if hit is not None:
+            return LetterResponse(**{**hit, **matched, "cached": True})
+        spend_ai(request)
+        with usage_log.feature("letter"):
+            result = services.letter(item)
         d = result.departure
         notice = generated_notice(result.status, result.cited)
-        return LetterResponse(
+        response = LetterResponse(
             item_id=item["id"], item_name=item["name"], letter=result.letter, status=result.status,
             cited=[cited_evidence(ev) for ev in result.cited], notice=notice, warnings=result.warnings,
-            matched_age=req.age, age_gap_ly=round(gap, 2) if gap is not None else None,
+            **matched,
             departure=DepartureOut(light_years=d.light_years, light_time=d.light_time, year=d.year,
                                    year_label=d.year_label, era=d.era,
                                    year_range=list(d.year_range) if d.year_range else None, summary=d.summary()))
+        if result.status in ("cited", "not_found") and not result.warnings:
+            cache_put("letter", parts, response, settings.cache.letter_days)
+        return response
 
     @app.get("/api/map", description="3D 우주 지도 — 방향(적도 좌표 단위 벡터) · 거리(km) · 배치 방식. LLM 호출 없음")
     def space_map() -> dict:
@@ -408,14 +528,22 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.post("/api/constellations/{item_id}/unfold", response_model=UnfoldResponse, responses=errors)
     def constellation_unfold(item_id: str, request: Request) -> UnfoldResponse:
-        spend_ai(request)
         services = svc()
         item = services.item(item_id)
-        result = services.unfold(item, figure_for(item, services.figures))
-        return UnfoldResponse(
+        figure = figure_for(item, services.figures)
+        hit = cache_get("unfold", [item_id])
+        if hit is not None:
+            return UnfoldResponse(**{**hit, "cached": True})
+        spend_ai(request)
+        with usage_log.feature("unfold"):
+            result = services.unfold(item, figure)
+        response = UnfoldResponse(
             item_id=item_id, name=item["name"], stats=stats_out(result.stats), explanation=result.explanation,
             status=result.status, cited=[cited_evidence(ev) for ev in result.cited],
             notice=generated_notice(result.status, result.cited), warnings=result.warnings)
+        if result.status in ("cited", "not_found") and not result.warnings:
+            cache_put("unfold", [item_id], response, settings.cache.unfold_days)
+        return response
 
     @app.post("/api/sky", response_model=SkyResponse, responses=errors,
               description="위치 · 시각의 하늘에 뜬 별자리와 행성. guide=false면 계산만 (LLM 호출 없음)")
@@ -428,7 +556,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         if not req.guide:                               # 계산만 — AI 예산을 쓰지 않는다
             return SkyResponse(**body, status="skipped", warnings=view.notes)
         spend_ai(request)
-        result = services.sky_guide(view)
+        with usage_log.feature("sky"):
+            result = services.sky_guide(view)
         notice = generated_notice(result.status, result.cited) if result.guide is not None else None
         return SkyResponse(**body, guide=result.guide, status=result.status,
                            cited=[cited_evidence(ev) for ev in result.cited], notice=notice,
@@ -441,16 +570,32 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
     @app.post("/api/perspective", response_model=PerspectiveResponse, responses=errors,
               description="text(마음 한 줄) · theme(감정 버튼) 중 하나 이상. 위기 표현이면 답변 대신 상담 창구 안내")
     def perspective(req: PerspectiveRequest, request: Request) -> PerspectiveResponse:
+        # 코드로 바로 판정되는 위기 표현 — 캐시 · 예산 · 한도보다 먼저 상담 창구 안내 (예산을 다 써도 막지 않는다)
+        urgent = keyword_crisis(req.text)
+        if urgent is not None:
+            return perspective_response(urgent)
+        parts = [text_hash(req.text) if req.text else None, req.theme]      # 사용자 문장은 해시로만 키에 쓴다
+        hit = cache_get("perspective", parts)
+        if hit is not None:
+            return PerspectiveResponse(**{**hit, "cached": True})
         spend_ai(request)
-        result = svc().perspective(req.text, req.theme)
+        with usage_log.feature("perspective"):
+            result = svc().perspective(req.text, req.theme)
+        response = perspective_response(result)
+        if result.status == "cited" and not result.warnings:        # 위기 · 확인 실패 · 근거 없음은 매번 다시 본다
+            cache_put("perspective", parts, response, settings.cache.perspective_days)
+        return response
+
+    def perspective_response(result) -> PerspectiveResponse:
         crisis = result.status == "crisis"
         fixed = crisis or result.status in ("not_found", "unchecked")      # 정해진 안내 문구 — 인용 안내 없음
         notice = None if fixed else generated_notice(result.status, result.cited)
-        return PerspectiveResponse(
+        response = PerspectiveResponse(
             status=result.status, answer=result.answer, crisis=crisis, themes=result.themes,
             cited=[cited_evidence(ev) for ev in result.cited],
             items=[RelatedItem(**it) for it in result.items], disclaimer=result.disclaimer,
             support=[SupportLine(**line) for line in result.support], notice=notice, warnings=result.warnings)
+        return response
 
     if web_dir and web_dir.exists():                    # 3D 프론트엔드 (9번 작업에서 추가)
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
