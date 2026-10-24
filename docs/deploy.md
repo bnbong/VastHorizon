@@ -68,7 +68,7 @@ docker compose logs -f           # 첫 실행: 색인 만들기 (몇 분) → �
 `http://서버:8000`에서 화면이 열리고, `http://서버:8000/api/health`에서 키와 색인 상태를 볼 수 있습니다(키 값은 내보내지 않습니다).
 업데이트는 `git pull` 뒤 `docker compose up -d --build`를 다시 실행하면 되며, 색인 볼륨은 그대로 남습니다.
 
-화면만 Cloudflare Pages 같은 정적 호스팅에 둘 수도 있습니다. `python scripts/build_static.py --api <API 주소>`가 `web/`을 `dist/`로 복사하면서 API 주소를 넣습니다. API 서버에서는 `VH_CORS_ORIGINS`로 그 화면의 출처를 허용합니다.
+화면만 Cloudflare Pages 같은 정적 호스팅에 둘 수도 있습니다. `python scripts/build_static.py --api <API 주소>`가 `web/`을 `dist/`로 복사하면서 API 주소를 넣습니다. API 서버에서는 `VH_CORS_ORIGINS`로 그 화면의 출처를 허용합니다. 카카오톡 공유를 켜려면 빌드 환경변수 `VH_KAKAO_KEY`에 카카오 JavaScript 키를 넣습니다.
 
 ---
 
@@ -159,6 +159,7 @@ API를 화면보다 먼저 바꾸는 이유는 새 화면이 새 API에 기대�
 | `VM2_HOST`, `VM1_HOST` | secret | 각 호스트의 공인 IP 주소 |
 | `VM2_SSH_PRIVATE_KEY`, `VM1_SSH_PRIVATE_KEY` | secret | 각 호스트의 `ubuntu` 계정에 접속할 배포용 SSH 개인 키 |
 | `VM2_SSH_KNOWN_HOSTS`, `VM1_SSH_KNOWN_HOSTS` | secret | `ssh-keyscan -H <공인 IP>`로 얻은 host key |
+| `KAKAO_JS_KEY` | variable | 카카오 개발자 앱의 JavaScript 키입니다(선택). `deploy-web`이 rsync 전에 `web/`의 복사본을 만들고, 그 복사본에 있는 `index.html`의 `vh-kakao-key` meta에 키를 넣습니다. 비어 있으면 "카카오톡으로 보내기" 버튼이 숨겨진 화면을 올립니다 |
 
 API 호스트는 GHCR에 로그인하지 않고 이미지를 받으므로, 첫 `build`가 끝나면 GitHub Packages에서 `vasthorizon` 패키지를 **public**으로 바꿔야 합니다.
 되돌릴 때는 Actions 탭에서 워크플로를 `workflow_dispatch`로 실행하고 `image_ref`에 `ghcr.io/bnbong/vasthorizon:sha-1a2b3c4` 같은 태그를 넣습니다. 그러면 `build`를 건너뛰고 API와 화면이 함께 그 커밋으로 돌아갑니다.

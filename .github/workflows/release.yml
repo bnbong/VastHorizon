@@ -17,6 +17,7 @@ name: Release (GHCR -> API host -> web host)
 # 서버 경로는 저장소에 적지 않고 production environment의 variable로 받는다.
 #   VM2_DEPLOY_DIR  API 호스트에서 compose 파일, .env, deploy.sh가 있는 디렉터리
 #   VM1_WEB_DIR     Nginx 호스트에서 정적 화면을 내보내는 디렉터리
+#   KAKAO_JS_KEY    카카오톡 공유용 JavaScript 키 (선택). deploy-web이 올리기 전에 복사본의 index.html meta에 넣는다
 # 값이 비어 있으면 엉뚱한 경로에 배포하지 않도록 각 job의 첫 단계에서 멈춘다.
 
 on:
@@ -311,6 +312,40 @@ jobs:
           echo "web/을 커밋 $(git rev-parse --short HEAD)에서 올립니다."
         fi
 
+    - name: Prepare web/ copy with Kakao key
+      env:
+        # 화면에 그대로 실리는 공개 키라 secret이 아니라 variable로 둔다.
+        KAKAO_JS_KEY: ${{ vars.KAKAO_JS_KEY }}
+      run: |
+        set -euo pipefail
+        # 카카오 JavaScript 키는 저장소의 index.html에 적지 않는다. 작업 복사본(web/)은 그대로 두고
+        # 임시 디렉터리에 복사한 뒤 그 index.html의 vh-kakao-key meta만 바꾼다. 키 값은 로그에 남기지 않는다.
+        dest="${RUNNER_TEMP}/web"
+        rm -rf "$dest"
+        cp -a web "$dest"
+        index="${dest}/index.html"
+        meta_count="$(grep -c '<meta name="vh-kakao-key" content="">' "$index" || true)"
+        if [ "${meta_count:-0}" != "1" ]; then
+          echo "::error::index.html에서 빈 vh-kakao-key meta를 정확히 하나 찾지 못했습니다 (${meta_count:-0}개)."
+          exit 1
+        fi
+        if [ -z "${KAKAO_JS_KEY:-}" ]; then
+          echo "::warning::production environment의 variable KAKAO_JS_KEY가 비어 있어 카카오톡 공유 버튼을 숨긴 채로 올립니다."
+        else
+          # 키는 영문·숫자(16진수)뿐이어야 sed 치환식과 HTML 속성에 그대로 넣어도 안전하다.
+          if ! printf '%s' "$KAKAO_JS_KEY" | grep -Eq '^[A-Za-z0-9]{1,64}$'; then
+            echo "::error::KAKAO_JS_KEY는 영문과 숫자로만 된 카카오 JavaScript 키여야 합니다."
+            exit 1
+          fi
+          sed -i "s|<meta name=\"vh-kakao-key\" content=\"\">|<meta name=\"vh-kakao-key\" content=\"${KAKAO_JS_KEY}\">|" "$index"
+          if [ "$(grep -c "<meta name=\"vh-kakao-key\" content=\"${KAKAO_JS_KEY}\">" "$index" || true)" != "1" ]; then
+            echo "::error::index.html의 vh-kakao-key meta에 키를 넣지 못했습니다."
+            exit 1
+          fi
+          echo "index.html의 vh-kakao-key meta에 카카오 JavaScript 키를 넣었습니다."
+        fi
+        echo "WEB_SRC=${dest}" >> "$GITHUB_ENV"
+
     - name: Configure SSH
       env:
         SSH_PRIVATE_KEY: ${{ secrets.VM1_SSH_PRIVATE_KEY }}
@@ -329,9 +364,10 @@ jobs:
         set -euo pipefail
         # Nginx 설정은 이 저장소가 관리하지 않으므로 정적 파일만 바꾼다. 경로가 그대로라
         # reload가 필요 없다. 검증용 페이지(_*.html)와 __pycache__는 올리지 않는다.
+        # 올리는 것은 카카오 키를 넣은 복사본(WEB_SRC, 앞 단계)이다.
         rsync -az --delete -e "ssh -i $HOME/.ssh/id_deploy" \
           --exclude '_*.html' --exclude '__pycache__' \
-          web/ "ubuntu@${VM1_HOST}:${WEB_DIR%/}/"
+          "${WEB_SRC:?}/" "ubuntu@${VM1_HOST}:${WEB_DIR%/}/"
 
     - name: Origin check on Nginx host
       run: |

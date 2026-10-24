@@ -26,6 +26,7 @@ import { UnfoldMode } from "./unfold.js";
 import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
 import { advance, popView } from "./drawerstack.js";
 import { sound } from "./sound.js";
+import { available as kakaoAvailable, feedMessage, loadKakao, sendFeed } from "./kakao.js";
 import { addLetter, findLetter, firstSentence, letterDate, letterItemIds, LETTERS_KEY, makeEntry, plainText, removeLetter, restoreLetters,
          sameLetter, serializeLetters, setShare, sharedView } from "./letters.js";
 
@@ -548,10 +549,12 @@ function toggleSpeak(text, b) {
   speech.speak(u);
 }
 
-// 결과 아래 버튼 묶음 — 링크 복사 · 이미지로 저장 · 읽어 주기. note: 버튼 아래 한 줄 안내
+// 결과 아래 버튼 묶음 — 링크 복사 · 카카오톡으로 보내기(키가 있을 때만) · 이미지로 저장 · 읽어 주기. note: 버튼 아래 한 줄 안내
 function shareBarHtml({ note = "", shareable = true } = {}) {
   return `<div class="share-bar" data-share-bar>
-    <div class="row">${shareable ? btn("링크 복사", { ic: "link", attrs: 'data-act="copy"' }) + btn("이미지로 저장", { ic: "download", attrs: 'data-act="image"' }) : ""}
+    <div class="row">${shareable ? btn("링크 복사", { ic: "link", attrs: 'data-act="copy"' })
+      + (kakaoAvailable ? btn("카카오톡으로 보내기", { ic: "message-circle", attrs: 'data-act="kakao"' }) : "")
+      + btn("이미지로 저장", { ic: "download", attrs: 'data-act="image"' }) : ""}
       ${speech ? `<button type="button" class="btn btn-ghost btn-sm" data-act="speak">${icon("volume", 15)}<span class="label-text">읽어 주기</span></button>` : ""}</div>
     ${note ? `<p class="disclaimer">${esc(note)}</p>` : ""}
     <div class="share-slot" data-share-slot></div></div>`;
@@ -566,7 +569,8 @@ function shareErrorText(e) {
 }
 
 // body: POST /api/share 본문 · share: 이미 있는 공유({ id, url, image_url }) · text: 읽어 줄 글 · keepKey: 보관함 기록의 열쇠
-function bindShareBar(bar, { body = null, share = null, text = "", keepKey = null } = {}) {
+// letter: 카카오톡 피드에 담을 { title, text(본문 — 앞 두 문장을 설명으로) }
+function bindShareBar(bar, { body = null, share = null, text = "", keepKey = null, letter = null } = {}) {
   if (!bar) return;
   let current = share;
   let pending = null;
@@ -588,10 +592,12 @@ function bindShareBar(bar, { body = null, share = null, text = "", keepKey = nul
     b.dataset.busy = "1";
     b.setAttribute("aria-busy", "true");
     slot.innerHTML = "";
+    const kakaoReady = b.dataset.act === "kakao" ? loadKakao() : null;   // SDK는 공유 링크를 만드는 동안 함께 불러 둔다
     try {
       const s = await ensure();
       if (!bar.isConnected) return;
       if (b.dataset.act === "copy") await copyLink(s.url, slot);
+      else if (kakaoReady) await sendKakao(s, letter ?? { title: "", text }, slot, kakaoReady);
       else saveImage(s);
     } catch (err) {
       if (bar.isConnected) slot.innerHTML = statusHtml(shareErrorText(err), "warn");
@@ -614,6 +620,15 @@ async function copyLink(url, slot) {
     input.focus({ preventScroll: true });
     input.select();
   }
+}
+
+// 카카오톡 피드 메시지 — SDK를 못 불러오면 링크 복사로 안내하고, 보낸 뒤의 실패 · 취소는 조용히 둔다
+async function sendKakao(s, letter, slot, ready = loadKakao()) {
+  if (!(await ready)) {
+    if (slot.isConnected) slot.innerHTML = statusHtml("카카오톡을 열지 못했습니다. 링크 복사 버튼으로 링크를 복사해 카카오톡에 붙여 넣어 주세요.", "warn");
+    return;
+  }
+  await sendFeed(feedMessage({ title: letter.title, text: letter.text, id: s.id, imageUrl: s.image_url, origin: location.origin }));
 }
 
 function saveImage(s) {
@@ -1410,7 +1425,7 @@ async function showLetter(body) {
       if (res.status === "rejected") return;    // 거절된 응답은 보관 · 공유하지 않는다
       const kept = keepLetter({ kind: "letter", item_id: res.item_id, item_name: res.item_name, title: label, text: res.letter, req });
       bindShareBar(out.querySelector("[data-share-bar]"), {
-        body: { kind: "letter", ...req }, text: `${label}. ${plainText(res.letter)}`, keepKey: kept.key,
+        body: { kind: "letter", ...req }, text: `${label}. ${plainText(res.letter)}`, keepKey: kept.key, letter: { title: label, text: res.letter },
         share: kept.shareId ? { id: kept.shareId, url: kept.url ?? shareCardUrl(kept.shareId), image_url: shareImageUrl(kept.shareId) } : null,
       });
     },
@@ -1462,6 +1477,7 @@ async function showPerspective({ req: startReq = null } = {}) {
                                     title: "마음 한 줄 곁의 사실", text: res.answer, req: req.theme ? { theme: req.theme } : null });
           bindShareBar(out.querySelector("[data-share-bar]"), {
             body: { kind: "perspective", ...req }, text: plainText(res.answer), keepKey: kept.key,
+            letter: { title: "마음 한 줄 곁의 사실", text: res.answer },
             share: kept.shareId ? { id: kept.shareId, url: kept.url ?? shareCardUrl(kept.shareId), image_url: shareImageUrl(kept.shareId) } : null,
           });
         }
@@ -1678,7 +1694,7 @@ function drawShared(rec, kept, shareId) {
       <div class="row">${isLetter && rec.item_id ? btn("이 천체 보기", { ic: "sparkles", id: "kept-item" }) : ""}${btn("받은 편지 모두 보기", { variant: "ghost", id: "kept-list" })}</div></div>`);
   bindShareBar($("#kept-out [data-share-bar]"), {
     share: { id: shareId, url: kept.url ?? shareCardUrl(shareId), image_url: shareImageUrl(shareId) },
-    text: `${title}. ${plainText(rec.text)}`,
+    text: `${title}. ${plainText(rec.text)}`, letter: { title, text: rec.text },
   });
   $("#kept-item")?.addEventListener("click", () => pickItem(rec.item_id));
   $("#kept-list").addEventListener("click", showLetters);
@@ -1697,7 +1713,8 @@ function drawKeptLocal(entry, note = "보관함에는 편지의 앞부분만 남
       <div class="row">${again ? btn("이 편지 다시 받기", { variant: "primary", ic: "mail", id: "kept-again" }) : ""}
         ${entry.kind === "letter" && entry.item_id ? btn("이 천체 보기", { ic: "sparkles", id: "kept-item" }) : ""}
         ${btn("받은 편지 모두 보기", { variant: "ghost", id: "kept-list" })}</div></div>`);
-  bindShareBar($("#kept-out [data-share-bar]"), { body: again ? { kind: entry.kind, ...entry.req } : null, text: `${entry.title}. ${entry.text}`, keepKey: entry.key });
+  bindShareBar($("#kept-out [data-share-bar]"), { body: again ? { kind: entry.kind, ...entry.req } : null, text: `${entry.title}. ${entry.text}`, keepKey: entry.key,
+                                                  letter: { title: entry.title || kindLabel(entry.kind), text: entry.text } });
   $("#kept-again")?.addEventListener("click", () => (entry.kind === "letter" ? showLetter(entry.req) : showPerspective({ req: entry.req })));
   $("#kept-item")?.addEventListener("click", () => pickItem(entry.item_id));
   $("#kept-list").addEventListener("click", showLetters);

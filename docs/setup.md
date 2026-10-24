@@ -164,6 +164,7 @@ node --test tests/js/*.test.mjs          # 화면의 천문 계산
 | `cache` | `explore_days` / `letter_days` | 7 / 7 | 조건 탐색 결과와 빛의 편지(항목별)의 보관 일수 |
 | `cache` | `unfold_days` / `perspective_days` | 30 / 1 | 별자리 펼치기 설명과 마음 한 줄(문장 해시가 키)의 보관 일수 |
 | `cache` | `ask_days` / `ask_live_days` | 7 / 1 | 질의응답 답변(대화 기록이 없는 첫 질문만)과, 오늘 기준 실시간 위치나 거리가 근거에 들어간 답변의 보관 일수 |
+| `share` | `kakao_js_key` | 없음 | 카카오톡 공유에 쓰는 JavaScript 키입니다. `.env`의 `KAKAO_JS_KEY`가 있으면 그 값을 먼저 씁니다. 서버가 `index.html`을 내보낼 때 이 키를 `vh-kakao-key` meta에 넣고, 키가 없으면 "카카오톡으로 보내기" 버튼을 숨깁니다 |
 
 `GET /api/health`의 `usage` 필드에는 오늘(한국 시각)의 LLM 사용량과 추정 비용이 나옵니다. 사용량 기록이 꺼져 있으면 이 필드는 비어 있습니다. 질의응답, 조건 탐색, 편지, 별자리 펼치기, 마음 한 줄 응답의 `cached` 필드가 `true`이면 캐시에서 꺼낸 응답이라는 뜻이며, 이때는 LLM을 부르지 않습니다.
 

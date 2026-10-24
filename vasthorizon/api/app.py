@@ -25,6 +25,7 @@
 | POST /api/share                       | 편지 공유 — 캐시에 있는 편지 · 마음 한 줄만 링크로 |
 | GET  /api/l/{id}                      | 공유 링크 — 미리보기(OG) 태그가 있는 HTML         |
 | GET  /api/l/{id}.json · .png          | 공유 기록 그대로 · 1200×630 미리보기 이미지       |
+| GET  / · /index.html                  | 화면 — [share] kakao_js_key가 있으면 vh-kakao-key meta에 넣어서 |
 
 오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다.
 
@@ -88,6 +89,7 @@ from vasthorizon.share import (
     ShareNotReadyError, ShareRefusedError, ShareUnavailableError, echoes, letter_record, perspective_record,
 )
 from vasthorizon.store.chroma import EmbeddingMismatchError
+from vasthorizon.webmeta import inject_kakao_key, valid_kakao_key
 
 log = logging.getLogger(__name__)
 WEB_DIR = PROJECT_ROOT / "web"
@@ -721,6 +723,19 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         return HTMLResponse(sharecard.share_page(record, public_base), headers=share_headers(record, 600))
 
     if web_dir and web_dir.exists():                    # 3D 프론트엔드 (9번 작업에서 추가)
+        kakao_key = settings.share.kakao_js_key
+        if kakao_key and not valid_kakao_key(kakao_key):
+            log.warning("[share] kakao_js_key(KAKAO_JS_KEY)가 영문 · 숫자로만 된 키가 아니라 넣지 않습니다.")
+        elif kakao_key:
+            # 카카오 JavaScript 키는 저장소의 index.html에 적지 않는다 — 내보낼 때만 meta에 넣는다. 키가 없으면 StaticFiles 그대로
+            index_path = web_dir / "index.html"
+
+            @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+            @app.api_route("/index.html", methods=["GET", "HEAD"], include_in_schema=False)
+            def index_page() -> HTMLResponse:
+                html = inject_kakao_key(index_path.read_text(encoding="utf-8"), kakao_key)
+                return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
     return app
 
