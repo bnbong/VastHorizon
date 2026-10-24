@@ -1,8 +1,8 @@
 # 설치와 실행
 
 VastHorizon을 직접 실행해 보려는 분을 위한 안내입니다.
-기본 경로는 **Claude API로 답하고, 검색용 임베딩은 서버 안의 로컬 모델(MiniLM)로 계산하는 구성**입니다.
-공개 서버에 올리는 방법은 [deploy.md](deploy.md), 파이프라인 설계는 [architecture.md](architecture.md)에 있습니다.
+기본 구성은 **Claude API로 답하고, 검색용 임베딩은 서버 안의 로컬 모델(MiniLM)로 계산하는 방식**입니다.
+공개 서버에 올리는 방법은 [deploy.md](deploy.md)에, 파이프라인 설계는 [architecture.md](architecture.md)에 있습니다.
 
 ---
 
@@ -69,7 +69,7 @@ uvicorn vasthorizon.api.app:app --port 8000
 
 ## 4. 데이터 다시 만들기
 
-저장소에는 만들어 둔 데이터(`data/items.json`, `data/constellations.json`, `web/data/`)가 들어 있습니다. 출처에서 다시 받거나 갱신할 때만 아래 스크립트를 씁니다.
+저장소에는 만들어 둔 데이터(`data/items.json`, `data/constellations.json`, `web/data/`)가 들어 있습니다. 데이터를 출처에서 다시 받거나 갱신할 때만 아래 스크립트를 씁니다.
 스크립트는 원본 응답을 `data/raw/`에 캐시하며, `--refresh`를 주면 출처에서 다시 받습니다.
 
 | 스크립트 | 만드는 것 | 출처 |
@@ -83,7 +83,7 @@ uvicorn vasthorizon.api.app:app --port 8000
 | `python -m scripts.build_blackholes` | `web/data/blackholes.json`: 은하 중심 블랙홀 목록과 근거 | 색인한 위키 문서, Wikidata |
 | `python -m scripts.build_icons` | 파비콘, 앱 아이콘, manifest, 공유 이미지 | `web/js/logo.js`의 로고 도형 |
 
-질문 하나를 터미널에서 끝까지 실행해 볼 수도 있습니다.
+질문 하나를 처리하는 과정을 터미널에서 끝까지 실행해 볼 수도 있습니다.
 
 ```bash
 python -m scripts.collect_docs --item "보이저 1호" --question "보이저 1호는 태양계를 벗어났나?"   # 수집 흐름만
@@ -132,7 +132,7 @@ curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: applicati
 
 ## 6. 테스트
 
-외부 API를 호출하지 않는 회귀 테스트입니다.
+아래 명령은 외부 API를 호출하지 않는 회귀 테스트를 실행합니다.
 
 ```bash
 python -m unittest discover -s tests -t .
@@ -165,7 +165,7 @@ node --test tests/js/*.test.mjs          # 화면의 천문 계산
 | `cache` | `unfold_days` / `perspective_days` | 30 / 1 | 별자리 펼치기 설명과 마음 한 줄(문장 해시가 키)의 보관 일수 |
 | `cache` | `ask_days` / `ask_live_days` | 7 / 1 | 질의응답 답변(대화 기록이 없는 첫 질문만)과, 오늘 기준 실시간 위치나 거리가 근거에 들어간 답변의 보관 일수 |
 
-`GET /api/health`의 `usage` 필드에는 오늘(한국 시각)의 LLM 사용량과 추정 비용이 나오며, 기록이 꺼져 있으면 비어 있습니다. 질의응답, 조건 탐색, 편지, 별자리 펼치기, 마음 한 줄 응답의 `cached` 필드가 `true`이면 캐시에서 꺼낸 응답이라는 뜻이고, 이때는 LLM을 부르지 않습니다.
+`GET /api/health`의 `usage` 필드에는 오늘(한국 시각)의 LLM 사용량과 추정 비용이 나옵니다. 사용량 기록이 꺼져 있으면 이 필드는 비어 있습니다. 질의응답, 조건 탐색, 편지, 별자리 펼치기, 마음 한 줄 응답의 `cached` 필드가 `true`이면 캐시에서 꺼낸 응답이라는 뜻이며, 이때는 LLM을 부르지 않습니다.
 
 ### 다른 OpenAI 호환 API를 쓸 때
 
