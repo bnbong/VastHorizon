@@ -77,7 +77,7 @@ export class MapMode {
     this.meTag = new CSS2DObject(Object.assign(document.createElement("div"), { className: "world-me", textContent: "나" }));
     this.group.add(this.meTag);
 
-    // 내 세상 — 내가 알아간(담은) 천체는 살구색 표식과 이름표, '나'에서 잇는 실선으로. 담지 않은 천체는 거리와 관계없이 아직 만나지 않은 빛이다.
+    // 내 세계 — 내가 알아간(담은) 천체는 살구색 표식과 이름표, '나'에서 잇는 실선으로. 담지 않은 천체는 거리와 관계없이 아직 만나지 않은 빛이다.
     // (개인이 아직 모른다는 은유일 뿐, 천체의 물리적 상태와는 관계없다.) 가장 먼 빛까지는 영역처럼 보이지 않게 아주 옅은 테두리만
     this.reach = new DreamSphere({ strength: 0.22, sparkles: false });
     this.group.add(this.reach.group);
@@ -203,8 +203,9 @@ export class MapMode {
     this.stage.flyTo(new THREE.Vector3(70, 120, 210), new THREE.Vector3(0, 0, 0), ms);
   }
 
-  // 내 세상 — 반지름(바라본 가장 먼 거리)과 바라본 천체 이름표
-  setWorld(worldKm, visited) {
+  // 내 세계 — 반지름(바라본 가장 먼 거리)과 바라본 천체 이름표
+  // fresh: 지금 막 담은 천체 — 표식이 떠오르고, 그 자리에서 '나'까지 선이 그려진다 (main.js bindCollect의 빛무리와 함께)
+  setWorld(worldKm, visited, { fresh = null } = {}) {
     const r = Math.max(mapRadius(worldKm), 0.6);
     this.reach.setRadius(r);
     this.worldRadius = r;
@@ -225,16 +226,18 @@ export class MapMode {
     this.visitedList = visited;
     const named = labelledIds(visited, this.selectedId);
     const stops = [];
+    let freshPos = null;
     for (const v of visited) {
       const p = this.lookup(v.id);
       if (!p) continue;
-      const mark = knownMark(p.name);
+      const mark = knownMark(p.name, { fresh: p.id === fresh });
       mark.element.classList.toggle("quiet", !named.has(p.id));   // 많아지면 이름표는 최근 것과 고른 것만
       mark.element.classList.toggle("is-selected", p.id === this.selectedId);
       mark.position.copy(p.position);
       this.visitedTags.set(p.id, mark);
       this.visitedGroup.add(mark);
-      stops.push(p.position);
+      if (p.id === fresh) freshPos = p.position;
+      else stops.push(p.position);
     }
     // '나'에서 알아간 빛마다 곧은 실선
     this.trail.clear();
@@ -243,6 +246,32 @@ export class MapMode {
       this.trail.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pts, 3)),
         new THREE.LineBasicMaterial({ color: LINK_COLOR, transparent: true, opacity: 0.85, depthWrite: false })));
     }
+    if (freshPos) this.drawLink(freshPos);
+    if (this.selectedId) this.select(this.selectedId, { fly: false });   // 막 담은 천체 — 맥박 고리 대신 표식 둘레의 흰 고리로
+  }
+
+  // 막 담은 빛의 선 — 그 천체 자리에서 '나'(원점)까지 빛무리가 차오른 뒤 이어진다. 이 지도가 무대에 없거나 움직임 줄이기면 바로 끝 모습
+  drawLink(to) {
+    const geom = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([...to.toArray(), ...to.toArray()], 3));
+    const line = new THREE.Line(geom, new THREE.LineBasicMaterial({ color: LINK_COLOR, transparent: true, opacity: 0.85, depthWrite: false }));
+    line.frustumCulled = false;
+    this.trail.add(line);
+    const end = new THREE.Vector3(), pos = geom.attributes.position;
+    const draw = (k) => {
+      const u = Math.min(1, Math.max(0, (k - 0.18) / 0.82));
+      end.copy(to).multiplyScalar(1 - u);
+      pos.setXYZ(1, end.x, end.y, end.z);
+      pos.needsUpdate = true;
+    };
+    if (this.stage?.mode === this) this.stage.animate(1700, draw);
+    else draw(1);
+  }
+
+  // 담는 순간의 빛무리 자리 — 그 천체의 화면 좌표. 지도에 놓지 않는 천체(거리 미확인 · 별자리)는 '나'의 자리로
+  screenOf(id) {
+    if (!this.stage) return null;
+    const p = id ? this.lookup(id) : null;
+    return this.stage.screenOf(p ? p.position : new THREE.Vector3());
   }
 
   // 아직 만나지 않은 빛 — 담지 않은 천체는 거리와 관계없이 흐린 점선 원으로 천천히 일렁인다. 알아간 천체는 이 층에서 숨긴다(살구색 표식이 대신)
@@ -315,7 +344,7 @@ export class MapMode {
     return new THREE.Vector3(edge * 0.6, edge * 1.1, edge * 1.6);
   }
 
-  // 떠오르기 — 땅 위의 나 → 내 세상의 끝 → 관측 가능한 우주의 끝
+  // 떠오르기 — 땅 위의 나 → 내 세계의 끝 → 관측 가능한 우주의 끝
   journey(onWorld, onEdge) {
     const origin = new THREE.Vector3();
     this.stage.camera.position.set(0, 0.4, 1.4);

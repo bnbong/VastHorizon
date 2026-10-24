@@ -87,7 +87,7 @@ export function lightJourney(km, refYear) {
   return `${year > 0 ? `${year}년` : `기원전 ${1 - year}년`} 무렵 출발한 빛`;
 }
 
-// 내 세상의 반지름 표기 (디자인 v2 · 측정값) — {value, unit}
+// 내 세계의 반지름 표기 (디자인 v2 · 측정값) — {value, unit}
 //   1만 km 미만 "4.7 km" · 1억 km 미만 "38.4만 km" · 450억 km 미만 "6.3억 km" · 0.5광년 미만 "170 AU" · 그 뒤 광년 · 만 광년 · 억 광년
 export function measure(km) {
   const LY = 9460730472580.8, AU = 149597870.7;
@@ -141,7 +141,7 @@ export function lightTime(km) {
   return years < 1e4 ? `약 ${Math.round(years).toLocaleString("ko-KR")}년` : `약 ${koreanBig(years)} 년`;
 }
 
-// 내 세상의 크기를 와닿게 — 빛으로 걸리는 시간 · 지평선의 몇 배
+// 내 세계의 크기를 와닿게 — 빛으로 걸리는 시간 · 지평선의 몇 배
 export function worldScaleLine(km) {
   const ratio = km / horizonKm();
   if (ratio < 1.01) return "아직 지평선 너머를 바라보지 않았습니다";

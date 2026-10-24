@@ -121,6 +121,17 @@ export class UnfoldMode {
     this.stage.flyTo(unfold ? v.position : v.position.clone().add(this.center.clone().multiplyScalar(-0.01)), v.target, 3500);
   }
 
+  // 담는 순간의 빛무리 자리 — 그 별의 지금 자리(펼친 정도만큼), 별자리 자체면 별들의 가운데
+  screenOf(id) {
+    if (!this.stage) return null;
+    if (id === this.con.item_id) {
+      const c = this.stars.reduce((sum, s) => sum.add(s.pos), new THREE.Vector3()).divideScalar(Math.max(1, this.stars.length));
+      return this.stage.screenOf(c);
+    }
+    const s = this.stars.find((x) => x.item_id === id);
+    return s ? this.stage.screenOf(s.pos) : null;
+  }
+
   pickables() {
     return this.stars.filter((s) => s.item_id).map((s) => ({ position: s.pos, data: { id: s.item_id, name: s.name } }));
   }

@@ -1,4 +1,4 @@
-// 내 세상이 얼마나 넓은가 — 세상 안 천체, 비유 계산
+// 내 세계가 얼마나 넓은가 — 세상 안 천체, 비유 계산
 //     node --test "tests/js/*.test.mjs"
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -49,7 +49,7 @@ test("지평선 세상에는 비유가 빛으로 하나뿐", () => {
   assert.equal(analogies(4.65).length, 1);
 });
 
-test("거리 안에 있다고 내 세상이 아니다 — 알아간 천체 / 아직 알아가지 않은 천체", () => {
+test("거리 안에 있다고 내 세계가 아니다 — 알아간 천체 / 아직 알아가지 않은 천체", () => {
   const pts = POINTS.map((p, i) => ({ ...p, id: `Q${i}` }));
   const { known, unknown } = knownAndUnknown(pts, new Set(["Q5"]), 600 * LY);       // 베텔게우스만 알게 됨
   assert.deepEqual(known.map((p) => p.name), ["베텔게우스"]);

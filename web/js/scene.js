@@ -7,6 +7,7 @@
 //   pickables()           : [{ position: Vector3, data, pickRadius? }] — 클릭 · 툴팁 대상 (pickRadius: 화면 반지름 px, 원반)
 //   update(dt, stage)     : (선택) 매 프레임
 //   pickNear(x, y)        : (선택) pickables에 없을 때 그 자리의 대상
+//   screenOf(id)          : (선택) 그 천체의 화면 좌표(client px) — 담는 순간의 빛무리 자리 (main.js bindCollect). 보이지 않으면 null
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -16,7 +17,7 @@ import { pickScore } from "./skydata.js";
 
 export { THREE, CSS2DObject };
 
-// 하늘 밖의 보기(내 세상 · 펼치기)의 바탕 — 깊은 남보라 (web/tokens/colors.css --ink-1)
+// 하늘 밖의 보기(내 세계 · 펼치기)의 바탕 — 깊은 남보라 (web/tokens/colors.css --ink-1)
 export const SPACE_BG = 0x1c1d4a;
 
 export function label(text, className = "label") {
@@ -207,6 +208,18 @@ export class Stage {
     }
     // 이름 있는 대상이 없으면 — 모드가 그 자리의 실제 천체를 찾는다 (하늘의 별 · 성운)
     return best ?? this.mode.pickNear?.(clientX, clientY) ?? null;
+  }
+
+  // 장면 좌표 → 화면 좌표(client px). 카메라 뒤쪽이거나 화면 밖이면 null. 서랍 · 카드로 비킨 시야(setViewOffset)도 투영 행렬에 들어 있다
+  screenOf(position) {
+    if (!position) return null;
+    const facing = new THREE.Vector3();
+    this.camera.getWorldDirection(facing);
+    if (position.clone().sub(this.camera.position).dot(facing) <= 0) return null;
+    const v = position.clone().project(this.camera);
+    if (Math.abs(v.x) > 1 || Math.abs(v.y) > 1) return null;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
   }
 
   // 카메라 이동 — 위치 · 바라보는 점을 ms 동안 부드럽게

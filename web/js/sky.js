@@ -518,14 +518,7 @@ export class SkyMode {
   // 그 천체의 화면 좌표 (보이지 않으면 null) — 발견하는 순간의 연출 자리
   screenOf(id) {
     const t = this.targets?.find((x) => x.data.id === id);
-    if (!t || !this.stage) return null;
-    const st = this.stage, rect = st.renderer.domElement.getBoundingClientRect();
-    const facing = new THREE.Vector3();
-    st.camera.getWorldDirection(facing);
-    if (t.position.clone().sub(st.camera.position).dot(facing) <= 0) return null;
-    const v = t.position.clone().project(st.camera);
-    if (Math.abs(v.x) > 1 || Math.abs(v.y) > 1) return null;
-    return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
+    return t && this.stage ? this.stage.screenOf(t.position) : null;
   }
 
   // 그 천체 쪽으로 고개 돌리기

@@ -68,6 +68,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: var(--star-50); cursor: pointer; transition: background var(--dur-fast), border-color var(--dur-fast); }
 .nav-round:hover, .nav-round[aria-expanded="true"] { background: rgba(255,250,245,.12); border-color: var(--star-50); }
 .menu-wrap { position: relative; }
+/* 메뉴를 펼치면 크롬 층 전체를 요약 카드(.world-card, z-index 4) 위로. 크롬은 z-index 3의 층이라 메뉴만 올릴 수 없다.
+   넓은 화면에서 서랍이 열려 있으면 메뉴가 서랍 왼쪽에 펼쳐지고 요약 카드는 숨으므로 그대로 둔다 (650px 이하는 아래 미디어 쿼리) */
+.app.menu-open:not(.drawer-open) .chrome { z-index: 5; }
 .menu { position: absolute; top: calc(100% + 12px); right: 0; width: 264px; max-height: calc(100vh - 120px); overflow-y: auto; padding: 6px 8px;
   display: flex; flex-direction: column; background: var(--paper); color: var(--paper-ink); box-shadow: 0 18px 50px -14px rgba(20,18,52,.55);
   animation: vhFade 200ms var(--ease-out); }
@@ -120,7 +123,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .app[data-mode="map"] .stage-hint, .app[data-mode="unfold"] .stage-hint, .app.drawer-open .stage-hint { bottom: calc(var(--ribbon-h) + 92px); }
 .app.drawer-open .stage-hint { right: calc(var(--drawer-w) + 48px); }
 
-/* 발 — 지평선 길(내 세상 · 서랍에서만)과 살구색 리본 */
+/* 발 — 지평선 길(내 세계 · 서랍에서만)과 살구색 리본 */
 .chrome-bottom { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
 .horizon-scale { display: none; pointer-events: auto; padding: 18px 48px 12px; background: linear-gradient(180deg, rgba(28,29,74,0), rgba(28,29,74,.5)); }
 .app[data-mode="map"] .horizon-scale, .app[data-mode="unfold"] .horizon-scale, .app.drawer-open .horizon-scale { display: block; }
@@ -200,6 +203,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .hero-fact { margin: 10px 0 12px; font: 400 clamp(20px, 2.15vw, 33px)/1.5 var(--font-serif); letter-spacing: -0.055em; color: var(--paper-ink); word-break: keep-all; }
 .hero-fact em { font-style: normal; color: #83629a; }   /* 시안 #8D67A1을 종이 위 4.5:1에 맞춰 조금 짙게 */
 .fact-detail { margin: 0; font: 400 14px/1.8 var(--font-sans); color: #5f5869; word-break: keep-all; }
+.place-note .disclaimer { margin-top: 6px; }   /* 지구 서랍의 한 문단과 그 근거 (facts.js placeNote) */
 .evidence-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid #e8dfe2; border-bottom: 1px solid #e8dfe2;
   font: 400 12px/1.5 var(--font-sans); color: #686274; }
 .evidence-line a { color: #6b4c80; border-bottom: 1px solid #b69bc0; padding-bottom: 1px; white-space: nowrap; }
@@ -309,6 +313,13 @@ button.card:hover { border-color: var(--border-strong); background: var(--surfac
 .drawer-close { position: absolute; top: 22px; right: 22px; z-index: 1; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-default);
   background: #fff9f3; color: var(--text-muted); display: grid; place-items: center; cursor: pointer; transition: all var(--dur-fast); }
 .drawer-close:hover { color: var(--text-primary); border-color: var(--border-strong); }
+/* 뒤로 — 닫기 버튼 왼쪽. 서랍 안에서 화면이 바뀐 뒤에만 보인다 (main.js renderBack) */
+.drawer-back { position: absolute; top: 22px; right: 66px; z-index: 1; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px 0 12px;
+  border-radius: 18px; border: 1px solid var(--border-default); background: #fff9f3; color: var(--text-muted); font: 400 12px/1 var(--font-sans); cursor: pointer;
+  transition: all var(--dur-fast); }
+.drawer-back[hidden] { display: none; }
+.drawer-back:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.drawer-back:focus-visible, .drawer-close:focus-visible { outline: 2px solid #8d67a1; outline-offset: 2px; }
 .drawer-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 37px 38px 26px; display: flex; flex-direction: column; gap: 18px; }
 .drawer-body.entering { animation: vhIn var(--dur-slow) var(--ease-cinematic); }
 .reveal { animation: vhIn 900ms var(--ease-cinematic) both; }
@@ -502,8 +513,12 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
   .app.drawer-open .toast, .app.drawer-open .growth { left: 50%; }
   .app.drawer-open .horizon-scale { padding-right: 16px; }
   .drawer-body { padding: 28px 22px 22px; }
+  /* 아래 시트 위로 메뉴가 펼쳐진다 — 크롬을 시트(.drawer)보다 위로 올리고, 시트에 가려져 있던 머리글 · 발은 메뉴가 열린 동안 숨긴다 */
+  .app.menu-open .chrome { z-index: 5; }
+  .app.menu-open.drawer-open .chrome > :not(.chrome-top) { visibility: hidden; }
   .drawer .composer-wrap { margin: 0 -22px -22px; padding: 22px 22px 22px; bottom: -22px; }
   .drawer-close { top: 16px; right: 16px; width: 44px; height: 44px; }
+  .drawer-back { top: 16px; right: 68px; height: 44px; border-radius: 22px; }
   .name.card-name { font-size: 28px; }
   .hero-fact { font-size: 22px; }
   .stage { background-image: var(--gradient-sky-narrow); }
@@ -618,16 +633,20 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
 .replay { margin-top: 18px; background: none; border: 0; color: var(--star-400); font: 400 12px/1 var(--font-sans); letter-spacing: .06em; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
 .replay:hover { color: var(--star-100); }
 
-/* ── 몽환 — 넓어진 순간 · 내 세상 카드 · 발견 연출 (web/js/dream.js · worldscale.js) ───────────── */
+/* ── 몽환 — 넓어진 순간 · 내 세계 카드 · 발견 연출 (web/js/dream.js · worldscale.js) ───────────── */
 .comet-burst { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
-.growth { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); z-index: 6; max-width: min(560px, calc(100% - 32px));
-  padding: 16px 20px; border-radius: 18px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
-  background: linear-gradient(rgba(30,31,76,.88), rgba(30,31,76,.88)) padding-box, var(--gradient-dream) border-box; border: 1px solid transparent;
-  box-shadow: 0 10px 40px -10px rgba(153,112,175,.5); backdrop-filter: blur(10px); }
+.growth { --line-1: rgba(40,35,69,.12); position: absolute; top: 140px; left: 50%; transform: translateX(-50%); z-index: 6; max-width: min(560px, calc(100% - 32px));
+  padding: 18px 22px; border-radius: 0; display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+  background: #fff9f3; color: #282345; border: 1px solid rgba(40,35,69,.12); box-shadow: 0 15px 38px rgba(38,30,68,.23); }
 .growth.show { animation: growthIn .9s var(--ease-cinematic) both; }
-.growth-head { display: flex; align-items: baseline; gap: 12px; font: 400 15px/1.5 var(--font-sans); color: var(--star-100); }
-.growth-x { white-space: nowrap; font: 400 26px/1 var(--font-serif); background: var(--gradient-dream); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.growth-in { margin: 0; font: 400 13px/1.6 var(--font-sans); color: var(--sky-200); }
+.growth-head { display: flex; align-items: baseline; gap: 12px; font: 400 15px/1.5 var(--font-sans); color: #282345; }
+.growth-x { white-space: nowrap; font: 400 26px/1 var(--font-serif); color: #83629A; }
+.growth-in { margin: 0; font: 400 13px/1.6 var(--font-sans); color: #686274; }
+.growth .kw { color: #83629A; border-bottom-color: rgba(131,98,154,.4); }
+.growth .btn { height: 34px; padding: 0 14px; border: 0; border-radius: 0; background: var(--peach); color: #352b4a; font: 600 13px/1 var(--font-sans);
+  box-shadow: 0 6px 18px rgba(41,35,69,.13); }
+.growth .btn:hover:not(:disabled) { background: #f8e6e2; color: #352b4a; box-shadow: 0 10px 26px rgba(41,35,69,.25); }
+.growth :focus-visible { box-shadow: 0 0 0 2px #fff9f2, 0 0 0 4px #8d67a1; outline: none; }
 @keyframes growthIn { from { opacity: 0; transform: translate(-50%, -10px) scale(.97); filter: blur(4px); } }
 .label.crossed { color: var(--dream-rose); font: 500 12px/1.2 var(--font-sans); text-shadow: 0 0 10px rgba(153,112,175,.9), 0 0 2px #000;
   animation: crossedIn 1.1s var(--ease-cinematic) both; }

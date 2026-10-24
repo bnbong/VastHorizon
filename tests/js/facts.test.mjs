@@ -2,7 +2,7 @@
 //     node --test "tests/js/*.test.mjs"
 import assert from "node:assert/strict";
 import test from "node:test";
-import { heroFact, josa } from "../../web/js/facts.js";
+import { heroFact, josa, placeNote } from "../../web/js/facts.js";
 
 const LY = 9460730472580.8;
 const text = (f) => f && `${f.before}${f.em}${f.after}`;
@@ -61,4 +61,17 @@ test("거리를 모르면 종류 문장 · 근거가 없으면 null — 거리�
   assert.equal(text(heroFact({ name: "프록시마", group: "star", kind: "적색 왜성", attrs: {} })), "프록시마는 적색 왜성이에요.");
   assert.equal(heroFact({ name: "무엇", group: "star", attrs: {} }), null);
   assert.equal(heroFact(null), null);
+});
+
+test("지구 — 핵심 사실 아래에 지구에만 붙는 문단과 근거", () => {
+  const earth = { id: "Q2", name: "지구", group: "solar_system", kind: "행성", distance_km: null, distance: null, attrs: {} };
+  assert.equal(text(heroFact(earth)), "지구는 행성이에요.");      // 거리가 없어 '종류' 분기
+  const note = placeNote(earth);
+  assert.match(note.text, /약 4\.7 km 떨어진 지평선/);
+  assert.match(note.text, /약 61억 km/);
+  assert.match(note.text, /0\.12화소/);
+  assert.doesNotMatch(note.text, /—/);
+  assert.equal(note.source.url, "https://ko.wikipedia.org/wiki/창백한_푸른_점");
+  assert.equal(placeNote({ id: "Q405", name: "달", group: "solar_system" }), null);
+  assert.equal(placeNote(null), null);
 });

@@ -66,7 +66,7 @@ test("지평선 거리 · 빛의 여정 (서버 departure_year 와 같은 식)",
   assert.match(lightJourney(2.54e6 * LY, 2026), /인류 문명 이전/);
 });
 
-test("내 세상의 반지름 표기 — 단위 경계", async () => {
+test("내 세계의 반지름 표기 — 단위 경계", async () => {
   const { measure } = await import("../../web/js/astro.js");
   const LY = 9460730472580.8;
   assert.deepEqual(measure(4.654), { value: "4.7", unit: "km" });
@@ -89,7 +89,7 @@ test("지평선 길 — 지평선 0, 우주의 끝 1, 단조 증가", async () =
   assert.equal(horizonScale(1e30), 1);
 });
 
-test("내 세상 크기 문장 — 빛의 시간 · 지평선의 몇 배", async () => {
+test("내 세계 크기 문장 — 빛의 시간 · 지평선의 몇 배", async () => {
   const { lightTime, koreanBig, worldScaleLine, horizonKm } = await import("../../web/js/astro.js");
   const LY = 9460730472580.8;
   assert.equal(lightTime(384400), "약 1.3초");

@@ -11,7 +11,7 @@
 //   별자리                     이 모양을 이루는 별 중 가장 먼 별은 [약 1,340광년] 떨어져 있어요.   별자리 선의 별 거리
 //   그 밖                      {이름}은(는) [{종류}]예요.                              종류만
 
-import { departureLabel, distanceText, lightTime } from "./astro.js";
+import { departureLabel, distanceText, horizonKm, lightTime } from "./astro.js";
 
 const LY_KM = 9460730472580.8;
 const SURFACE = "지표면 위 궤도 고도";
@@ -84,4 +84,21 @@ export function heroFact(item, { figure = null, refYear = new Date().getFullYear
     return { before: `${name}${josa(name, "은", "는")} `, em: kind, after: `${josa(kind, "이에요", "예요")}.`, detail: "" };
   }
   return null;
+}
+
+// 지구 서랍에만 붙는 한 문단 — 핵심 사실(지구는 거리가 없어 '종류' 분기) 아래에. 다른 천체는 null
+//   4.7 km: 지평선까지의 거리 (astro.horizonKm — 눈높이 1.7 m, 지구 반지름 6,371 km, 프롤로그와 같은 계산)
+//   61억 km · 0.12화소: README "고개를 들면 보이는 사실들" (위키백과 「창백한 푸른 점」)
+export const EARTH_ID = "Q2";
+export const EARTH_SOURCE = { name: "위키백과 「창백한 푸른 점」", url: "https://ko.wikipedia.org/wiki/창백한_푸른_점" };
+
+export function placeNote(item) {
+  if (item?.id !== EARTH_ID) return null;
+  const horizon = horizonKm().toFixed(1);
+  return {
+    text: `지금 당신이 서 있는 곳입니다. 눈높이에서 바라보면 세상의 끝은 약 ${horizon} km 떨어진 지평선이지만, 오늘 밤 고개를 들면 그 끝은 별까지 이어집니다. `
+      + "보이저 1호가 약 61억 km 떨어진 곳에서 찍은 사진에서 지구는 0.12화소 크기의 점이었습니다. "
+      + "그 작은 점 위에서 당신은 아직 만나지 못한 빛을 바라보고 있습니다.",
+    source: EARTH_SOURCE,
+  };
 }
