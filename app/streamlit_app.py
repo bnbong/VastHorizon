@@ -1,11 +1,11 @@
-"""VastHorizon 검증 페이지 (Streamlit) — 검색 방식 비교 (F2014) · RAG 전후 비교 (F2015).
+"""VastHorizon 검증 페이지 (Streamlit) — 검색 방식 비교 · RAG 전후 비교.
 
     streamlit run app/streamlit_app.py
 
 | 탭               | 내용                                                                   |
 |------------------|------------------------------------------------------------------------|
 | 검색 방식 비교   | 같은 항목 · 질문 · 색인으로 유사도 검색과 MMR 근거를 나란히 (LLM 호출 없음) |
-| RAG 전후 비교    | 기획안 7장 질문을 근거 없이 · 근거와 함께 답한 결과를 나란히 (저장된 결과) |
+| RAG 전후 비교    | 대표 질문을 근거 없이 · 근거와 함께 답한 결과를 나란히 (저장된 결과)        |
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ def show_compare() -> None:
     from vasthorizon.store.chroma import EmbeddingMismatchError
 
     cfg = get_settings().retrieval
-    st.subheader("검색 방식 비교 (F2014)")
+    st.subheader("검색 방식 비교")
     st.caption("같은 항목 · 질문 · 색인으로 유사도 검색과 MMR을 나란히 실행합니다. 답변은 만들지 않습니다.")
 
     items = {it["id"]: it for it in catalog()}
@@ -179,9 +179,9 @@ def show_conditions(rows: list[dict]) -> None:
 
 
 def show_rag_compare() -> None:
-    st.subheader("RAG 전후 비교 (F2015)")
-    st.caption("기획안 7장 '근거가 필요한 질문'을 같은 모델 · 말투 · 길이로, 근거 없이 / 근거와 함께 답하게 한 결과입니다. "
-               "판정과 해설은 docs/05_rag_comparison.md에 있습니다.")
+    st.subheader("RAG 전후 비교")
+    st.caption("'근거가 필요한 질문' 8개를 같은 모델 · 말투 · 길이로, 근거 없이 / 근거와 함께 답하게 한 결과입니다. "
+               "맞는지는 인용된 근거와 원문을 함께 보고 판단하세요.")
     data = load_rag_results()
     if not data:
         st.warning("저장된 비교 결과가 없습니다. `python -m scripts.compare_rag` 로 먼저 실행하세요.")
@@ -206,7 +206,7 @@ def show_rag_compare() -> None:
 def main() -> None:
     st.set_page_config(page_title="VastHorizon 검증", page_icon="🔭", layout="wide")
     st.title("VastHorizon 검증 페이지")
-    retrieval_tab, rag_tab = st.tabs(["검색 방식 비교 (F2014)", "RAG 전후 비교 (F2015)"])
+    retrieval_tab, rag_tab = st.tabs(["검색 방식 비교", "RAG 전후 비교"])
     with retrieval_tab:
         show_compare()
     with rag_tab:

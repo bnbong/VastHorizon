@@ -22,7 +22,10 @@ requests==2.34.2
 python-dotenv==1.2.3
 typing-extensions==4.16.0
 
-# 심화 — 프론트엔드 분리 (F2013)
+# 프론트엔드 분리
 fastapi==0.141.1
 uvicorn[standard]==0.52.4
 pydantic==2.13.5
+
+# 데이터 준비 도구 — 아이콘(scripts/build_icons.py) · 메시에 사진(vasthorizon/data/messier_images.py)
+Pillow==12.3.0

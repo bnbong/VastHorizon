@@ -2,7 +2,7 @@
 #
 #     pip install -r requirements-deploy.txt
 #
-# 과제 제출 환경(requirements.txt, GMS)은 그대로 두고, 배포에 필요한 것만 더한다.
+# 기본 의존성(requirements.txt)에 Claude와 로컬 임베딩에 필요한 것만 더한다.
 
 -r requirements.txt
 

@@ -8,13 +8,15 @@
 </p>
 <p align="center">
 <img src="https://img.shields.io/badge/FastAPI-%23009688?style=flat&logo=fastapi&logoColor=white" alt="FastAPI"/>
+<img src="https://img.shields.io/badge/LangGraph-%231C3C3C?style=flat&logo=langchain&logoColor=white" alt="LangGraph"/>
+<img src="https://img.shields.io/badge/Claude-%23D97757?style=flat&logo=claude&logoColor=white" alt="Claude"/>
 <img src="https://img.shields.io/badge/three.js-%23000000.svg?style=flat&logo=three.js&logoColor=white" alt="ThreeJS"/>
 </p>
 
 ---
 
 <p align="center">
-  <img src="docs/images/brand/vasthorizon-thumbnail-v2.png" width="960" alt="VastHorizon: 당신의 세상은 생각보다 넓다. 지구에서 별까지 이어지는 빛의 여정" />
+  <img src="docs/images/brand/vasthorizon-thumbnail-v3.png" width="960" alt="VastHorizon: 보랏빛 밤하늘의 작은 빛에서 세 천체로 이어지는 길. 당신의 세상은 생각보다 넓습니다." />
 </p>
 
 > **당신의 세상은 생각보다 넓습니다.**
@@ -22,10 +24,6 @@
 
 3D 하늘에서 천체를 고르면 **수집한 문서에 근거해서만** 답하는 우주 지식 서비스입니다.
 천체를 하나씩 알아갈 때마다 내 세계에 빛이 더해지고, 가장 먼 빛은 지평선(4.7km)에서 우주 끝까지 닿습니다.
-
-SSAFY AI 코어 프로젝트 2, RAG 기반 도메인 지식 서비스, 2026-10-21 ~ 2026-10-23
-
-![오리온자리 펼치기: 별자리 별들이 카탈로그 거리로 펼쳐지고, 설명은 근거와 함께](docs/images/11_unfold.jpg)
 
 ---
 
@@ -67,140 +65,72 @@ VastHorizon은 그런 날을 위해 만들었습니다.
 
 ---
 
-## 결과 한눈에
+## 개요
 
-| 항목 | 결과 |
+- **3D 하늘에서 천체 고르기**: 실제 별 11만여 개와 성운, 성단, 은하, 은하수가 떠 있는 하늘에서 카탈로그 천체 424개나 아무 별을 눌러 그 천체의 서랍을 엽니다.
+- **문서에 근거한 답**: 한국어 위키백과와 NASA 문서를 질문할 때 모아 색인하고, 사실 문장마다 `[근거 N]`과 원문 링크를 붙입니다. 문서에 없으면 확인되지 않는다고 답합니다.
+- **내 세계 지도**: 알아간 천체가 '나'에게 이어지는 선으로 쌓이고, 가장 먼 빛까지의 거리가 내 세계의 반지름이 됩니다.
+- **빛의 편지, 관점 전환, 조건 탐색, 오늘 밤 하늘**: 별빛이 출발한 해의 지구 기록, 마음 한 줄 곁의 우주 사실, "맨눈으로 볼 수 있는 은하" 같은 조건 검색, 내 위치와 시각의 하늘을 보여 줍니다.
+- **태양계 천체 근접 뷰**: 태양계 천체 32개는 탐사와 관측으로 알려진 특징을 바탕으로 그린 3D 모습(상상도)으로 가까이서 볼 수 있습니다.
+
+| 첫 하늘 | 읽기 카드: 답변과 근거 |
 |---|---|
-| 항목 메타데이터 | **424건**, 5개 그룹 (태양계 32, 인류의 발자취 100, 별 94, 메시에 110, 별자리 88) |
-| 외부 문서 | 한국어 위키백과 + NASA NSSDCA, 질문할 때 수집, 657청크 (작성 시점) |
-| 필수 기능 | F2001 ~ F2012 **모두 통과** |
-| 심화 기능 | F2013 ~ F2016 **4개 모두 구현, 통과** |
-| RAG 전후 비교 | 대표 8문항, 실행 1회 수동 판정: RAG 맞음 6, 확인 불가 2, **틀린 답 0**, 인용한 주장은 모두 근거와 일치 |
-| 하늘 | 실제 별 118,216개 (확대하면 12등급대까지), 성운과 성단과 은하 15,809개, 은하수. 아무 별이나 눌러 담기 |
-| 태양계 | 그날의 태양, 달, 행성을 실제 시지름으로 (JPL Horizons와 대조해 오차 5분각 안). 달은 NASA 표면 지도와 그날의 위상. 목성의 갈릴레이 위성 4개와 토성의 타이탄은 확대하면 원 궤도 근사 위치에 점으로, 왜행성과 소행성, 혜성, 아로코트 12개는 수집 기준일 위치로 계산한 자리에 점선 원으로 놓입니다. 태양계 항목 32건은 모두 서랍에서 가까이서 본 모습(상상도)을 보여 줍니다 |
-| 사진과 모델 | 메시에 천체 사진 89장 (NASA 허블 메시에 목록, 출처 표기), 국제우주정거장과 허블, 제임스 웹, 보이저의 NASA 3D 모델 |
-| 테스트 | Python 408, JavaScript 86, 브라우저 점검 44: **모두 통과** |
+| ![첫 하늘: 오늘 밤 여기서 보이는 별자리와 아직 만나지 않은 빛](docs/images/01_first_sky.jpg) | ![베가에게 밝기의 기준별로 쓰인 이유를 묻고, 인용된 위키백과 근거와 함께 받은 답](docs/images/02_reading_card.jpg) |
+
+| 내 세계 | 프롤로그 |
+|---|---|
+| ![내 세계: 알아간 천체 14개가 나에게 이어지고, 가장 먼 빛은 약 254만 광년](docs/images/03_my_world.jpg) | ![프롤로그: 지금 당신이 볼 수 있는 땅의 끝은 지평선까지 약 4.7km](docs/images/04_prologue.jpg) |
 
 ---
 
-## 무엇을 하나
+## 시작하기
 
-| 근거와 함께 답합니다 | 모르면 모른다고 합니다 |
-|---|---|
-| ![답변과 근거](docs/images/05_answer_evidence.jpg) | ![확인되지 않음](docs/images/06_not_found.jpg) |
-| 사실 문장마다 `[근거 N]`. 인용된 근거만 원문 링크와 함께 | 문서에 없으면 "제공된 문서에서는 확인되지 않습니다" |
-
-| 빛의 편지 | 마음 한 줄 (관점 전환) |
-|---|---|
-| ![빛의 편지](docs/images/08_light_letter.jpg) | ![관점 전환](docs/images/09_perspective.jpg) |
-| 지금 보이는 별빛이 출발한 해와, 그해 지구의 기록 | 마음 곁에 우주의 사실 하나: 지어낸 위로 대신 |
-
-| 오늘 밤 나의 하늘 | 조건 탐색 |
-|---|---|
-| ![하늘 안내](docs/images/10_tonight_guide.jpg) | ![조건 탐색](docs/images/07_explore.jpg) |
-| 내 위치, 시각에 실제로 보이는 별자리, 행성 | "맨눈으로 볼 수 있는 은하"처럼 확인 가능한 조건으로 |
-
-| 알아간 만큼 넓어지는 내 세계 | 은하 중심 블랙홀 |
-|---|---|
-| ![내 세계 지도](docs/images/19_world_map.jpg) | ![은하 중심 블랙홀](docs/images/20_blackhole.jpg) |
-| 알아간 빛은 살구색 표식과 '나'에게 이어지는 선으로 날마다 쌓이고, 아직 만나지 않은 천체는 빈 점선 원으로 흐리게 남습니다. 오른쪽 카드에는 가장 먼 빛까지의 거리가 보입니다 | 근거가 있는 은하에만, 빛의 휘는 경로를 계산한 가르강튀아 모습(상상도) |
-
-태양계 항목의 서랍을 열면 그 천체를 가까이서 본 모습이 태양 쪽 빛을 받으며 천천히 돌아갑니다. 표면은 탐사선과 관측으로 알려진 특징(유로파의 갈색 균열, 명왕성의 하트 모양 평원, 팽이 모양인 베누, 두 덩이가 붙은 아로코트 등)을 바탕으로 절차적으로 그린 상상도이고, 캡션에는 공개된 평균 반지름이나 세 축 크기를 적었습니다. 하늘에서 목성을 확대하면 갈릴레이 위성 4개가 원 궤도로 근사한 자리에 작은 점으로 나타나고, 왜행성과 소행성, 혜성은 맨눈으로 보이지 않는 천체라는 뜻으로 점선 원과 흐린 이름표로 놓입니다.
-
----
-
-## 기능
-
-### 필수 (F2001 ~ F2012)
-
-| 번호 | 기능 | VastHorizon |
-|---|---|---|
-| F2001, F2002 | 항목 메타데이터 적재, 색인 | 424건 → `cosmos_items` (항목당 1청크, ID = Wikidata QID) |
-| F2003, F2004 | 검색어 추출, 문서 수집 | 프롬프트 ① 검색어 → 위키 검색 → 프롬프트 ② 제목, 요약으로 선별. 항목 자체 문서는 항상 포함 |
-| F2005 | 외부 문서 색인 | `cosmos_docs`, 1,000자 / 겹침 200자, 위키는 절 단위로 자름 |
-| F2006 ~ F2008 | 검색, 답변, 근거 표시 | LangGraph `retrieve → generate`, 인용 검증, 인용된 근거만 표시 |
-| F2009 | 항목 선택, 질의응답 | 3D 하늘, 천체 목록, 항목별 대화 분리 |
-| F2010 | 도메인 특화 | 빛의 편지, 별자리 펼치기, 오늘 밤 나의 하늘, 관점 전환 |
-| F2011 | 조건 탐색 | 자연어 → 메타데이터 필터 + 의미 검색 → 선별 |
-| F2012 | 진행 상태, 안내 | 단계별 진행, 키 없음 / 색인 없음 안내 |
-
-### 심화 (F2013 ~ F2016)
-
-| 번호 | 기능 | 결과 |
-|---|---|---|
-| F2013 | 프론트엔드 직접 구현 | HTML, CSS, JS + Three.js 3D 하늘, FastAPI와 분리 |
-| F2014 | MMR 검색 | 설정으로 전환, Streamlit에서 유사도와 나란히 비교 → 사실 질문은 유사도가 낫다고 판단해 기본값 유지 |
-| F2015 | RAG 전후 비교 | 근거 없는 답과 나란히 8문항 → [05](docs/05_rag_comparison.md) |
-| F2016 | 여러 출처 결합 | 위키백과 + NASA (영문), 근거마다 출처 종류 표시 |
-
----
-
-## RAG 전후 비교 (F2015)
-
-| 기준 | RAG 없이 | RAG |
-|---|---|---|
-| 사실 정확성 | 그럴듯하지만 수치가 뭉뚱그려짐 ("16세기 말", "2008년쯤") | 정확한 수치 (**1587년 무렵**, **2008년 2월 20일**), 오늘 기준 값 |
-| 근거 제시 | 0회 | 모든 문항 1~5회 |
-| 모르면 모른다고 | 0문항: "약 15광년" 단정 | 2문항: 근거에 있는 부분만 |
-
-> 판정 범위: 실행 1회, 8문항, 사람이 주장과 근거를 직접 대조했습니다. 서비스의 자동 검사는 **인용 형식**(번호가 근거 목록에 있는지)까지만 확인합니다. 인용 없는 문장은 2문항에서 나왔습니다 ([05 §2-1](docs/05_rag_comparison.md)).
->
-> 최신 모델은 근거 없이도 아는 것이 많았습니다. RAG의 가치는 정답률보다 **검증할 수 있는 근거, 정확한 수치, 최신 값, 정직함**에서 드러났습니다.
-
----
-
-## 파이프라인
-
-```mermaid
-flowchart LR
-    Q["항목 + 질문"] --> P1["① 검색어 추출"] --> P2["② 후보 선별"] --> D["문서 수집, 캐시"]
-    D --> K["청킹, 색인<br/>cosmos_docs"]
-    I[("cosmos_items")] --> R["retrieve<br/>병합, 중복 제거"]
-    K --> R --> G["generate<br/>③ 답변, 인용 검증"] --> A["답변 + 근거"]
-```
-
-| 결정 | 값 | 이유 |
-|---|---|---|
-| 청크 | 1,000자 / 겹침 200자 | 위키 한 절 ≈ 근거 하나. 500자는 문단이 갈라지고 2,000자는 절이 섞임 |
-| Top-k | 유사도 6 | 사실 질문에 필요한 절이 빠짐없이 들어옴. 10이면 먼 절이 섞임 |
-| 근거 1 | 항목 메타데이터 (검색 없이 항상) | 거리, 날짜 같은 핵심 사실을 항상 근거로 |
-
-자세한 설계와 측정은 [03. RAG 파이프라인 설계문서](docs/03_rag_pipeline_design.md)에 정리했습니다.
-
----
-
-## 데이터 준비와 색인
-
-```mermaid
-flowchart LR
-    A["collect_items<br/>Wikidata, Horizons, CelesTrak"] --> B["index_items<br/>cosmos_items 424"]
-    C["collect_constellations<br/>d3-celestial"] --> F["별자리 선, 맨눈 별 5,044"]
-    H["build_sky_data<br/>d3-celestial"] --> W["web/data<br/>별 118,216, 성운 15,809, 은하수"]
-    B --> S["서버 실행"]
-    S --> Q["질문할 때<br/>문서 수집 → cosmos_docs"]
-    P["index_perspective<br/>관점 전환 서가 13문서"] --> S
-```
-
-| 단계 | 명령 |
-|---|---|
-| 1. 설치, 환경 | `pip install -r requirements.txt`, `.env`에 `GMS_KEY` |
-| 2. 항목 수집, 색인 | `python -m scripts.collect_items` → `python -m scripts.index_items` |
-| 3. 서가 색인, 시연 문서 | `python -m scripts.index_perspective`, `python -m scripts.index_docs --demo` |
-| 4. 실행 | `uvicorn vasthorizon.api.app:app --port 8000` → http://localhost:8000 |
-| 검증 페이지 | `streamlit run app/streamlit_app.py` |
-
-자세한 설치, 실행, 옵션은 [부록 A. 설치, 실행 안내](docs/appendix_a_setup_guide.md)에 있습니다.
-
-### 배포 (Claude API)
-
-과제 제출 환경은 SSAFY GMS를 쓰고, 공개 배포는 설정 파일 하나(`config.deploy.toml`)로 Claude API와 서버 안 로컬 임베딩으로 바꿉니다. 코드는 같습니다.
+Python 3.11 이상과 Claude API 키가 필요합니다. `.env`에 `CLAUDE_API_KEY`와 `WIKI_CONTACT`(연락처 이메일)를 적은 뒤 실행합니다.
 
 ```bash
-# .env에 CLAUDE_API_KEY, WIKI_CONTACT
-docker compose up -d --build      # 첫 실행에 색인을 만들고 http://서버:8000 에서 시작
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-deploy.txt
+cp .env.example .env                          # CLAUDE_API_KEY, WIKI_CONTACT 채우기
+export VH_CONFIG=config.deploy.toml
+python -m scripts.deploy_init                 # 항목, 관점 전환 서가 색인 (첫 실행에 몇 분)
+uvicorn vasthorizon.api.app:app --port 8000   # http://localhost:8000
 ```
 
-화면만 Cloudflare Pages에 두고 API는 개인 서버에 두는 방식, 호출 한도(개인 키 보호), 임베딩 모델 비교는 [부록 B. 배포 안내](docs/appendix_b_deploy_guide.md)에 있습니다.
+데이터 준비 스크립트, API, 설정값은 [docs/setup.md](docs/setup.md)에 있습니다.
+
+---
+
+## 구성
+
+```
+vasthorizon/
+  data/       항목 수집, 색인 텍스트, 도메인 표현, 성군 별칭
+  collect/    외부 문서 검색어 추출, 후보 선별, 수집, 캐시
+  store/      청킹, Chroma 색인, 검색
+  rag/        프롬프트, 근거 병합, LangGraph, 인용 검증
+  features/   빛의 편지, 별자리 펼치기, 하늘, 관점 전환, 조건 탐색
+  api/        FastAPI, 호출 한도
+web/          3D 화면 (HTML, CSS, JavaScript, three.js)
+scripts/      수집, 색인, 배포 준비 스크립트
+deploy/       개인 서버 배포용 compose, 배포 스크립트
+tests/        Python, JavaScript 테스트
+```
+
+| 영역 | 기술 |
+|---|---|
+| 서버 | FastAPI, SSE, Pydantic (Python 3.11 이상) |
+| RAG | LangChain, LangGraph, Chroma |
+| 임베딩 | fastembed `paraphrase-multilingual-MiniLM-L12-v2` (서버 안 로컬 계산) |
+| LLM | Claude API (`claude-sonnet-5-5`) |
+| 화면 | three.js r170, Lucide 아이콘, Pretendard, Noto Serif KR |
+
+수집부터 인용 검증까지의 설계와 설정값을 정한 이유는 [docs/architecture.md](docs/architecture.md)에 정리했습니다.
+
+---
+
+## 배포
+
+배포는 Docker 컨테이너 하나(`docker compose up -d --build`)로 화면과 API를 함께 띄우는 방식이 가장 단순합니다. 운영 중인 공개 배포는 정적 Nginx 서버와 API 서버를 나누고, GitHub Actions가 ARM 이미지를 만들어 두 서버에 차례로 배포합니다. 호출 한도, 프록시 설정, 임베딩 모델 실측은 [docs/deploy.md](docs/deploy.md)에 있습니다.
 
 ---
 
@@ -224,39 +154,11 @@ docker compose up -d --build      # 첫 실행에 색인을 만들고 http://서
 
 ---
 
-## 기술
-
-| 영역 | 사용 |
-|---|---|
-| 언어 | Python **3.11 이상** (3.12.10, 3.11.9에서 검증), JavaScript |
-| LLM | SSAFY GMS: `gpt-6-luna`, `text-embedding-3-small` |
-| RAG | LangChain, LangGraph, Chroma |
-| 서버 | FastAPI, SSE, Pydantic |
-| 화면 | HTML, CSS, JavaScript, Three.js / 검증 페이지 Streamlit |
-| 공개 메타데이터 | 파비콘, manifest, Open Graph, JSON-LD, robots.txt, sitemap.xml. 아이콘과 공유 이미지는 `python -m scripts.build_icons`로 다시 만듭니다 |
-
-```
-vasthorizon/
-  data/       항목 수집, 색인 텍스트, 도메인 표현
-  collect/    외부 문서 수집 (프롬프트 ① ②), 캐시
-  store/      청킹, Chroma 색인, 검색
-  rag/        프롬프트, 검색 병합, LangGraph, 인용 검증
-  features/   빛의 편지, 펼치기, 하늘, 관점 전환, 조건 탐색, 비교
-  api/        FastAPI
-web/          3D 화면          app/   Streamlit 검증 페이지
-scripts/      수집, 색인, 비교 스크립트          tests/   테스트
-```
-
----
-
 ## 문서
 
 | 문서 | 내용 |
 |---|---|
-| [01. 기획안](docs/01_project_plan.md) | 컨셉, 사용자, 기능 기획 |
-| [02. 요구사항 정의서](docs/02_requirements.md) | 도메인 조건 근거, F2001 ~ F2016, NF2001 ~ NF2007 |
-| [03. RAG 파이프라인 설계문서](docs/03_rag_pipeline_design.md) | 컬렉션, 수집, 청킹, 검색, 프롬프트, 문제와 해결 |
-| [04. 검증 결과](docs/04_verification.md) | 확인 항목별 결과 화면, 대조표, 테스트, 체크리스트 |
-| [05. RAG 전후 품질 비교](docs/05_rag_comparison.md) | F2015: 8문항 나란히 |
-| [부록 A. 설치, 실행 안내](docs/appendix_a_setup_guide.md) | 명령, 옵션, 설정 |
-| [부록 B. 배포 안내](docs/appendix_b_deploy_guide.md) | Claude API, 로컬 임베딩, Docker, Cloudflare Pages, 호출 한도 |
+| [설계](docs/architecture.md) | 컬렉션, 문서 수집 흐름, 청킹과 검색 설정, 인용 검증, 기능별 데이터 출처 |
+| [설치와 실행](docs/setup.md) | 설치, 색인, 데이터 준비 스크립트, API, 설정 |
+| [배포](docs/deploy.md) | Docker, 개인 서버 두 대 구성, GitHub Actions, 호출 한도, 임베딩 모델 실측 |
+| [디자인 제안](design-proposal/README.md) | 화면 디자인 시안과 디자인 적용 명세 |

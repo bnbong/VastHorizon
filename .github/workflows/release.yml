@@ -12,7 +12,7 @@ name: Release (GHCR -> API host -> web host)
 # 되돌리기: workflow_dispatch의 image_ref에 이전 커밋의 sha- 태그를 넣는다.
 #   ghcr.io/bnbong/vasthorizon:sha-1a2b3c4
 # 이때 build를 건너뛰고 그 image로 API 호스트를 배포하며, 화면도 같은 커밋의 web/으로 맞춘다.
-# 자세한 절차는 docs/appendix_b_deploy_guide.md 3-6절을 따른다.
+# 자세한 절차는 docs/deploy.md 5절을 따른다.
 #
 # 서버 경로는 저장소에 적지 않고 production environment의 variable로 받는다.
 #   VM2_DEPLOY_DIR  API 호스트에서 compose 파일, .env, deploy.sh가 있는 디렉터리
