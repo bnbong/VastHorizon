@@ -13,7 +13,7 @@ import { miniLogoSvg } from "./logo.js";
 import { MapMode } from "./map.js";
 import { Stage } from "./scene.js";
 import { colorWord, pickFirstLight } from "./skydata.js";
-import { heroFact, placeNote } from "./facts.js";
+import { EARTH_ID, heroFact, placeNote } from "./facts.js";
 import { SkyMode } from "./sky.js";
 import { playPrologue, STORAGE_KEY as PROLOGUE_KEY } from "./prologue.js";
 import { igniteBurst } from "./dream.js";
@@ -25,6 +25,7 @@ import { entryOf, localDate, reachOf, recent, restoreVisited, serialize, todays,
 import { UnfoldMode } from "./unfold.js";
 import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
 import { advance, popView } from "./drawerstack.js";
+import { sound } from "./sound.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $("#app");
@@ -154,6 +155,7 @@ function openDrawer(kind, html) {
   const drawer = $("#drawer");
   if (drawer.inert) {                          // 닫혀 있다 열릴 때만 — 포커스를 서랍으로, 닫으면 원래 자리로
     drawer.inert = false;
+    sound.open();
     openDrawer.returnTo = document.activeElement;
     $("#drawer-close").focus({ preventScroll: true });
   }
@@ -248,6 +250,7 @@ function closeDrawer() {
   renderBack();
   app.classList.remove("drawer-open");
   const drawer = $("#drawer");
+  if (!drawer.inert) sound.close();            // 열려 있던 서랍만 — 이미 닫힌 서랍을 다시 닫을 때는 조용히
   const inside = drawer.contains(document.activeElement);
   drawer.setAttribute("aria-hidden", "true");
   drawer.inert = true;                         // 숨은 서랍 안으로 포커스가 들어가지 않게
@@ -298,13 +301,32 @@ function discover(item) {
   state.sky?.setObserved(world.visited);
   state.map?.setWorld(world.km, world.visited, { fresh: state.mode === "map" ? item.id : null });   // 지도에서 담으면 표식 · 선이 빛무리와 함께
   renderChrome();
+  sound.collect();
   showDiscovery(d);
   return d;
 }
 
-// 기록 지우기 — 사람이 직접 고를 때만
+// 지구 — 내 세계의 첫 천체. 프롤로그의 구 장면('그 구의 중심에는 언제나, 바라보는 당신이')에서 담기고,
+// 프롤로그를 건너뛰었거나 이미 본 사람도 앱을 켤 때 조용히 담긴다 (발견 알림 · 리본 굴림 없이, 날짜는 오늘).
+// 거리 0이라 가장 먼 빛은 그대로, 알아간 빛 N개 · 오늘 새로 알아간 빛에는 센다. 반환: 새로 담았으면 true
+function ensureEarth() {
+  if (isObserved(EARTH_ID)) return false;
+  const earth = state.mapData?.points?.find((p) => p.id === EARTH_ID) ?? { id: EARTH_ID, name: "지구", group: "solar_system" };
+  world.visited.unshift(entryOf({ ...earth, distance_km: null }, localDate()));
+  syncReach();                                               // 거리 0 — 가장 먼 빛 · 리본 숫자는 그대로
+  saveWorld();
+  state.sky?.setObserved(world.visited);
+  state.map?.setWorld(world.km, world.visited);
+  renderChrome();
+  return true;
+}
+
+// 지구 말고도 알아간 빛이 있는지 — 첫 하늘의 '첫 번째 빛' 문장은 지구만 담긴 새 사람에게 그대로
+const metBeyondEarth = () => world.visited.some((v) => v.id !== EARTH_ID);
+
+// 기록 지우기 — 사람이 직접 고를 때만. 지구(내 세계의 첫 천체 · 당신이 서 있는 곳)는 남는다
 function resetWorld() {
-  world.visited = [];
+  world.visited = world.visited.filter((v) => v.id === EARTH_ID);
   syncReach();
   saveWorld();
   state.sky?.setObserved(world.visited);
@@ -322,6 +344,7 @@ function showDiscovery(d) {
   const line = d.farther
     ? `이번에는 <em class="kw plain">${esc(distanceText(d.toKm))}</em> 너머까지 닿았습니다 · 닿은 거리 ${esc(growthText(d.fromKm, d.toKm))}`
     : d.km ? `가장 먼 빛은 그대로지만, 내 세계는 빛 하나만큼 더 풍성해졌습니다`
+    : d.id === EARTH_ID ? `지구는 내가 있는 곳이라, 알아간 빛 기록의 첫 자리에 남았습니다`
     : d.group === "constellation" ? `별자리는 여러 거리의 별이 모인 모양이라 지도에는 놓지 않고, 알아간 빛 기록에 남겼습니다`
     : `거리는 아직 확인되지 않았지만, 알아간 빛 기록에 남았습니다`;
   const go = d.farther ? "넓어진 내 세계 보기" : d.km ? "내 세계에서 보기" : "알아간 빛 기록 보기";
@@ -506,7 +529,7 @@ function renderFirstSky() {
   el.inert = !shown;
   app.classList.toggle("first-sky-on", shown);
   syncHush();
-  const met = world.visited.length > 0;
+  const met = metBeyondEarth();
   $("#first-sky-title").innerHTML = met ? "오늘은 어떤 빛을<br><em>알아가 볼까요?</em>"
     : "당신이 아직<br>만나지 못한 빛이<br><em>이토록 많아요.</em>";
   $("#first-light").innerHTML = `<span>${met ? "다음 빛 만나기" : "첫 번째 빛 만나기"}</span>${icon("arrow-up-right", 20)}`;
@@ -586,7 +609,7 @@ function renderWorldCard() {
       <div class="wc-src">기준 · 지구 지름 12,742km(위키백과 「지구」) · 빛의 속도 299,792km/s</div></details>
     <details class="wc-more" data-k="log" ${open.has("log") ? "open" : ""}><summary>알아간 빛 기록 (${n(visited.length)})</summary>
       ${visited.length ? `<ol class="wc-log">${recent(visited).map((v) => `<li><button type="button" data-open="${esc(v.id)}">${markHtml(true)}${esc(v.name)}</button>
-        <span>${v.km ? esc(distanceText(v.km)) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}</span></li>`).join("")}</ol>
+        <span>${v.id === EARTH_ID ? "내가 있는 곳" : v.km ? esc(distanceText(v.km)) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}</span></li>`).join("")}</ol>
         <button type="button" class="wc-reset" id="wc-reset">기록 처음부터 다시 시작</button>` : `<div class="wc-note">아직 기록이 없습니다</div>`}</details>
     <button type="button" class="wc-journey" id="wc-journey">${icon("sparkles", 14)}<span>우주 끝까지 떠나 보기</span></button></div>`;
   el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
@@ -665,7 +688,17 @@ function closeScene() {
 // 프롤로그 — 처음 켰을 때 한 번 (다시 보기 · ?prologue=1 로 언제든). 끝나면 첫 하늘로
 function startPrologue() {
   $("#chrome").hidden = true;
-  playPrologue({ reducedMotion: reducedMotion() }).then(() => { $("#chrome").hidden = false; arriveFirstSky(); wake(); });
+  sound.ambient("prologue");
+  // 구 장면에서 지구를 담는다 (이미 담겼으면 빛무리만). 건너뛰었으면 끝날 때 조용히
+  playPrologue({ reducedMotion: reducedMotion(), onEarth: ensureEarth })
+    .then(() => {
+      ensureEarth();
+      $("#chrome").hidden = false;
+      sound.arrive();                                      // 첫 하늘에 도착하는 화음, 그 뒤로 지금 화면의 배경음
+      sound.ambient(ambientOf(state.mode));
+      arriveFirstSky();
+      wake();
+    });
 }
 
 function prologueWanted(params) {
@@ -1013,6 +1046,7 @@ async function ask(item, question, composer, alive) {
     if (!out.isConnected || !alive()) return;  // 답하는 동안 다른 서랍으로 갔다 — 답변은 서버 대화 기록에 남는다
     const notes = [...res.warnings, ...(res.recorded === false ? ["이 답변은 대화 기록에 남지 않았습니다."] : [])];
     out.innerHTML = resultHtml(res.answer, res.cited, `t${++turnSeq}`, res.notice, notes);
+    sound.sparkle();                           // 답이 도착했다 — 아주 작은 '톡' 하나
   } catch (e) {
     if (out.isConnected) out.innerHTML = statusHtml(errorText(e), "err");
   } finally {
@@ -1108,6 +1142,7 @@ function showExplore({ query = "" } = {}) {
     onError: (e) => { out.innerHTML = statusHtml(errorText(e), "err"); },
     onSettled: () => composer.setBusy(false),
     onSuccess: (res) => {
+      sound.tick();
       updateView({ kind: "explore", query: q });
       const dist = (id) => state.catalog?.find((o) => o.id === id)?.distance_km;
       // 질문에 나온 천체에게 묻기 — 사실 질문(ask)이면 주 안내, 카드가 있으면 카드 아래 보조 문구 (오류처럼 보이지 않게)
@@ -1344,6 +1379,9 @@ let stage;
 let skyTimer;
 let skyRequest = 0;
 
+// 배경음 — 내 세계 지도는 "map", 하늘과 별자리 펼치기는 "sky" (sound.js PAD_MODES)
+const ambientOf = (mode) => (mode === "map" ? "map" : "sky");
+
 function setMode(mode, conId, { journey = false, keepView = false } = {}) {
   clearTimeout(skyTimer);
   skyRequest += 1;                    // 진행 중인 하늘 요청은 무효 — 이전 모드의 응답이 새 화면을 건드리지 않게
@@ -1365,6 +1403,7 @@ function setMode(mode, conId, { journey = false, keepView = false } = {}) {
     showUnfoldPanel(con);
     setTimeout(() => state.unfold === stage.mode && state.unfold.play(true), 900);
   }
+  if (!document.querySelector(".prologue")) sound.ambient(ambientOf(mode));   // 프롤로그가 떠 있으면 끝날 때 바꾼다
   renderChrome();
 }
 
@@ -1490,15 +1529,24 @@ function setMenu(open) {
   app.classList.toggle("menu-open", open);     // 펼친 메뉴가 요약 카드 · 서랍 위로 (style.css .app.menu-open .chrome)
   b.setAttribute("aria-expanded", String(open));
   b.setAttribute("aria-label", open ? "메뉴 닫기" : "메뉴 열기");
+  if (open) renderSoundItem();                 // 프롤로그에서 바꾼 소리 설정도 반영
   if (open) menu.querySelector(".menu-item:not([hidden])")?.focus({ preventScroll: true });
   else if (menu.contains(document.activeElement)) b.focus({ preventScroll: true });
+}
+
+// 메뉴의 소리 항목 — 이름은 "소리"로 고정, 상태는 aria-pressed와 아이콘(옆의 "켜짐" · "꺼짐"은 보기용, 읽지 않는다).
+// 설정은 sound.js가 localStorage "vh-sound"에 (프롤로그의 소리 버튼과 같은 상태)
+function renderSoundItem() {
+  const b = $("#menu-sound"), on = sound.enabled;
+  b.innerHTML = `${icon(on ? "volume" : "volume-x", 16)}<span>소리</span><span class="menu-state" aria-hidden="true">${on ? "켜짐" : "꺼짐"}</span>`;
+  b.setAttribute("aria-pressed", String(on));
 }
 
 function bindChrome() {
   $("#menu-btn").innerHTML = icon("menu", 16);
   $("#menu-btn").addEventListener("click", () => setMenu($("#menu").hidden));
   document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".menu-wrap")) setMenu(false); });
-  $("#menu").addEventListener("click", (e) => { if (e.target.closest(".menu-item")) setMenu(false); });
+  $("#menu").addEventListener("click", (e) => { if (e.target.closest(".menu-item:not(#menu-sound)")) setMenu(false); });   // 소리는 켜고 끈 결과가 보이게 열어 둔다
   $("#menu-sky").innerHTML = `${icon("sparkles", 16)}<span>오늘의 하늘</span>`;
   $("#menu-world").innerHTML = `${icon("globe", 16)}<span>내 세계</span>`;
   $("#nav-sky").addEventListener("click", goSky);
@@ -1509,7 +1557,9 @@ function bindChrome() {
   $("#menu-locate").addEventListener("click", () => { goSky(); locate(); });
   $("#menu-prologue").innerHTML = `${icon("play", 16)}<span>프롤로그 다시 보기</span>`;
   $("#menu-prologue").addEventListener("click", () => { closeScene(); closeDrawer(); startPrologue(); });
-  $("#first-light").addEventListener("click", meetFirstLight);
+  renderSoundItem();
+  $("#menu-sound").addEventListener("click", () => { sound.unlock(); sound.enabled = !sound.enabled; renderSoundItem(); });
+  $("#first-light").addEventListener("click", () => { sound.tick(); meetFirstLight(); });
   $("#first-prologue").innerHTML = `${icon("play", 14)}<span>프롤로그 다시 보기</span>`;
   $("#first-prologue").addEventListener("click", () => { closeScene(); closeDrawer(); startPrologue(); });
   $("#catalog-btn").innerHTML = `${icon("list", 16)}<span>천체 목록</span>`;
@@ -1555,6 +1605,7 @@ async function leaveLoading() {
 }
 
 async function start() {
+  sound.init();                                 // 설정 읽기 · 첫 제스처에서 오디오 열기 (그 전에는 소리를 내지 않는다)
   bindChrome();
   renderChrome();
   showHealth();
@@ -1575,16 +1626,19 @@ async function start() {
     const params = new URLSearchParams(location.search);
     const mode = ["map", "sky", "unfold"].includes(params.get("mode")) ? params.get("mode") : "sky";
     setMode(mode, params.get("con"), { journey: mode === "map" && !params.get("item") && params.get("journey") !== "end" });
+    let prologue = false;                                   // 지구는 프롤로그의 구 장면에서 (건너뛰면 끝날 때)
     if (params.get("item")) selectItem(params.get("item"), { fly: true });
     else if (params.get("panel") === "catalog") showCatalog();
     else if (TOOL_OPEN[params.get("panel")]) TOOL_OPEN[params.get("panel")]();
-    else if (mode === "sky" && prologueWanted(params)) startPrologue();
+    else if (mode === "sky" && prologueWanted(params)) { prologue = true; startPrologue(); }
     else if (mode === "sky" && !params.has("mode")) arriveFirstSky();
+    if (!prologue) ensureEarth();                           // 프롤로그 없이 들어온 사람도 지구는 처음부터 알아간 빛
     if (params.get("journey") === "end") {
       stage.camera.position.copy(state.map.edgeView());
       journeyEnd();
     }
   } catch (e) {
+    ensureEarth();
     $("#loading").classList.add("failed");   // 로고는 그 자리에 멈춘다
     $("#loading-text").textContent = `우주를 불러오지 못했습니다 — ${errorText(e)}`;
   }
