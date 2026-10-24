@@ -80,12 +80,15 @@ class ShareApiTest(unittest.TestCase):
         self.assertRegex(body["id"], r"^[0-9a-f]{16}$")
         self.assertEqual(body["url"], f"{BASE}/api/l/{body['id']}")
         self.assertEqual(body["image_url"], f"{BASE}/api/l/{body['id']}.png")
+        self.assertEqual(body["tall_image_url"], f"{BASE}/api/l/{body['id']}/tall.png")
+        self.assertEqual(body["tall_image_height"], sharecard.TALL_MIN)        # 짧은 편지 — 2:3
         again = self.share_letter()
         by_age = self.share_letter(age=25)                                     # 나이 25 → 같은 별 · 같은 편지
         self.assertEqual((again.status_code, by_age.status_code), (200, 200))
         self.assertEqual({again.json()["id"], by_age.json()["id"]}, {body["id"]})
         self.assertEqual(again.json()["created"], body["created"])
         self.assertTrue(self.store.image_path(body["id"]).exists())          # 미리보기 이미지를 미리 그려 둔다
+        self.assertTrue(self.store.image_path(body["id"], "tall").exists())  # 세로형 카드도 (카카오톡이 바로 가져간다)
 
     def test_cache_miss_is_404(self):
         r = self.share_letter()
@@ -226,7 +229,7 @@ class ShareApiTest(unittest.TestCase):
     def test_cache_age_not_beyond_expiry(self):
         sid = self.shared()
         self.now[0] += 180 * DAY - 120                                              # 2분 남았다
-        for suffix in ("", ".json", ".png"):
+        for suffix in ("", ".json", ".png", "/tall.png"):
             r = self.c.get(f"/api/l/{sid}{suffix}")
             self.assertEqual(r.status_code, 200, suffix)
             self.assertEqual(r.headers["cache-control"], "public, max-age=120", suffix)
@@ -257,6 +260,33 @@ class ShareApiTest(unittest.TestCase):
         self.assertTrue(self.store.image_path(sid).exists())                 # 디스크에 둔다
         self.assertEqual(self.c.get(f"/api/l/{sid}.png").content, r.content)
 
+    def test_tall_png_short_letter_is_1080x1620(self):
+        sid = self.shared()
+        self.store.image_path(sid, "tall").unlink()                           # 요청할 때 다시 그린다
+        r = self.c.get(f"/api/l/{sid}/tall.png")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers["content-type"], "image/png")
+        self.assertEqual(r.headers["cache-control"], "public, max-age=86400")
+        self.assertEqual(r.headers["x-robots-tag"], "noindex, nofollow")
+        self.assertEqual(Image.open(io.BytesIO(r.content)).size, (1080, 1620))
+        self.assertTrue(self.store.image_path(sid, "tall").exists())         # 디스크에 <id>-tall.png로
+        self.assertEqual(self.store.image_path(sid, "tall").name, f"{sid}-tall.png")
+        self.assertEqual(self.c.get(f"/api/l/{sid}/tall.png").content, r.content)
+        self.assertEqual(self.c.get("/api/l/0123456789ab/tall.png").status_code, 404)
+
+    def test_tall_png_long_letter_shrinks_or_truncates_at_1920(self):
+        self.put("letter", ["Q3415"], {**LETTER, "letter": ("빛은 아주 먼 길을 건너 여기에 닿았습니다 [근거 1]. " * 200)[:3000]})
+        body = self.share_letter().json()
+        self.assertEqual(body["tall_image_height"], sharecard.TALL_MAX)
+        r = self.c.get(f"/api/l/{body['id']}/tall.png")
+        self.assertEqual(r.headers["content-type"], "image/png")
+        self.assertEqual(Image.open(io.BytesIO(r.content)).size, (1080, 1920))
+        lay = sharecard.tall_layout(self.store.get(body["id"]))
+        self.assertLess(lay["body_size"], sharecard.TALL_BODY_SIZES[0])      # 글자를 줄였다
+        self.assertEqual(lay["body_size"], 28)
+        self.assertTrue(lay["truncated"])                                     # 3,000자는 28px로도 넘친다 — 잘라 '…'
+        self.assertTrue(lay["lines"][-1].endswith("…"))
+
     def test_health_reports_share_count(self):
         self.shared()
         self.assertEqual(self.c.get("/api/health").json()["share"], {"count": 1})
@@ -266,11 +296,12 @@ class ShareApiTest(unittest.TestCase):
         sid = self.shared()
         orphan = self.store.image_path("ffffffffffff")
         orphan.write_bytes(b"png")                                            # 기록 없는 이미지
+        self.store.image_path("ffffffffffff", "tall").write_bytes(b"png")     # 기록 없는 세로형 카드
         self.now[0] += 179 * DAY
-        self.assertEqual(self.store.sweep(), 1)                               # 아직 만료 전 — 고아 이미지만
+        self.assertEqual(self.store.sweep(), 2)                               # 아직 만료 전 — 고아 이미지만
         self.assertIsNotNone(self.store.get(sid))
         self.now[0] += 2 * DAY
-        self.assertEqual(self.store.sweep(), 2)                               # 기록 + 이미지
+        self.assertEqual(self.store.sweep(), 3)                               # 기록 + 미리보기 이미지 + 세로형 카드
         self.assertFalse(any(Path(self.tmp.name, "share").iterdir()))
         self.assertEqual(self.c.get(f"/api/l/{sid}").status_code, 404)
 
@@ -358,6 +389,30 @@ class ShareUnitTest(unittest.TestCase):
         top_a = next(y for y in range(HEIGHT_PX) if a.getpixel((70, y)) == paper)
         top_b = next(y for y in range(HEIGHT_PX) if b.getpixel((70, y)) == paper)
         self.assertEqual(top_a - top_b, 26)
+
+    def test_tall_layout_grows_with_body(self):
+        record = {"id": "0" * 16, "eyebrow": "별", "title": "베가에서 온 빛의 편지", "cited": []}
+        short = sharecard.tall_layout({**record, "text": "안녕, 나는 **베가**야 [근거 1]."})
+        self.assertEqual((short["height"], short["body_size"], short["truncated"]), (sharecard.TALL_MIN, 34, False))
+        self.assertEqual(short["lines"], ["안녕, 나는 베가야."])                    # 굵게 · 근거 표시는 걷어 낸다
+        mid = sharecard.tall_layout({**record, "text": "별빛은 먼 길을 건너 왔습니다. " * 40})
+        self.assertGreater(mid["height"], sharecard.TALL_MIN)
+        self.assertLessEqual(mid["height"], sharecard.TALL_MAX)
+        self.assertFalse(mid["truncated"])
+        self.assertEqual(sum(1 for line in mid["lines"] if line), len(mid["lines"]))
+        self.assertTrue(all(" " not in line[:1] for line in mid["lines"]))        # 어절 단위 — 줄이 공백으로 시작하지 않는다
+        self.assertEqual(Image.open(io.BytesIO(sharecard.share_tall_image({**record, "text": "별빛은 먼 길을 건너 왔습니다. " * 40}))).size,
+                         (1080, mid["height"]))
+
+    def test_tall_title_large_and_in_upper_third(self):
+        lay = sharecard.tall_layout({"id": "0" * 16, "eyebrow": "별", "title": "베가에서 온 빛의 편지", "text": "안녕.", "cited": []})
+        self.assertGreaterEqual(lay["title_size"], 56)
+        width = sharecard._measure().textlength(lay["title_lines"][0], font=sharecard._font(sharecard.SERIF, lay["title_size"]))
+        self.assertGreater(width, sharecard.TALL_WIDTH / 2)                    # 화면 폭의 2/3 가까이
+        self.assertLessEqual(width, sharecard.TALL_TITLE_SPAN)
+        card_h = lay["height"] - sharecard.TALL_CARD_TOP - sharecard.TALL_BOTTOM
+        title_end = 80 + 36 + 28 + lay["title_line_h"] * len(lay["title_lines"])
+        self.assertLess(title_end, card_h / 3)
 
     def test_description_two_sentences_within_limit(self):
         self.assertEqual(sharecard.description("첫 문장이다 [근거 1, 2]. 둘째 문장! 셋째 문장."), "첫 문장이다. 둘째 문장!")

@@ -4,12 +4,15 @@
 //   (서버 [share] kakao_js_key · release.yml의 KAKAO_JS_KEY · build_static.py의 VH_KAKAO_KEY). 비어 있으면 available=false — 버튼을 내지 않는다
 // - SDK는 버튼을 처음 누를 때 한 번만 불러 Kakao.init(key)한다. 불러오지 못하면 false — 다음에 누르면 다시 시도한다
 // - 피드 메시지 내용(feedMessage)은 DOM 없이 만든다 (node로 시험)
+// - 이미지는 편지 전체를 담은 세로형 카드(/api/l/<id>/tall.png, 폭 1080 · 높이 1620~1920) — 채팅 폭으로 줄여도 제목이 읽힌다
 import { excerptOf, firstSentence, plainText } from "./letters.js";
 
 // 카카오 개발자 문서(JavaScript SDK 다운로드)의 2.7 계열 최신 버전과 SRI 값
 export const SDK_URL = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.9/kakao.min.js";
 export const SDK_INTEGRITY = "sha384-JpLApTkB8lPskhVMhT+m5Ln8aHlnS0bsIexhaak0jOhAkMYedQoVghPfSpjNi9K1";
 export const DESC_MAX = 100;              // 피드 설명 — 본문 앞 두 문장, 100자 안
+export const TALL_WIDTH = 1080;           // 세로형 카드 폭 — 높이는 POST /api/share의 tall_image_height
+export const TALL_MIN_HEIGHT = 1620;      // 높이를 모를 때 (2:3)
 const LOAD_TIMEOUT_MS = 10000;
 const KEY_RE = /^[A-Za-z0-9]{1,64}$/;
 
@@ -33,14 +36,14 @@ export function feedDescription(text, max = DESC_MAX) {
 // 앱 딥링크 — 받은 사람이 카드를 누르면 이 편지를 서랍에 연다 (main.js의 ?letter=<id>)
 export const letterLink = (id, origin) => `${String(origin).replace(/\/+$/, "")}/?letter=${encodeURIComponent(id)}`;
 
-// Kakao.Share.sendDefault에 넘길 피드 메시지
-export function feedMessage({ title, text, id, imageUrl, origin }) {
+// Kakao.Share.sendDefault에 넘길 피드 메시지 — imageUrl은 세로형 카드, imageHeight는 그 실제 높이
+export function feedMessage({ title, text, id, imageUrl, imageWidth = TALL_WIDTH, imageHeight = TALL_MIN_HEIGHT, origin }) {
   const url = letterLink(id, origin);
   const link = { mobileWebUrl: url, webUrl: url };
   return {
     objectType: "feed",
     content: { title: String(title || "VastHorizon의 편지"), description: feedDescription(text), imageUrl,
-               imageWidth: 1200, imageHeight: 630, link },
+               imageWidth, imageHeight, link },
     buttons: [{ title: "편지 보기", link }],
   };
 }

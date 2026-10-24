@@ -4,6 +4,7 @@
     GET  /api/l/<id>      미리보기 카드(OG 태그)가 있는 HTML — sharecard.py
     GET  /api/l/<id>.json 저장한 기록 그대로 (앱이 공유 링크를 열 때)
     GET  /api/l/<id>.png  1200×630 미리보기 이미지 — 처음 요청할 때 그려 <id>.png로 둔다
+    GET  /api/l/<id>/tall.png  편지 전체를 담은 세로형 카드(1080×1620~1920) — 이미지로 저장 · 카카오톡 피드. <id>-tall.png로 둔다
 
 기록 (<dir>/<id>.json, 파일 하나에 공유 하나)
     id        내용 해시(SHA-256)의 앞 16자 — 같은 편지는 같은 id (다시 공유하면 기존 링크, 만료 시각은 새로)
@@ -42,6 +43,7 @@ DAY = 86400.0
 TMP_STALE_SECONDS = 3600.0
 ID_LEN = 16
 SHARE_ID = re.compile(r"^[0-9a-f]{12,64}$")       # 12자는 예전 기록 — 지금은 16자(충돌하면 18 · 20 …)
+IMAGE_VARIANTS = ("", "tall")                     # <id>.png(1200×630 미리보기) · <id>-tall.png(세로형 카드)
 META_KEYS = ("id", "created", "expires")          # 기록에서 내용이 아닌 칸 — 내용 해시에서 뺀다
 ECHO_LEN = 15                                     # 답이 사용자 문장을 이만큼 연속으로 되풀이하면 공유하지 않는다
 SHAREABLE = ("cited", "not_found")             # 근거 검증을 통과한 응답만 — crisis · rejected · unchecked · failed는 거절
@@ -144,8 +146,9 @@ class ShareStore:
     def _path(self, share_id: str) -> Path:
         return self.directory / f"{share_id}.json"
 
-    def image_path(self, share_id: str) -> Path:
-        return self.directory / f"{share_id}.png"
+    def image_path(self, share_id: str, variant: str = "") -> Path:
+        """미리보기 이미지 <id>.png, variant="tall"이면 세로형 카드 <id>-tall.png."""
+        return self.directory / (f"{share_id}-{variant}.png" if variant else f"{share_id}.png")
 
     def _read(self, share_id: str) -> tuple[dict | None, float]:
         """(기록, 만료 시각). 없으면 (None, inf), 깨졌으면 (None, 0) — 깨진 파일은 만료된 것으로 본다."""
@@ -192,12 +195,13 @@ class ShareStore:
                 raise ShareUnavailableError("full")
             record = {"id": sid, **content, "created": iso(now), "expires": now + self.days * DAY}
             atomic_write_text(self._path(sid), json.dumps(record, ensure_ascii=False))
-            self.image_path(sid).unlink(missing_ok=True)             # 같은 id의 예전(만료된) 이미지
+            for variant in IMAGE_VARIANTS:                          # 같은 id의 예전(만료된) 이미지
+                self.image_path(sid, variant).unlink(missing_ok=True)
             self._count += 1
             return record, True
 
-    def save_image(self, share_id: str, data: bytes) -> None:
-        path = self.image_path(share_id)
+    def save_image(self, share_id: str, data: bytes, variant: str = "") -> None:
+        path = self.image_path(share_id, variant)
         fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
         try:
             with os.fdopen(fd, "wb") as f:
@@ -219,10 +223,11 @@ class ShareStore:
                 path.unlink(missing_ok=True)
                 removed += 1
                 self._count = max(0, self._count - 1)
-            image = self.image_path(share_id)
-            if image.exists():
-                image.unlink(missing_ok=True)
-                removed += 1
+            for variant in IMAGE_VARIANTS:
+                image = self.image_path(share_id, variant)
+                if image.exists():
+                    image.unlink(missing_ok=True)
+                    removed += 1
             return removed
 
     def _scan_count(self) -> int:
@@ -249,15 +254,16 @@ class ShareStore:
                             path.unlink(missing_ok=True)
                             removed += 1
                         continue
-                    if not valid_id(path.stem):
-                        continue
                     if path.suffix == ".png":
+                        sid = path.stem.removesuffix("-tall")            # 세로형 카드 <id>-tall.png도 그 기록의 이미지
+                        if not valid_id(sid):
+                            continue
                         with self._lock:                                # put이 기록을 막 쓴 이미지는 남긴다
-                            if not self._path(path.stem).exists():
+                            if not self._path(sid).exists():
                                 path.unlink(missing_ok=True)
                                 removed += 1
                         continue
-                    if path.suffix != ".json":
+                    if path.suffix != ".json" or not valid_id(path.stem):
                         continue
                     if self._read(path.stem)[1] <= now:                 # 깨진 파일도 만료로 — _remove가 잠금 안에서 다시 본다
                         removed += self._remove(path.stem)

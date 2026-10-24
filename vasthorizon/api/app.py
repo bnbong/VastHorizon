@@ -25,6 +25,7 @@
 | POST /api/share                       | 편지 공유 — 캐시에 있는 편지 · 마음 한 줄만 링크로 |
 | GET  /api/l/{id}                      | 공유 링크 — 미리보기(OG) 태그가 있는 HTML         |
 | GET  /api/l/{id}.json · .png          | 공유 기록 그대로 · 1200×630 미리보기 이미지       |
+| GET  /api/l/{id}/tall.png             | 편지 전체를 담은 세로형 카드 (1080×1620~1920)    |
 | GET  / · /index.html                  | 화면 — [share] kakao_js_key가 있으면 vh-kakao-key meta에 넣어서 |
 
 오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다.
@@ -639,7 +640,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
     def share_links(record: dict) -> ShareResponse:
         sid = record["id"]
         return ShareResponse(id=sid, url=f"{public_base}/api/l/{sid}", image_url=f"{public_base}/api/l/{sid}.png",
-                             created=record["created"])
+                             tall_image_url=f"{public_base}/api/l/{sid}/tall.png",
+                             tall_image_height=sharecard.tall_height(record), created=record["created"])
 
     @app.post("/api/share", status_code=201, response_model=ShareResponse, responses=errors,
               description="캐시에 있는 빛의 편지(item_id 또는 age) · 마음 한 줄(text · theme)을 공유 링크로. "
@@ -667,10 +669,12 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
                 raise ShareRefusedError("echo", "적어 주신 문장이 답에 들어 있어 공유할 수 없습니다")
         record, created = store.put(content)
         if created:
-            try:                                            # 미리보기 수집기가 오기 전에 이미지를 그려 둔다
-                store.save_image(record["id"], sharecard.share_image(record))
-            except Exception:                               # 이미지는 요청할 때 다시 그린다 — 공유는 막지 않는다
-                log.exception("공유 이미지를 그리지 못했습니다")
+            # 미리보기 수집기 · 카카오톡이 오기 전에 이미지를 그려 둔다
+            for variant, draw in (("", sharecard.share_image), ("tall", sharecard.share_tall_image)):
+                try:
+                    store.save_image(record["id"], draw(record), variant)
+                except Exception:                           # 이미지는 요청할 때 다시 그린다 — 공유는 막지 않는다
+                    log.exception("공유 이미지를 그리지 못했습니다")
         response.status_code = 201 if created else 200
         return share_links(record)
 
@@ -699,17 +703,26 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
     @app.api_route("/api/l/{share_id}.png", methods=["GET", "HEAD"], responses=errors,
                    description="1200×630 미리보기 이미지 (og:image). 처음 요청할 때 그려 디스크에 둔다")
     def share_png(share_id: str):
+        return share_image_response(share_id, "", sharecard.share_image)
+
+    @app.api_route("/api/l/{share_id}/tall.png", methods=["GET", "HEAD"], responses=errors,
+                   description="편지 전체를 담은 세로형 카드 1080×(1620~1920) — 이미지로 저장 · 카카오톡 피드. "
+                               "처음 요청할 때 그려 디스크에 둔다")
+    def share_tall_png(share_id: str):
+        return share_image_response(share_id, "tall", sharecard.share_tall_image)
+
+    def share_image_response(share_id: str, variant: str, draw) -> Response:
         record = share_record(share_id)
         if record is None:
             return share_missing()
         store = svc().share
-        path = store.image_path(share_id)
+        path = store.image_path(share_id, variant)
         try:
             data = path.read_bytes()
         except FileNotFoundError:
-            data = sharecard.share_image(record)
+            data = draw(record)
             try:
-                store.save_image(share_id, data)
+                store.save_image(share_id, data, variant)
             except OSError as e:
                 log.warning("공유 이미지를 저장하지 못했습니다: %s", type(e).__name__)
         return Response(data, media_type="image/png", headers=share_headers(record, 86400))

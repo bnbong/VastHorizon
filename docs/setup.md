@@ -111,6 +111,7 @@ python -m scripts.index_docs --stats                                            
 | `POST /api/constellations/{id}/unfold` | 별자리 펼치기 설명 |
 | `POST /api/sky` | 오늘 밤 나의 하늘 (`guide: false`이면 계산만 하고 LLM을 부르지 않습니다) |
 | `GET /api/perspective/themes`, `POST /api/perspective` | 관점 전환 감정 버튼 목록, 마음 한 줄에 대한 답 |
+| `POST /api/share` | 캐시에 있는 편지를 공유 링크로 만듭니다. 응답의 `image_url`은 1200×630 미리보기 이미지이고, `tall_image_url`과 `tall_image_height`는 편지 전체를 담은 세로형 카드(폭 1080, 높이 1620~1920)의 주소와 높이입니다 |
 
 ```bash
 curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: application/json" \

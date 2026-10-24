@@ -1,4 +1,4 @@
-"""공유 카드 — 공유 링크(/api/l/<id>)의 HTML 페이지와 1200×630 미리보기 이미지(PNG).
+"""공유 카드 — 공유 링크(/api/l/<id>)의 HTML 페이지와 1200×630 미리보기 이미지(PNG), 편지 전체를 담은 세로형 카드(PNG).
 
 카카오톡 · 슬랙은 링크의 og:title · og:description · og:image(절대 주소)를 읽어 카드로 보여 준다.
 페이지는 외부 CSS · 글꼴 없이 인라인 스타일만 쓴다 (미리보기 수집기 · 느린 회선에서도 바로 보이게).
@@ -7,6 +7,10 @@
 서브셋한 Noto Serif KR(제목) · VastHorizon Sans(Pretendard 서브셋, 본문). 글꼴에 없는 글자는 그리지 않는다 (drawable) —
 제목 · 본문에서 글자를 뺐으면 카드 아래에 OMITTED_NOTE를 작게 적는다.
 로고는 scripts/build_icons.py의 도형(web/js/logo.js와 같은 점)을 그대로 쓴다.
+
+세로형 카드(share_tall_image, /api/l/<id>/tall.png): 폭 1080, 높이는 본문 길이에 맞춰 1620(2:3)~1920. 이미지로 저장 ·
+카카오톡 피드 썸네일에 쓴다 — 채팅 폭으로 줄여도 읽히게 눈썹 · 제목을 카드 위쪽 1/3 안에 크게 둔다.
+본문이 1920에도 넘치면 글자를 34 → 30 → 28px로 줄이고, 그래도 넘치면 '…'으로 자르고 TRUNCATED_NOTE를 적는다.
 """
 
 from __future__ import annotations
@@ -33,6 +37,10 @@ INK = "#282345"          # 카드 글
 MUTED = "#6f6585"        # 눈썹 · 근거 줄
 PEACH = "#F3DAD5"        # 살구 — 버튼 · 로고
 WIDTH, HEIGHT = 1200, 630
+TALL_WIDTH, TALL_MIN, TALL_MAX = 1080, 1620, 1920
+TALL_BODY_SIZES = (34, 30, 28)  # 본문 글자 — 1920에 안 들어가면 차례로 줄인다
+SITE_LABEL = "vasthorizon.bnbong.com"
+TRUNCATED_NOTE = "편지 전체는 링크에서 읽을 수 있습니다"
 INTERNAL_SOURCES = ("항목 메타데이터", "카탈로그", "계산")
 OMITTED_NOTE = "일부 글자는 카드에 표시되지 않았습니다"
 
@@ -257,17 +265,18 @@ def wrap(draw: ImageDraw.ImageDraw, text: str, font, width: int, max_lines: int)
     return lines
 
 
-def _background(seed: str) -> Image.Image:
+def _background(seed: str, size: tuple[int, int] = (WIDTH, HEIGHT), count: int = 140) -> Image.Image:
     """남보라 → 보라 대각선 그라데이션 위 작은 별 점들 (같은 id면 같은 하늘)."""
+    width, height = size
     down = Image.linear_gradient("L")                                  # 위 0 → 아래 255
     mask = ImageChops.add(down, down.rotate(90), scale=2)               # 왼쪽 위 0 → 오른쪽 아래 255
-    mask = mask.resize((WIDTH, HEIGHT), Image.BICUBIC)
-    img = Image.composite(Image.new("RGB", (WIDTH, HEIGHT), VIOLET), Image.new("RGB", (WIDTH, HEIGHT), NIGHT), mask)
-    stars = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    mask = mask.resize((width, height), Image.BICUBIC)
+    img = Image.composite(Image.new("RGB", (width, height), VIOLET), Image.new("RGB", (width, height), NIGHT), mask)
+    stars = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(stars)
     rng = random.Random(seed)
-    for _ in range(140):
-        x, y = rng.uniform(0, WIDTH), rng.uniform(0, HEIGHT)
+    for _ in range(count):
+        x, y = rng.uniform(0, width), rng.uniform(0, height)
         r = rng.choice((0.8, 1.0, 1.2, 1.6, 2.2))
         alpha = rng.randint(70, 220)
         color = (255, 250, 245, alpha) if rng.random() < 0.7 else (243, 218, 213, alpha)
@@ -356,6 +365,153 @@ def share_image(record: dict) -> bytes:
     draw.text((x, y), cite, font=cite_font, fill=MUTED)
     if lost:
         draw.text((x, y + 30), OMITTED_NOTE, font=note_font, fill=MUTED)
+
+    buf = io.BytesIO()
+    img.save(buf, "PNG", optimize=True)
+    return buf.getvalue()
+
+
+# ── 세로형 카드 (이미지로 저장 · 카카오톡 피드) ──────────────────────────────
+
+_BOLD_MARK = re.compile(r"\*\*")
+TALL_CARD_X, TALL_CARD_TOP, TALL_BOTTOM = 56, 168, 64     # 카드 왼쪽 여백 · 카드 위 (하늘 띠) · 카드 아래 여백
+TALL_PAD = 64                                             # 카드 안 여백
+TALL_INNER = TALL_WIDTH - 2 * TALL_CARD_X - 2 * TALL_PAD    # 840 — 글이 들어가는 폭
+TALL_TITLE_BIG = (68, 62)                                 # 짧은 제목 — 한 줄이 화면 폭의 2/3 안이면 더 크게 (카카오 썸네일)
+TALL_TITLE_SIZES = (56, 50, 46)                           # 그 밖의 제목 — 두 줄 안에 들어가게
+TALL_TITLE_SPAN = TALL_WIDTH * 2 // 3                     # 720
+
+
+def _tall_paragraphs(text: str) -> list[str]:
+    """본문 문단 — 줄바꿈으로 나누고 [근거 N] · 굵게(**) 표시를 걷어 낸다."""
+    out = []
+    for p in re.split(r"\n+", text or ""):
+        p = plain(_BOLD_MARK.sub("", p))
+        if p:
+            out.append(p)
+    return out
+
+
+def _measure() -> ImageDraw.ImageDraw:
+    return ImageDraw.Draw(Image.new("RGB", (1, 1)))
+
+
+def tall_layout(record: dict) -> dict:
+    """세로형 카드의 배치 — 그리지 않고 높이 · 글자 크기 · 줄을 정한다 (POST /api/share가 높이를 알려 줄 때도 쓴다).
+
+    본문 줄은 문자열, 문단 사이는 None. 높이는 TALL_MIN ~ TALL_MAX.
+    """
+    draw = _measure()
+    raw_title = record.get("title") or "VastHorizon"
+    paragraphs = _tall_paragraphs(record.get("text", ""))
+    lost = omitted(raw_title, SERIF) or any(omitted(p, SANS) for p in paragraphs)
+    title = drawable(raw_title, SERIF)
+    big = [s for s in TALL_TITLE_BIG if draw.textlength(title, font=_font(SERIF, s)) <= TALL_TITLE_SPAN]
+    for title_size in big[:1] or TALL_TITLE_SIZES:
+        title_font = _font(SERIF, title_size)
+        if len(wrap(draw, title, title_font, TALL_INNER, 99)) <= 2:
+            break
+    title_lines = wrap(draw, title, title_font, TALL_INNER, 2)
+    title_line_h = round(title_size * 1.36)
+    head_h = 80 + 36 + 28 + title_line_h * len(title_lines) + 36 + 48      # 눈썹 · 제목 · 살구색 줄
+    cite_font = _font(SANS, 26)
+    cite = _fit(draw, drawable(cite_line(record.get("cited") or []), SANS), cite_font, TALL_INNER)
+
+    def footer(notes: int) -> int:                        # 본문 뒤 — 근거 줄 · 안내 줄 · 주소 · 아래 여백
+        return 44 + 40 + notes * 36 + 56 + 30 + TALL_PAD
+
+    def body_lines(size: int) -> list[str | None]:
+        font = _font(SANS, size)
+        lines: list[str | None] = []
+        for p in paragraphs:
+            if lines:
+                lines.append(None)
+            lines += wrap(draw, drawable(p, SANS), font, TALL_INNER, 10_000)
+        return lines
+
+    def body_h(lines: list[str | None], size: int) -> int:
+        line_h = round(size * 1.6)
+        return sum(line_h if line is not None else round(line_h * 0.5) for line in lines)
+
+    fixed = TALL_CARD_TOP + head_h + TALL_BOTTOM
+    notes = int(lost)
+    for size in TALL_BODY_SIZES:
+        lines = body_lines(size)
+        if fixed + body_h(lines, size) + footer(notes) <= TALL_MAX:
+            break
+    truncated = fixed + body_h(lines, size) + footer(notes) > TALL_MAX
+    if truncated:                                          # 28px로도 넘친다 — 들어가는 데까지 자르고 '…'
+        notes += 1
+        room = TALL_MAX - fixed - footer(notes)
+        while lines and body_h(lines, size) > room:
+            lines.pop()
+        while lines and lines[-1] is None:
+            lines.pop()
+        if lines:
+            font = _font(SANS, size)
+            last = lines[-1]
+            while last and draw.textlength(last + "…", font=font) > TALL_INNER:
+                last = last[:-1]
+            lines[-1] = last.rstrip() + "…"
+    height = TALL_MAX if truncated else max(TALL_MIN, min(TALL_MAX, fixed + body_h(lines, size) + footer(notes)))
+    return {"height": height, "title_lines": title_lines, "title_size": title_size, "title_line_h": title_line_h,
+            "body_size": size, "lines": lines, "cite": cite, "lost": lost, "truncated": truncated,
+            "eyebrow": drawable(record.get("eyebrow") or "VastHorizon", SANS_BOLD)}
+
+
+def tall_height(record: dict) -> int:
+    return tall_layout(record)["height"]
+
+
+def share_tall_image(record: dict) -> bytes:
+    """1080×(1620~1920) PNG — 위쪽 하늘에 로고 · 워드마크, 그 아래 종이색 카드(눈썹 · 제목 · 본문 전체 · 근거 줄 · 주소)."""
+    lay = tall_layout(record)
+    height = lay["height"]
+    img = _background(record.get("id", ""), (TALL_WIDTH, height), 220)
+    draw = ImageDraw.Draw(img)
+
+    mark_size = 64
+    mark = logo(mark_size)
+    mark_x, mark_y = TALL_WIDTH - TALL_CARD_X - mark_size, 52
+    img.paste(mark, (mark_x, mark_y), mark)
+    word_font = _font(SANS_BOLD, 30)
+    word_w = draw.textlength("VastHorizon", font=word_font)
+    draw.text((mark_x - 18 - word_w, mark_y + mark_size / 2), "VastHorizon", font=word_font, fill=PEACH, anchor="lm")
+
+    left, right = TALL_CARD_X, TALL_WIDTH - TALL_CARD_X
+    top, bottom = TALL_CARD_TOP, height - TALL_BOTTOM
+    draw.rectangle((left + 8, top + 10, right + 8, bottom + 10), fill=(20, 18, 48))     # 그림자
+    draw.rectangle((left, top, right, bottom), fill=PAPER)
+
+    x, y = left + TALL_PAD, top + 80
+    draw.text((x, y), lay["eyebrow"], font=_font(SANS_BOLD, 28), fill=MUTED)
+    y += 36 + 28
+    title_font = _font(SERIF, lay["title_size"])
+    for line in lay["title_lines"]:
+        draw.text((x, y), line, font=title_font, fill=INK, stroke_width=1, stroke_fill=INK)   # 줄여 보여도 흐리지 않게 조금 굵게
+        y += lay["title_line_h"]
+    y += 36
+    draw.line((x, y, x + 56, y), fill=PEACH, width=3)
+    y += 48
+
+    size = lay["body_size"]
+    body_font, line_h = _font(SANS, size), round(size * 1.6)
+    for line in lay["lines"]:
+        if line is None:
+            y += round(line_h * 0.5)
+            continue
+        draw.text((x, y), line, font=body_font, fill=INK)
+        y += line_h
+
+    y += 44
+    note_font = _font(SANS, 22)
+    draw.text((x, y), lay["cite"], font=_font(SANS, 26), fill=MUTED)
+    y += 40
+    for note, on in ((TRUNCATED_NOTE, lay["truncated"]), (OMITTED_NOTE, lay["lost"])):
+        if on:
+            draw.text((x, y), note, font=note_font, fill=MUTED)
+            y += 36
+    draw.text((x, bottom - TALL_PAD - 30), SITE_LABEL, font=_font(SANS, 22), fill=MUTED)
 
     buf = io.BytesIO()
     img.save(buf, "PNG", optimize=True)

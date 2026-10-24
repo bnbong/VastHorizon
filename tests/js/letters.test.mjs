@@ -127,6 +127,16 @@ test("공유 정보 갱신 · 삭제 · 찾기", () => {
   let list = addLetter([], a);
   list = setShare(list, a.key, { id: "xyz", url: "https://vasthorizon.bnbong.com/api/l/xyz" });
   assert.equal(findLetter(list, a.key).shareId, "xyz");
+  assert.equal(findLetter(list, a.key).imageUrl, null);
+  list = setShare(list, a.key, { id: "xyz", imageUrl: "https://vasthorizon.bnbong.com/api/l/xyz/tall.png", imageHeight: 1700 });
+  const kept = findLetter(list, a.key);
+  assert.deepEqual([kept.url, kept.imageUrl, kept.imageHeight],
+                   ["https://vasthorizon.bnbong.com/api/l/xyz", "https://vasthorizon.bnbong.com/api/l/xyz/tall.png", 1700]);
+  assert.deepEqual(restoreLetters(serializeLetters(list)), list);                 // 세로형 카드 주소 · 높이도 되살린다
+  const old = JSON.parse(serializeLetters(list));
+  delete old.letters[0].imageUrl;
+  old.letters[0].imageHeight = "엉망";
+  assert.deepEqual([restoreLetters(old)[0].imageUrl, restoreLetters(old)[0].imageHeight], [null, null]);   // 예전 기록 · 깨진 값
   assert.equal(findLetter(list, "없음"), null);
   assert.deepEqual(removeLetter(list, a.key), []);
 });

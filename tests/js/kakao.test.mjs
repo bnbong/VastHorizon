@@ -2,7 +2,8 @@
 //     node --test "tests/js/*.test.mjs"
 import assert from "node:assert/strict";
 import test from "node:test";
-import { available, DESC_MAX, feedDescription, feedMessage, letterLink, loadKakao, SDK_INTEGRITY, SDK_URL } from "../../web/js/kakao.js";
+import { available, DESC_MAX, feedDescription, feedMessage, letterLink, loadKakao, SDK_INTEGRITY, SDK_URL, TALL_MIN_HEIGHT,
+         TALL_WIDTH } from "../../web/js/kakao.js";
 
 test("SDK는 2.7 계열 · SRI 값", () => {
   assert.match(SDK_URL, /^https:\/\/t1\.kakaocdn\.net\/kakao_js_sdk\/2\.7\.\d+\/kakao\.min\.js$/);
@@ -31,17 +32,20 @@ test("딥링크 — 앱 주소의 ?letter=<id>", () => {
   assert.equal(letterLink("a b", "http://localhost:8000/"), "http://localhost:8000/?letter=a%20b");
 });
 
-test("피드 메시지 — 제목 · 설명 · 1200×630 이미지 · 편지 보기 버튼이 모두 딥링크로", () => {
+test("피드 메시지 — 제목 · 설명 · 세로형 카드(1080 × 실제 높이) · 편지 보기 버튼이 모두 딥링크로", () => {
   const m = feedMessage({ title: "베가의 빛", text: "**빛**이 출발했습니다 [근거 1]. 두 번째. 세 번째.", id: "x1",
-                          imageUrl: "https://vasthorizon.bnbong.com/api/l/x1.png", origin: "https://vasthorizon.bnbong.com" });
+                          imageUrl: "https://vasthorizon.bnbong.com/api/l/x1/tall.png", imageHeight: 1784,
+                          origin: "https://vasthorizon.bnbong.com" });
   const url = "https://vasthorizon.bnbong.com/?letter=x1";
   assert.deepEqual(m, {
     objectType: "feed",
-    content: { title: "베가의 빛", description: "빛이 출발했습니다. 두 번째.", imageUrl: "https://vasthorizon.bnbong.com/api/l/x1.png",
-               imageWidth: 1200, imageHeight: 630, link: { mobileWebUrl: url, webUrl: url } },
+    content: { title: "베가의 빛", description: "빛이 출발했습니다. 두 번째.", imageUrl: "https://vasthorizon.bnbong.com/api/l/x1/tall.png",
+               imageWidth: 1080, imageHeight: 1784, link: { mobileWebUrl: url, webUrl: url } },
     buttons: [{ title: "편지 보기", link: { mobileWebUrl: url, webUrl: url } }],
   });
-  assert.equal(feedMessage({ title: "", text: "a", id: "x", imageUrl: "", origin: "https://a.b" }).content.title, "VastHorizon의 편지");
+  const fallback = feedMessage({ title: "", text: "a", id: "x", imageUrl: "", origin: "https://a.b" }).content;
+  assert.equal(fallback.title, "VastHorizon의 편지");
+  assert.deepEqual([fallback.imageWidth, fallback.imageHeight], [TALL_WIDTH, TALL_MIN_HEIGHT]);   // 높이를 모르면 2:3
 });
 
 test("키가 없으면(meta 없음) 쓸 수 없고, SDK를 부르지 않는다", async () => {

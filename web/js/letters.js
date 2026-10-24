@@ -1,6 +1,7 @@
 // 받은 편지 보관함 — 빛의 편지 · 마음 한 줄을 받을 때마다 이 기기에 남긴다. DOM에 의존하지 않는다 (node로 시험).
 //
-// - 기록: [{ key, kind, item_id, item_name, title, text, at, shareId, url, req }] — 최근 것이 앞
+// - 기록: [{ key, kind, item_id, item_name, title, text, at, shareId, url, imageUrl, imageHeight, req }] — 최근 것이 앞
+//   imageUrl · imageHeight는 공유한 편지의 세로형 카드(/api/l/<id>/tall.png)와 그 높이 — 이미지로 저장 · 카카오톡 피드에 쓴다
 //   kind는 "letter"(빛의 편지) · "perspective"(마음 한 줄). text는 본문 앞 120자(굵게 · [근거 N] 표시는 걷어 낸다)
 //   마음 한 줄은 사람이 적은 문장을 남기지 않는다 — req에는 고른 감정(theme)만
 // - key: 공유 ID가 있으면 "share|<id>", 없으면 "<kind>|<본문 전체(plainText)의 djb2 해시>" — 앞부분이 같은 다른 편지와 섞이지 않게
@@ -50,10 +51,10 @@ export const textHash = (kind, text) => `${kind}|${djb2(plainText(text))}`;
 export const letterKey = ({ kind, text, shareId = null }) => (shareId ? `share|${shareId}` : textHash(kind, text));
 
 // 받은 편지 하나 — at은 ISO 시각 문자열. text는 본문 전체를 받아 해시를 만들고, 저장은 앞 120자만
-export function makeEntry({ kind, item_id = null, item_name = null, title = "", text = "", req = null, shareId = null, url = null },
-                          at = new Date().toISOString()) {
+export function makeEntry({ kind, item_id = null, item_name = null, title = "", text = "", req = null, shareId = null, url = null,
+                            imageUrl = null, imageHeight = null }, at = new Date().toISOString()) {
   return { key: letterKey({ kind, text, shareId }), hash: textHash(kind, text), kind, item_id, item_name, title: String(title ?? ""),
-           text: excerptOf(text), at, shareId, url, req };
+           text: excerptOf(text), at, shareId, url, imageUrl, imageHeight, req };
 }
 
 export const sameLetter = (a, b) => a.key === b.key || (!!a.shareId && a.shareId === b.shareId) || (!!a.hash && a.hash === b.hash);
@@ -81,15 +82,18 @@ export function addLetter(list, entry, max = LETTERS_MAX) {
   const i = list.findIndex((e) => sameLetter(e, entry));
   if (i >= 0) {
     const old = list[i];
-    const merged = { ...old, shareId: old.shareId ?? entry.shareId ?? null, url: old.url ?? entry.url ?? null, req: old.req ?? entry.req ?? null };
+    const merged = { ...old, shareId: old.shareId ?? entry.shareId ?? null, url: old.url ?? entry.url ?? null,
+                     imageUrl: old.imageUrl ?? entry.imageUrl ?? null, imageHeight: old.imageHeight ?? entry.imageHeight ?? null,
+                     req: old.req ?? entry.req ?? null };
     return list.map((e, k) => (k === i ? merged : e));
   }
   return sortLetters([entry, ...list]).slice(0, max);
 }
 
-// 공유 링크가 생겼을 때 — 그 편지의 shareId · url을 고친다
-export function setShare(list, key, { id, url }) {
-  return list.map((e) => (e.key === key ? { ...e, shareId: id ?? e.shareId, url: url ?? e.url } : e));
+// 공유 링크가 생겼을 때 — 그 편지의 shareId · url · 세로형 카드 주소와 높이를 고친다
+export function setShare(list, key, { id, url, imageUrl, imageHeight }) {
+  return list.map((e) => (e.key === key ? { ...e, shareId: id ?? e.shareId, url: url ?? e.url, imageUrl: imageUrl ?? e.imageUrl ?? null,
+                                            imageHeight: imageHeight ?? e.imageHeight ?? null } : e));
 }
 
 export const removeLetter = (list, key) => list.filter((e) => e.key !== key);
@@ -108,7 +112,8 @@ export function restoreLetters(saved, max = LETTERS_MAX) {
     if (!e || !KINDS.has(e.kind) || typeof e.key !== "string" || typeof e.at !== "string") continue;
     const entry = { key: e.key, hash: typeof e.hash === "string" ? e.hash : null, kind: e.kind, item_id: e.item_id ?? null,
                     item_name: e.item_name ?? null, title: String(e.title ?? ""), text: String(e.text ?? ""), at: e.at,
-                    shareId: e.shareId ?? null, url: e.url ?? null, req: e.req ?? null };
+                    shareId: e.shareId ?? null, url: e.url ?? null, imageUrl: typeof e.imageUrl === "string" ? e.imageUrl : null,
+                    imageHeight: Number.isInteger(e.imageHeight) && e.imageHeight > 0 ? e.imageHeight : null, req: e.req ?? null };
     if (out.some((x) => sameLetter(x, entry))) continue;
     out.push(entry);
   }

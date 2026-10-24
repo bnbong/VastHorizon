@@ -330,6 +330,8 @@ class ShareResponse(BaseModel):
     id: str = Field(description="내용 해시 앞 16자 — 같은 편지는 같은 id (해시 앞부분이 겹치면 2자씩 더 길다)")
     url: str = Field(description="공유 링크 (미리보기 카드가 있는 페이지)")
     image_url: str = Field(description="미리보기 이미지 1200×630 PNG")
+    tall_image_url: str = Field(description="편지 전체를 담은 세로형 카드 PNG (이미지로 저장 · 카카오톡 피드)")
+    tall_image_height: int = Field(description="세로형 카드의 높이 px (폭 1080, 높이 1620~1920)")
     created: str = Field(description="처음 공유한 시각 (UTC, ISO 8601)")
 
 

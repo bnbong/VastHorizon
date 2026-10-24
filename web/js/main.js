@@ -26,7 +26,8 @@ import { UnfoldMode } from "./unfold.js";
 import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
 import { advance, popView } from "./drawerstack.js";
 import { sound } from "./sound.js";
-import { available as kakaoAvailable, feedMessage, loadKakao, sendFeed } from "./kakao.js";
+import { available as kakaoAvailable, feedMessage, loadKakao, sendFeed, TALL_MIN_HEIGHT } from "./kakao.js";
+import { pickVoice, SPEECH_PITCH, SPEECH_RATE, speechChunks, VOICE_HINT } from "./tts.js";
 import { addLetter, findLetter, firstSentence, letterDate, letterItemIds, LETTERS_KEY, makeEntry, plainText, removeLetter, restoreLetters,
          sameLetter, serializeLetters, setShare, sharedView } from "./letters.js";
 
@@ -516,10 +517,33 @@ function keepShare(key, share) {
 
 const shareCardUrl = (id) => absoluteUrl(`/api/l/${encodeURIComponent(id)}`);
 const shareImageUrl = (id) => absoluteUrl(`/api/l/${encodeURIComponent(id)}.png`);
+const shareTallUrl = (id) => absoluteUrl(`/api/l/${encodeURIComponent(id)}/tall.png`);
+
+// 보관함 기록의 공유 정보 — 공유 링크 · 미리보기(1200×630) · 세로형 카드(이미지로 저장 · 카카오톡). 공유하지 않았으면 null
+function keptShare(kept, shareId = kept?.shareId) {
+  if (!shareId) return null;
+  const own = kept?.shareId === shareId;       // 같은 본문을 다른 공유 ID로 받았으면 그 기록의 카드 주소 · 높이는 쓰지 않는다
+  return { id: shareId, url: kept?.url ?? shareCardUrl(shareId), image_url: shareImageUrl(shareId),
+           tall_image_url: (own && kept.imageUrl) || shareTallUrl(shareId), tall_image_height: (own && kept.imageHeight) || null };
+}
 
 // 읽어 주기 — 브라우저 음성 합성(ko-KR). 지원하지 않으면 버튼을 내지 않는다
+// 음성은 tts.js의 pickVoice(Yuna > Sora > Google 한국의 > Microsoft SunHi · Heami > 그 밖의 한국어) — 목록이 늦게 오면 voiceschanged 뒤에 다시.
+// 글은 문장마다 발화 하나로 나눠 연속으로 큐에 넣는다 (문장 사이 짧은 쉼, 긴 발화가 중간에 끊기지 않게)
 const speech = typeof window.speechSynthesis !== "undefined" && typeof window.SpeechSynthesisUtterance !== "undefined" ? window.speechSynthesis : null;
 let speakingButton = null;
+let speakGen = 0;                              // 멈춘 뒤 늦게 오는 지난 발화의 end · error가 새 읽기를 건드리지 않게
+let voice = null;
+
+function refreshVoice() {
+  try { voice = pickVoice(speech.getVoices()); } catch { voice = null; }
+}
+if (speech) {
+  refreshVoice();
+  if (typeof speech.addEventListener === "function") speech.addEventListener("voiceschanged", refreshVoice);
+  else speech.onvoiceschanged = refreshVoice;
+  window.addEventListener("pagehide", () => stopSpeaking());
+}
 
 function drawSpeakButton(b, on) {
   b.innerHTML = `${icon(on ? "square" : "volume", 15)}<span class="label-text">${on ? "멈추기" : "읽어 주기"}</span>`;
@@ -527,6 +551,7 @@ function drawSpeakButton(b, on) {
 
 function stopSpeaking() {
   if (!speech) return;
+  speakGen += 1;
   const b = speakingButton;
   speakingButton = null;
   if (b?.isConnected) drawSpeakButton(b, false);
@@ -536,17 +561,27 @@ function stopSpeaking() {
 function toggleSpeak(text, b) {
   if (speakingButton === b) { stopSpeaking(); return; }
   stopSpeaking();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ko-KR";
-  const voice = speech.getVoices().find((v) => /^ko([-_]|$)/i.test(v.lang));
-  if (voice) u.voice = voice;
-  u.rate = 0.95;
-  const done = () => { if (speakingButton === b) { speakingButton = null; if (b.isConnected) drawSpeakButton(b, false); } };
-  u.onend = done;
-  u.onerror = done;
+  const chunks = speechChunks(text);
+  if (!chunks.length) return;
+  if (!voice) refreshVoice();
+  const gen = speakGen;
+  const done = () => {
+    if (gen !== speakGen || speakingButton !== b) return;
+    speakingButton = null;
+    if (b.isConnected) drawSpeakButton(b, false);
+  };
   speakingButton = b;
   drawSpeakButton(b, true);
-  speech.speak(u);
+  chunks.forEach((chunk, i) => {
+    const u = new SpeechSynthesisUtterance(chunk);
+    u.lang = voice?.lang || "ko-KR";
+    if (voice) u.voice = voice;
+    u.rate = SPEECH_RATE;
+    u.pitch = SPEECH_PITCH;
+    if (i === chunks.length - 1) u.onend = done;
+    u.onerror = done;
+    speech.speak(u);
+  });
 }
 
 // 결과 아래 버튼 묶음 — 링크 복사 · 카카오톡으로 보내기(키가 있을 때만) · 이미지로 저장 · 읽어 주기. note: 버튼 아래 한 줄 안내
@@ -555,7 +590,7 @@ function shareBarHtml({ note = "", shareable = true } = {}) {
     <div class="row">${shareable ? btn("링크 복사", { ic: "link", attrs: 'data-act="copy"' })
       + (kakaoAvailable ? btn("카카오톡으로 보내기", { ic: "message-circle", attrs: 'data-act="kakao"' }) : "")
       + btn("이미지로 저장", { ic: "download", attrs: 'data-act="image"' }) : ""}
-      ${speech ? `<button type="button" class="btn btn-ghost btn-sm" data-act="speak">${icon("volume", 15)}<span class="label-text">읽어 주기</span></button>` : ""}</div>
+      ${speech ? `<button type="button" class="btn btn-ghost btn-sm" data-act="speak" title="${esc(VOICE_HINT)}">${icon("volume", 15)}<span class="label-text">읽어 주기</span></button>` : ""}</div>
     ${note ? `<p class="disclaimer">${esc(note)}</p>` : ""}
     <div class="share-slot" data-share-slot></div></div>`;
 }
@@ -568,7 +603,8 @@ function shareErrorText(e) {
   return errorText(e);
 }
 
-// body: POST /api/share 본문 · share: 이미 있는 공유({ id, url, image_url }) · text: 읽어 줄 글 · keepKey: 보관함 기록의 열쇠
+// body: POST /api/share 본문 · share: 이미 있는 공유({ id, url, image_url, tall_image_url, tall_image_height }) · text: 읽어 줄 글
+// keepKey: 보관함 기록의 열쇠
 // letter: 카카오톡 피드에 담을 { title, text(본문 — 앞 두 문장을 설명으로) }
 function bindShareBar(bar, { body = null, share = null, text = "", keepKey = null, letter = null } = {}) {
   if (!bar) return;
@@ -578,8 +614,9 @@ function bindShareBar(bar, { body = null, share = null, text = "", keepKey = nul
   const ensure = () => {
     if (current) return Promise.resolve(current);
     pending ??= api.share(body).then((res) => {
-      current = { id: res.id, url: absoluteUrl(res.url), image_url: absoluteUrl(res.image_url ?? `/api/l/${res.id}.png`) };
-      if (keepKey) keepShare(keepKey, { id: current.id, url: current.url });
+      current = { id: res.id, url: absoluteUrl(res.url), image_url: absoluteUrl(res.image_url ?? `/api/l/${res.id}.png`),
+                  tall_image_url: absoluteUrl(res.tall_image_url ?? `/api/l/${res.id}/tall.png`), tall_image_height: res.tall_image_height ?? null };
+      if (keepKey) keepShare(keepKey, { id: current.id, url: current.url, imageUrl: current.tall_image_url, imageHeight: current.tall_image_height });
       return current;
     }).finally(() => { pending = null; });
     return pending;
@@ -597,7 +634,13 @@ function bindShareBar(bar, { body = null, share = null, text = "", keepKey = nul
       const s = await ensure();
       if (!bar.isConnected) return;
       if (b.dataset.act === "copy") await copyLink(s.url, slot);
-      else if (kakaoReady) await sendKakao(s, letter ?? { title: "", text }, slot, kakaoReady);
+      else if (kakaoReady) {
+        if (!s.tall_image_height) {            // 예전 보관함 기록 · 받은 공유 링크 — 높이를 모르면 이미지를 읽어 재고 남겨 둔다
+          s.tall_image_height = await imageHeight(s.tall_image_url);
+          if (keepKey && s.tall_image_height) keepShare(keepKey, { id: s.id, imageUrl: s.tall_image_url, imageHeight: s.tall_image_height });
+        }
+        await sendKakao(s, letter ?? { title: "", text }, slot, kakaoReady);
+      }
       else saveImage(s);
     } catch (err) {
       if (bar.isConnected) slot.innerHTML = statusHtml(shareErrorText(err), "warn");
@@ -628,20 +671,34 @@ async function sendKakao(s, letter, slot, ready = loadKakao()) {
     if (slot.isConnected) slot.innerHTML = statusHtml("카카오톡을 열지 못했습니다. 링크 복사 버튼으로 링크를 복사해 카카오톡에 붙여 넣어 주세요.", "warn");
     return;
   }
-  await sendFeed(feedMessage({ title: letter.title, text: letter.text, id: s.id, imageUrl: s.image_url, origin: location.origin }));
+  await sendFeed(feedMessage({ title: letter.title, text: letter.text, id: s.id, imageUrl: s.tall_image_url,
+                              imageHeight: s.tall_image_height || TALL_MIN_HEIGHT, origin: location.origin }));
+}
+
+// 세로형 카드의 실제 높이 — 못 읽으면(오류 · 4초 넘게 걸림) null
+function imageHeight(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const end = (h) => { clearTimeout(timer); img.onload = img.onerror = null; resolve(h); };
+    const timer = setTimeout(() => end(null), 4000);
+    img.onload = () => end(img.naturalHeight || null);
+    img.onerror = () => end(null);
+    img.src = url;
+  });
 }
 
 function saveImage(s) {
   // 화면과 API가 다른 출처면(API_BASE로 분리 배포) download 속성이 무시된다 — 새 탭으로 열어 거기서 저장하게
   let crossOrigin = false;
-  try { crossOrigin = !!API_BASE && new URL(s.image_url, location.href).origin !== location.origin; } catch { crossOrigin = false; }
+  // 저장하는 이미지는 편지 전체를 담은 세로형 카드 (미리보기 1200×630은 본문이 잘린다)
+  try { crossOrigin = !!API_BASE && new URL(s.tall_image_url, location.href).origin !== location.origin; } catch { crossOrigin = false; }
   if (crossOrigin) {
-    window.open(s.image_url, "_blank", "noopener");
+    window.open(s.tall_image_url, "_blank", "noopener");
     toast("새 탭에서 공유 카드 이미지를 열었습니다. 길게 누르거나 오른쪽 클릭으로 저장해 주세요");
     return;
   }
   const a = document.createElement("a");
-  a.href = s.image_url;
+  a.href = s.tall_image_url;
   a.download = `vasthorizon-${s.id}.png`;
   a.rel = "noopener";
   document.body.appendChild(a);
@@ -1426,7 +1483,7 @@ async function showLetter(body) {
       const kept = keepLetter({ kind: "letter", item_id: res.item_id, item_name: res.item_name, title: label, text: res.letter, req });
       bindShareBar(out.querySelector("[data-share-bar]"), {
         body: { kind: "letter", ...req }, text: `${label}. ${plainText(res.letter)}`, keepKey: kept.key, letter: { title: label, text: res.letter },
-        share: kept.shareId ? { id: kept.shareId, url: kept.url ?? shareCardUrl(kept.shareId), image_url: shareImageUrl(kept.shareId) } : null,
+        share: keptShare(kept),
       });
     },
   });
@@ -1478,7 +1535,7 @@ async function showPerspective({ req: startReq = null } = {}) {
           bindShareBar(out.querySelector("[data-share-bar]"), {
             body: { kind: "perspective", ...req }, text: plainText(res.answer), keepKey: kept.key,
             letter: { title: "마음 한 줄 곁의 사실", text: res.answer },
-            share: kept.shareId ? { id: kept.shareId, url: kept.url ?? shareCardUrl(kept.shareId), image_url: shareImageUrl(kept.shareId) } : null,
+            share: keptShare(kept),
           });
         }
       }
@@ -1693,7 +1750,7 @@ function drawShared(rec, kept, shareId) {
       ${shareBarHtml()}
       <div class="row">${isLetter && rec.item_id ? btn("이 천체 보기", { ic: "sparkles", id: "kept-item" }) : ""}${btn("받은 편지 모두 보기", { variant: "ghost", id: "kept-list" })}</div></div>`);
   bindShareBar($("#kept-out [data-share-bar]"), {
-    share: { id: shareId, url: kept.url ?? shareCardUrl(shareId), image_url: shareImageUrl(shareId) },
+    share: keptShare(kept, shareId), keepKey: kept.shareId === shareId ? kept.key : null,
     text: `${title}. ${plainText(rec.text)}`, letter: { title, text: rec.text },
   });
   $("#kept-item")?.addEventListener("click", () => pickItem(rec.item_id));
