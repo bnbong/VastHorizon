@@ -13,7 +13,7 @@ import { applyMatrix, colorWord, eqToHorizonMatrix, limitingMag, pickSky, transp
 import { DsoLayer, loadDsos, loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
 import { SolarLayer } from "./solar.js";
 import { BODIES } from "./ephemeris.js";
-import { epochDate, MOON_ORBITS, moonSky, skyFromHeliocentric } from "./solarbodies.js";
+import { epochAge, epochDate, MOON_ORBITS, moonSky, skyFromHeliocentric } from "./solarbodies.js";
 
 const R = 100;
 const DIRECTIONS = [["북", 0], ["북동", 45], ["동", 90], ["남동", 135], ["남", 180], ["남서", 225], ["서", 270], ["북서", 315]];
@@ -236,12 +236,14 @@ export class SkyMode {
     }
     // 왜행성 · 소행성 · 혜성 · 아로코트 — 기준일 위치(태양 중심)에서 그날의 지구 위치를 뺀 방향. 기준일에서 멀어질수록 그 천체가 움직인 만큼 어긋난다
     for (const p of this.minorBodies) {
+      const age = epochAge(p.epoch, this.date);
+      if (age.hidden) continue;                     // 기준일에서 1년이 넘었다 — 틀린 자리에 그리지 않는다
       const sky = skyFromHeliocentric(p.position_au, this.date);
       const v = this.scenePos(sky.dir, R * 0.99);
       if (v.y < 0) continue;
       const seen = this.observed.has(p.id);
       this.targets.push({ position: v, data: { id: p.id, name: p.name, kind: "minor", bodyKind: p.kind, epoch: p.epoch,
-        distanceAu: sky.distanceAu, unobserved: !seen } });
+        distanceAu: sky.distanceAu, ageNote: age.note, unobserved: !seen } });
       if (seen) this.addMark(v, p.name, p.id);
       else {
         faint.push(...v.toArray());
@@ -576,7 +578,7 @@ export class SkyMode {
   describe(p) {
     if (p.kind === "sky-star") return `HIP ${p.hip}: ${p.mag.toFixed(1)}등급 ${colorWord(p.bv)} 별 · 눌러서 알아보기`;
     if (p.kind === "dso") return this.dsos.describe(p.index);
-    if (p.kind === "minor") return `${shortName(p.name)} (${p.bodyKind}): ${p.epoch} 기준 위치 · 지구에서 약 ${p.distanceAu.toFixed(1)} AU · 눌러서 알아보기`;
+    if (p.kind === "minor") return `${shortName(p.name)} (${p.bodyKind}): ${p.epoch} 기준 위치${p.ageNote ? ` (${p.ageNote})` : ""} · 지구에서 약 ${p.distanceAu.toFixed(1)} AU · 눌러서 알아보기`;
     if (p.kind === "moon") return `${p.name}: ${p.parent}의 위성 · 위치는 원 궤도 근사 · 눌러서 알아보기`;
     if (p.unobserved) return `${p.name}: 아직 관측 전 · 눌러서 알아보기`;
     if (p.kind === "constellation") return `${p.name}: 별자리`;

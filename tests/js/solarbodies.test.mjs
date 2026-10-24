@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { centuriesJ2000, eclipticToEquatorial, heliocentric } from "../../web/js/ephemeris.js";
-import { AU_KM, axisRatios, BODY_TABLE, bodyInfo, epochDate, isIrregular, MOON_ORBITS, moonOffsetAu, moonSky, shapeOf,
+import { AU_KM, axisRatios, BODY_TABLE, bodyInfo, EPOCH_HIDE_DAYS, EPOCH_WARN_DAYS, epochAge, epochDate, isIrregular, MOON_ORBITS, moonOffsetAu, moonSky, shapeOf,
          sizeCaption, skyFromHeliocentric } from "../../web/js/solarbodies.js";
 
 const items = JSON.parse(readFileSync(new URL("../../data/items.json", import.meta.url), "utf8")).items;
@@ -132,4 +132,16 @@ test("크기 한 줄 — km · m 단위와 천 단위 쉼표", () => {
   assert.equal(sizeCaption(bodyInfo("Q18325885")), "크기 약 36 × 20 × 10 km");
   assert.match(sizeCaption(bodyInfo("Q844672")), /^크기 큰 덩이 약 4\.1 × 3\.3 × 1\.8 km, 작은 덩이 약 2\.6 × 2\.3 × 1\.8 km$/);
   assert.equal(sizeCaption(null), "");
+});
+
+test("기준일에서 90일이 지나면 툴팁에 어긋남 안내, 365일이 지나면 숨긴다", () => {
+  const day = (n) => new Date(EPOCH.getTime() + n * 86400000);
+  assert.equal(EPOCH_WARN_DAYS, 90);
+  assert.equal(EPOCH_HIDE_DAYS, 365);
+  assert.deepEqual(epochAge("2026-10-21", day(0.5)), { days: 0, note: "", hidden: false });
+  assert.deepEqual(epochAge("2026-10-21", day(90)), { days: 90, note: "", hidden: false });
+  assert.deepEqual(epochAge("2026-10-21", day(91)), { days: 91, note: "기준일에서 91일 지나 위치가 어긋날 수 있습니다", hidden: false });
+  assert.equal(epochAge("2026-10-21", day(365)).hidden, false);
+  assert.equal(epochAge("2026-10-21", day(366)).hidden, true);
+  assert.equal(epochAge("2026-10-21", day(-120)).days, 120);       // 기준일보다 앞선 날도 같은 만큼 어긋난다
 });

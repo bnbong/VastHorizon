@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import tempfile
 import unittest
@@ -101,6 +102,19 @@ class WebApiTest(unittest.TestCase):
             self.assertEqual(c.get("/api/map").json(), first)
         self.assertEqual((len(first["points"]), spy.call_count), (5, 1))     # 항목이 바뀌지 않으므로 한 번만 계산
         self.assertEqual(first["ref_year"], 2026)                               # 빛이 출발한 해 계산 기준
+
+    def test_map_minor_bodies_carry_epoch(self):
+        # 하늘 보기는 소천체 표식을 기준일 위치로 그리고, 기준일에서 오래 지나면 안내하거나 숨긴다 (solarbodies.js epochAge)
+        #   — 실제 항목 데이터(data/items.json)의 /api/map 응답에 기준일이 YYYY-MM-DD로 실려야 한다
+        items = json.loads((Path(__file__).resolve().parents[1] / "data" / "items.json").read_text(encoding="utf-8"))["items"]
+        services = Services(items=items, ask=FakeAsk(), health=healthy, figures={}, sky_stars=[])
+        points = TestClient(create_app(services)).get("/api/map").json()["points"]
+        minor = {p["id"]: p for p in points if p["kind"] in {"왜행성", "소행성", "카이퍼대 천체", "혜성"}}
+        self.assertIn("Q339", minor)                                                    # 명왕성
+        for p in minor.values():
+            with self.subTest(p["name"]):
+                self.assertTrue(p.get("position_au"))
+                self.assertRegex(p.get("epoch") or "", r"^\d{4}-\d{2}-\d{2}$")
 
     def test_constellations_endpoint(self):
         body = self.client().get("/api/constellations").json()

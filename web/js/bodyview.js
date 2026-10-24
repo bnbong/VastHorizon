@@ -308,17 +308,40 @@ function lobeGeometry(axes, center, opts, detail = 48) {
   return geo;
 }
 
-// 천체 모양 → 지오메트리 목록 (덩이마다 하나). 가장 긴 축의 반을 1로 맞춘다
-export function bodyGeometries(info) {
-  const seed = hashString(info.key);
-  const [a, b, c] = axisRatios(info);
-  if (info.shape === "sphere") return [new THREE.SphereGeometry(1, 96, 64)];
-  if (info.shape === "ellipsoid") {
+// 울퉁불퉁한(변위) 지오메트리의 잘게 나눈 정도 — 서랍 근접 뷰는 크게 보이므로 촘촘히, 지도(bodyshelf.js)는 작게 보이므로 성기게
+export const DRAWER_DETAIL = 48;
+export const MAP_DETAIL = 24;
+
+// 구 · 타원체가 아닌 천체(변위 지오메트리)는 꼭짓점마다 잡음을 계산해 비싸다 — 천체 · detail마다 한 번만 만들고 이 모듈이 갖고 있는다.
+// 서랍 · 지도의 메시가 함께 쓰므로 dispose하지 않는다 (렌더러가 바뀌면 GPU 버퍼는 새 렌더러가 다시 올린다)
+const lumpyCache = new Map();
+const isLumpy = (info) => info.shape !== "sphere" && info.shape !== "ellipsoid";
+
+// 천체 모양 → 지오메트리 목록 (덩이마다 하나). 가장 긴 축의 반을 1로 맞춘다.
+// 구 · 타원체는 매번 새로 만들고(호출한 쪽이 정리), 변위 지오메트리는 모듈 캐시의 것을 돌려준다
+export function bodyGeometries(info, { detail = DRAWER_DETAIL } = {}) {
+  if (!isLumpy(info)) {
     const g = new THREE.SphereGeometry(1, 96, 64);
-    g.scale(a, b, c);
+    if (info.shape === "ellipsoid") {
+      const [a, b, c] = axisRatios(info);
+      g.scale(a, b, c);
+    }
     return [g];
   }
-  if (info.shape === "top") return [lobeGeometry([a, b, c], [0, 0, 0], { seed, rough: 0.05, craters: 8, top: 0.5 })];
+  const key = `${info.key}:${detail}`;
+  let geos = lumpyCache.get(key);
+  if (!geos) {
+    geos = lumpyGeometries(info, detail);
+    lumpyCache.set(key, geos);
+  }
+  return geos;
+}
+
+function lumpyGeometries(info, detail) {
+  const seed = hashString(info.key);
+  const [a, b, c] = axisRatios(info);
+  const lod = (d) => Math.max(1, Math.round((d * detail) / DRAWER_DETAIL));   // 두 덩이의 작은 덩이도 같은 비율로 성기게
+  if (info.shape === "top") return [lobeGeometry([a, b, c], [0, 0, 0], { seed, rough: 0.05, craters: 8, top: 0.5 }, detail)];
   if (info.lobes) {                                     // 두 덩이 — 큰 덩이 옆에 작은 덩이를 붙이고, 전체를 반지름 1 안에 맞춘다
     const comet = info.shape === "comet";
     const [A, B] = info.lobes.map((l) => l.map((v) => v / 2));                 // 세 축 반지름 (km)
@@ -328,8 +351,8 @@ export function bodyGeometries(info) {
     const reach = (r) => Math.hypot(r[0] * dir[0], r[1] * dir[1], r[2] * dir[2]);
     const gap = (reach(A) + reach(B)) * (comet ? 0.76 : 0.88);
     const geos = [
-      lobeGeometry(A, [0, 0, 0], { seed, rough: comet ? 0.12 : 0.05, craters: comet ? 4 : 6 }, 40),
-      lobeGeometry(B, dir.map((v) => v * gap), { seed: seed + 3, rough: comet ? 0.12 : 0.05, craters: comet ? 3 : 5 }, 36),
+      lobeGeometry(A, [0, 0, 0], { seed, rough: comet ? 0.12 : 0.05, craters: comet ? 4 : 6 }, lod(40)),
+      lobeGeometry(B, dir.map((v) => v * gap), { seed: seed + 3, rough: comet ? 0.12 : 0.05, craters: comet ? 3 : 5 }, lod(36)),
     ];
     const box = new THREE.Box3();
     for (const g of geos) { g.computeBoundingBox(); box.union(g.boundingBox); }
@@ -348,15 +371,16 @@ export function bodyGeometries(info) {
   if (info.key === "vesta") big.push({ dir: [0, 0, -1], r: 0.9, depth: 0.12 });          // 남극의 레아실비아 분지
   const comet = info.shape === "comet";
   return [lobeGeometry([a, b, c], [0, 0, 0], { seed, rough: comet ? 0.1 : info.key === "deimos" ? 0.06 : 0.09,
-                                               craters: info.key === "deimos" ? 4 : 12, waist: comet ? 0.3 : 0, big })];
+                                               craters: info.key === "deimos" ? 4 : 12, waist: comet ? 0.3 : 0, big }, detail)];
 }
 
 // ── 천체 메시 ──────────────────────────────────────────────────────────
 
 // 그 천체의 메시 — 지름 2(반지름 1, 토성은 고리까지 더 넓다). 서랍 근접 뷰와 지도(bodyshelf.js)가 함께 쓴다.
 // 반환: { tilt (바깥 그룹, 장면에 넣는다), spin (자전 — rotation.z), uniforms (uSun · uTime 갱신용), start (처음 보이는 면의 회전각) }
-// track: 정리할 지오메트리 · 재질 · 텍스처를 넘겨받는다. onLoad: 달 텍스처가 도착했을 때
-export function buildBodyMesh(info, { track = (x) => x, onLoad } = {}) {
+// track: 정리할 지오메트리 · 재질 · 텍스처를 넘겨받는다 (캐시한 변위 지오메트리는 넘기지 않는다). onLoad: 달 텍스처가 도착했을 때.
+// detail: 변위 지오메트리의 잘게 나눈 정도 (DRAWER_DETAIL · MAP_DETAIL)
+export function buildBodyMesh(info, { track = (x) => x, onLoad, detail = DRAWER_DETAIL } = {}) {
   // 기울기 — 자전축(z)을 화면 위쪽으로, 조금 앞 · 옆으로 기울여 극 쪽 무늬도 보이게 (엔셀라두스는 남극 줄무늬가 보이게 남쪽을 앞으로)
   const tilt = new THREE.Group();
   tilt.rotation.set(-Math.PI / 2 + (SOUTH_UP.has(info.key) ? -0.62 : 0.38), 0, 0.32);
@@ -381,7 +405,8 @@ export function buildBodyMesh(info, { track = (x) => x, onLoad } = {}) {
     }
   } else {
     uniforms = { uSurf: { value: SURFACES[info.surface] }, uSun: { value: SUN_DIR.clone() }, uTime: { value: 0 }, uNeck: { value: 0 } };
-    const geos = bodyGeometries(info).map(track);
+    const geos = bodyGeometries(info, { detail });
+    if (!isLumpy(info)) geos.forEach(track);          // 캐시한 변위 지오메트리는 모듈 것 — 정리 대상에서 뺀다
     if (info.key === "arrokoth") {                      // 두 덩이가 맞닿은 자리
       geos[0].computeBoundingBox();
       uniforms.uNeck.value = geos[0].boundingBox.max.x - 0.03;

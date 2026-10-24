@@ -112,6 +112,21 @@ export function epochDate(epoch) {
   return new Date(`${epoch}T00:00:00Z`);
 }
 
+// 기준일 위치를 그대로 쓰는 소천체(왜행성 · 소행성 · 혜성 · 아로코트)가 얼마나 오래된 위치인가.
+// 이 날수를 넘으면 툴팁에 어긋날 수 있다고 덧붙이고, 숨김 날수를 넘으면 하늘에 그리지 않는다 (데이터를 다시 모을 때까지)
+export const EPOCH_WARN_DAYS = 90;
+export const EPOCH_HIDE_DAYS = 365;
+
+// 기준일(YYYY-MM-DD) · 그날 → { days (기준일에서 지난 날수, 앞뒤 모두), note (툴팁에 덧붙일 말, 없으면 ""), hidden }
+export function epochAge(epoch, date) {
+  const days = Math.floor(Math.abs(date.getTime() - epochDate(epoch).getTime()) / 86400000);
+  return {
+    days,
+    note: days > EPOCH_WARN_DAYS ? `기준일에서 ${days}일 지나 위치가 어긋날 수 있습니다` : "",
+    hidden: days > EPOCH_HIDE_DAYS,
+  };
+}
+
 const sub = (a, b) => a.map((v, i) => v - b[i]);
 const add = (a, b) => a.map((v, i) => v + b[i]);
 const scale = (a, k) => a.map((v) => v * k);
