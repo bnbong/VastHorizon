@@ -754,8 +754,10 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
       ${source ? `<a href="${esc(source.url)}" target="_blank" rel="noopener">${esc(source.name)} ↗</a>` : ""}</div>
     <div class="reveal" id="collect-slot" style="animation-delay:420ms">${collectButtonHtml(item)}</div>
     <button type="button" class="ask-hint reveal" id="ask-hint" style="animation-delay:480ms">궁금한 것을 물어보세요 ${icon("arrow-up-right", 13)}</button>
-    <details class="more-read reveal" style="animation-delay:540ms"><summary><span class="eyebrow">더 읽기</span>${icon("chevron-down", 14)}</summary>
-      <div class="stack lg intro" id="intro">${statusHtml("이 천체의 이야기를 불러오는 중…")}</div></details>
+    <div class="more-read reveal" style="animation-delay:540ms">
+      <div class="intro-clip" id="intro-clip"><div class="stack lg intro" id="intro">${statusHtml("이 천체의 이야기를 불러오는 중…")}</div></div>
+      <button type="button" class="disclosure" id="intro-btn" aria-expanded="false" aria-controls="intro-clip" hidden><span class="eyebrow">더 읽기</span>${icon("chevron-down", 14)}</button>
+      <div id="intro-source"></div></div>
     <div class="reveal" id="photo" style="animation-delay:600ms"></div>
     <div class="reveal" id="bodyview" style="animation-delay:600ms"></div>
     <div class="reveal" id="blackhole" style="animation-delay:620ms"></div>
@@ -890,12 +892,40 @@ async function loadIntro(item, alive) {
   if (!alive()) return;
   const box = $("#intro");
   if (!box) return;
-  if (!r.sections.length) {
+  if (!r.sections.length) {          // 이야기가 없으면 안내만 — 더 읽기 버튼은 숨긴 그대로
     box.innerHTML = r.notice ? `<p class="disclaimer">${esc(r.notice)}</p>` : "";
     return;
   }
-  box.innerHTML = `${r.sections.map((x) => `<div class="story"><div class="eyebrow">${esc(x.heading)}</div><p class="story-text">${esc(x.text)}</p></div>`).join("")}
-    <p class="disclaimer">출처 · <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.source_type)} 「${esc(r.title)}」</a> · ${esc(r.license)} — 문서 첫머리를 그대로 옮겼습니다.</p>`;
+  box.innerHTML = r.sections.map((x) => `<div class="story"><div class="eyebrow">${esc(x.heading)}</div><p class="story-text">${esc(x.text)}</p></div>`).join("");
+  // 출처는 미리보기 밖에 둔다 — 접힌 본문 중간에서 잘려 보이지 않게, 접든 펴든 늘 보인다
+  $("#intro-source").innerHTML = `<p class="disclaimer">출처 · <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.source_type)} 「${esc(r.title)}」</a> · ${esc(r.license)} — 문서 첫머리를 그대로 옮겼습니다.</p>`;
+  bindIntroPreview($("#intro-clip"), box, $("#intro-btn"));
+}
+
+// 이야기 미리보기 — 앞부분만 보이다가 '더 읽기'로 전체를, '접기'로 다시 미리보기로. 잘리지 않을 만큼 짧으면 버튼 · 페이드 없이 전부 보인다
+function bindIntroPreview(clip, box, btn) {
+  clip.classList.add("clipped");
+  if (box.scrollHeight <= clip.clientHeight + 1) { clip.classList.remove("clipped"); return; }
+  btn.hidden = false;
+  const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  clip.addEventListener("transitionend", (e) => {
+    if (e.propertyName === "max-height" && clip.classList.contains("open")) clip.style.maxHeight = "none";   // 다 펼친 뒤에는 높이를 풀어 창 크기가 바뀌어도 잘리지 않게
+  });
+  btn.addEventListener("click", () => {
+    const open = !clip.classList.contains("open");
+    if (open) {
+      clip.classList.add("open");
+      clip.style.maxHeight = still() ? "none" : `${box.scrollHeight}px`;
+    } else {
+      clip.style.maxHeight = `${box.scrollHeight}px`;   // none → 실제 높이로 고정한 뒤 미리보기 높이로 줄여야 전환이 보인다
+      void clip.offsetHeight;
+      clip.classList.remove("open");
+      clip.style.maxHeight = "";
+    }
+    btn.setAttribute("aria-expanded", String(open));
+    btn.firstElementChild.textContent = open ? "접기" : "더 읽기";
+    btn.lastElementChild.outerHTML = icon(open ? "chevron-up" : "chevron-down", 14);
+  });
 }
 
 let turnSeq = 0;

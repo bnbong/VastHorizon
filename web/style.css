@@ -222,10 +222,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   box-shadow: 0 0 0 4px rgba(243,218,213,.45); }
 .ask-hint { align-self: center; background: none; border: 0; padding: 6px 4px; cursor: pointer; font: 400 12px/1.4 var(--font-sans); color: #5f5869; }
 .ask-hint:hover { color: var(--paper-ink); }
-.more-read summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 4px 0; color: var(--text-muted); }
-.more-read summary::-webkit-details-marker { display: none; }
-.more-read[open] summary .icon { transform: rotate(180deg); }
-.more-read .intro { margin-top: 12px; }
+/* 이야기 미리보기 — 첫 단락의 머리 + 본문 5줄(15px × 1.85)까지 보이고 아래는 종이색으로 흐려진다. 펼치면 전체 */
+.more-read { display: flex; flex-direction: column; gap: 10px; }
+.intro-clip { position: relative; overflow: hidden; --intro-preview: calc(15px * 1.85 * 5 + 28px); }
+.intro-clip.clipped { max-height: var(--intro-preview); transition: max-height var(--dur-slow) var(--ease-cinematic); }
+.intro-clip.clipped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,249,243,0), var(--paper-card)); transition: opacity var(--dur-base) var(--ease-out); }
+.intro-clip.open::after { opacity: 0; }
+.more-read .disclosure { padding: 4px 0; }
+#intro-source:empty { display: none; }
 #photo:empty, #blackhole:empty { display: none; }   /* 사진 · 블랙홀이 없는 천체는 빈 자리 없이 */
 
 /* 천체의 이야기 · 담기 */
@@ -476,6 +481,7 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
   *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
   /* 로고 — 그리기 없이 완성된 모습 그대로, 반짝임도 없이 (기본 상태가 완성된 로고다) */
   .loading .logo *, .mini-logo * { animation: none !important; }
+  .intro-clip.clipped, .intro-clip.clipped::after { transition: none; }
 }
 
 /* ── 좁은 화면 — 서랍은 아래 시트 ─────────────────── */
