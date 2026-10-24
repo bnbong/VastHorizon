@@ -3,6 +3,7 @@
 import { CSS2DObject, SPACE_BG, THREE, dashedRing, knownMark, label, pointsMaterial, ring } from "./scene.js";
 import { pulse } from "./sky.js";
 import { MODELS, ModelShelf } from "./models.js";
+import { BodyShelf } from "./bodyshelf.js";
 import { DreamSphere } from "./dream.js";
 import { DetailLayer } from "./details.js";
 import { distanceText, eqToScene, mapRadius, radecToEq } from "./astro.js";
@@ -104,6 +105,8 @@ export class MapMode {
     this.details = new DetailLayer(this.points, this.group);
     // 대표 기체의 실제 형태 (NASA 3D 모델) — 가까이 가면 내려받아 그 점 자리에 띄운다
     this.models = new ModelShelf(this.group, this.points.filter((p) => MODELS[p.name]));
+    // 태양계 천체의 3D 모습 (서랍 근접 뷰와 같은 메시) — 가까이 가면 그 점 자리에 띄운다
+    this.bodies = new BodyShelf(this.group, this.points.filter((p) => p.group === "solar_system"));
   }
 
   update(dt, stage) {
@@ -118,6 +121,7 @@ export class MapMode {
     // 빈 점선 원의 지름 — 데스크톱 16px, 좁은 화면 13px (design-proposal .world-unknown)
     this.unknownDots.material.size = stage.container.clientWidth <= 650 ? 13 : 16;
     this.models.update(dt, stage.camera);
+    this.bodies.update(dt, stage.camera);
     this.details.update(this.clockT, stage.camera, still);
     if ((this.hushTick = (this.hushTick ?? 0) + 1) % 8 === 0) this.applyHush();
     this.clock = (this.clock ?? 0) + dt;
@@ -367,14 +371,23 @@ export class MapMode {
   }
 
   // 선택 — 알아간 천체는 표식 바깥의 흰 1px 고리와 이름표, 아직 만나지 않은 천체는 맥박 고리와 이름표.
-  // fly면 그 천체로 카메라를 옮긴다. id가 없거나 지도에 없는 천체면 표시를 지운다
+  // fly면 그 천체로 카메라를 옮긴다. id가 없거나 지도에 없는 천체면 표시를 지운다.
+  // 지구는 점으로 놓지 않으므로(points에서 뺌) '나' 표식이 곧 선택 표시 — 고리 · 이름표 없이 원점으로
   select(id, { fly = true } = {}) {
-    const p = id ? this.lookup(id) : null;
-    this.selectedId = p ? id : null;
+    const earth = !!id && id === this.earth?.id;
+    const p = id && !earth ? this.lookup(id) : null;
+    this.selectedId = p || earth ? id : null;
     const named = labelledIds(this.visitedList ?? [], this.selectedId);
     for (const [tagId, tag] of this.visitedTags ?? []) {
       tag.element.classList.toggle("is-selected", tagId === this.selectedId);
       tag.element.classList.toggle("quiet", !named.has(tagId));
+    }
+    if (earth) {
+      this.selectedTag.visible = false;
+      this.selectRing.visible = false;
+      // '나'가 화면 가운데 또렷이 — 가까운 천체로 갈 때(최소 8 + 위 4)와 비슷한 거리, 거리 눈금과 같은 방향에서. 궤도 위성 · 달이 둘레에 보인다
+      if (fly && this.stage) this.stage.flyTo(new THREE.Vector3(0.33, 0.62, 0.85).normalize().multiplyScalar(10), new THREE.Vector3());
+      return true;
     }
     const known = !!p && !!this.visitedTags?.has(id);
     if (!p || known) {

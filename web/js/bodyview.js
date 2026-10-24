@@ -26,7 +26,7 @@ const FRONT_LON = { pluto: 0.25, ceres: 1.2, charon: 0.4 };
 const SIDEWAYS = Math.PI / 2 + 0.35;
 const SOUTH_UP = new Set(["enceladus"]);
 // 그림의 빛 — 왼쪽 위 앞에서 비춘다 (낮과 밤의 경계가 보이게). 실제 그날의 태양 방향이 아니라 보기 좋은 고정 방향이다
-const SUN_DIR = new THREE.Vector3(-0.72, 0.38, 0.58).normalize();
+export const SUN_DIR = new THREE.Vector3(-0.72, 0.38, 0.58).normalize();
 
 const SURFACE_VERT = /* glsl */ `
   varying vec3 vP;
@@ -351,6 +351,51 @@ export function bodyGeometries(info) {
                                                craters: info.key === "deimos" ? 4 : 12, waist: comet ? 0.3 : 0, big })];
 }
 
+// ── 천체 메시 ──────────────────────────────────────────────────────────
+
+// 그 천체의 메시 — 지름 2(반지름 1, 토성은 고리까지 더 넓다). 서랍 근접 뷰와 지도(bodyshelf.js)가 함께 쓴다.
+// 반환: { tilt (바깥 그룹, 장면에 넣는다), spin (자전 — rotation.z), uniforms (uSun · uTime 갱신용), start (처음 보이는 면의 회전각) }
+// track: 정리할 지오메트리 · 재질 · 텍스처를 넘겨받는다. onLoad: 달 텍스처가 도착했을 때
+export function buildBodyMesh(info, { track = (x) => x, onLoad } = {}) {
+  // 기울기 — 자전축(z)을 화면 위쪽으로, 조금 앞 · 옆으로 기울여 극 쪽 무늬도 보이게 (엔셀라두스는 남극 줄무늬가 보이게 남쪽을 앞으로)
+  const tilt = new THREE.Group();
+  tilt.rotation.set(-Math.PI / 2 + (SOUTH_UP.has(info.key) ? -0.62 : 0.38), 0, 0.32);
+  const spin = new THREE.Group();
+  tilt.add(spin);
+
+  let uniforms;
+  if (info.planet) {
+    uniforms = { uType: { value: TYPES[info.key] }, uSun: { value: SUN_DIR.clone() }, uMap: { value: null },
+                 uHasMap: { value: 0 }, uDim: { value: 1 } };
+    if (info.key === "moon") {
+      uniforms.uMap.value = track(new THREE.TextureLoader().load("data/textures/moon_lroc_1k.jpg", () => { uniforms.uHasMap.value = 1; onLoad?.(); }));
+      uniforms.uMap.value.colorSpace = THREE.SRGBColorSpace;
+    }
+    const mat = track(new THREE.ShaderMaterial({ uniforms, vertexShader: BODY_VERT, fragmentShader: BODY_FRAG }));
+    spin.add(new THREE.Mesh(track(new THREE.SphereGeometry(1, 96, 64)), mat));
+    if (info.key === "saturn") {
+      const rings = saturnRings(uniforms);
+      track(rings.geometry);
+      track(rings.material);
+      spin.add(rings);
+    }
+  } else {
+    uniforms = { uSurf: { value: SURFACES[info.surface] }, uSun: { value: SUN_DIR.clone() }, uTime: { value: 0 }, uNeck: { value: 0 } };
+    const geos = bodyGeometries(info).map(track);
+    if (info.key === "arrokoth") {                      // 두 덩이가 맞닿은 자리
+      geos[0].computeBoundingBox();
+      uniforms.uNeck.value = geos[0].boundingBox.max.x - 0.03;
+    }
+    const mat = track(new THREE.ShaderMaterial({ uniforms, vertexShader: SURFACE_VERT, fragmentShader: SURFACE_FRAG }));
+    for (const g of geos) spin.add(new THREE.Mesh(g, mat));
+    spin.userData.uniforms = uniforms;
+  }
+
+  // 처음(움직임 줄이기면 내내) 보이는 면 — 그 천체를 알아보게 하는 무늬 쪽 경도가 화면 앞(-y)으로
+  const start = -Math.PI / 2 - (FRONT_LON[info.key] ?? (info.shape === "sphere" ? 0.4 : SIDEWAYS));
+  return { tilt, spin, uniforms, start };
+}
+
 // ── 화면 ────────────────────────────────────────────────────────────────
 
 let active = null;
@@ -374,40 +419,9 @@ export function mountBodyView(canvas, id, { still = false } = {}) {
   const disposables = [];
   const track = (x) => { disposables.push(x); return x; };
 
-  // 기울기 — 자전축(z)을 화면 위쪽으로, 조금 앞 · 옆으로 기울여 극 쪽 무늬도 보이게 (엔셀라두스는 남극 줄무늬가 보이게 남쪽을 앞으로)
-  const tilt = new THREE.Group();
-  tilt.rotation.set(-Math.PI / 2 + (SOUTH_UP.has(info.key) ? -0.62 : 0.38), 0, 0.32);
-  const spin = new THREE.Group();
-  tilt.add(spin);
-  scene.add(tilt);
-
   let onTexture = null;
-  if (info.planet) {
-    const uniforms = { uType: { value: TYPES[info.key] }, uSun: { value: SUN_DIR.clone() }, uMap: { value: null },
-                       uHasMap: { value: 0 }, uDim: { value: 1 } };
-    if (info.key === "moon") {
-      uniforms.uMap.value = track(new THREE.TextureLoader().load("data/textures/moon_lroc_1k.jpg", () => { uniforms.uHasMap.value = 1; onTexture?.(); }));
-      uniforms.uMap.value.colorSpace = THREE.SRGBColorSpace;
-    }
-    const mat = track(new THREE.ShaderMaterial({ uniforms, vertexShader: BODY_VERT, fragmentShader: BODY_FRAG }));
-    spin.add(new THREE.Mesh(track(new THREE.SphereGeometry(1, 96, 64)), mat));
-    if (info.key === "saturn") {
-      const rings = saturnRings(uniforms);
-      track(rings.geometry);
-      track(rings.material);
-      spin.add(rings);
-    }
-  } else {
-    const uniforms = { uSurf: { value: SURFACES[info.surface] }, uSun: { value: SUN_DIR.clone() }, uTime: { value: 0 }, uNeck: { value: 0 } };
-    const geos = bodyGeometries(info).map(track);
-    if (info.key === "arrokoth") {                      // 두 덩이가 맞닿은 자리
-      geos[0].computeBoundingBox();
-      uniforms.uNeck.value = geos[0].boundingBox.max.x - 0.03;
-    }
-    const mat = track(new THREE.ShaderMaterial({ uniforms, vertexShader: SURFACE_VERT, fragmentShader: SURFACE_FRAG }));
-    for (const g of geos) spin.add(new THREE.Mesh(g, mat));
-    spin.userData.uniforms = uniforms;
-  }
+  const { tilt, spin, start } = buildBodyMesh(info, { track, onLoad: () => onTexture?.() });
+  scene.add(tilt);
 
   // 테두리 빛 · 코마 — 천체 뒤에 카메라를 보는 판
   const glow = GLOW[info.surface] ?? GLOW[info.key];
@@ -432,8 +446,6 @@ export function mountBodyView(canvas, id, { still = false } = {}) {
   };
   size();
   const period = (info.spinSec ?? 10) * 1000;
-  // 처음(움직임 줄이기면 내내) 보이는 면 — 그 천체를 알아보게 하는 무늬 쪽 경도가 화면 앞(-y)으로
-  const start = -Math.PI / 2 - (FRONT_LON[info.key] ?? (info.shape === "sphere" ? 0.4 : SIDEWAYS));
   const t0 = performance.now();
   let raf = 0, stopped = false;
   const draw = () => {
