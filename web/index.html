@@ -3,8 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VastHorizon</title>
-  <meta name="description" content="당신의 세상은 생각보다 넓다 — 근거와 함께 세상을 넓혀가는 우주 지식 서비스">
+  <title>VastHorizon — 당신의 세상은 생각보다 넓다</title>
+  <meta name="description" content="3D 하늘에서 천체를 고르면 수집한 문서에 근거해서만 답하는 우주 지식 서비스입니다. 당신의 세상은 생각보다 넓습니다.">
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#222454">
+  <link rel="canonical" href="https://vasthorizon.bnbong.com/">
+  <!-- 파비콘 · 앱 아이콘 — scripts/build_icons.py가 만든다 -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <!-- 공유 미리보기 (Open Graph · Twitter) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="VastHorizon">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:title" content="VastHorizon — 당신의 세상은 생각보다 넓다">
+  <meta property="og:description" content="3D 하늘에서 천체를 고르면 수집한 문서에 근거해서만 답하는 우주 지식 서비스입니다. 당신의 세상은 생각보다 넓습니다.">
+  <meta property="og:url" content="https://vasthorizon.bnbong.com/">
+  <meta property="og:image" content="https://vasthorizon.bnbong.com/data/brand/og-2026-10.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="VastHorizon: 당신의 세상은 생각보다 넓다. 지구에서 별까지 이어지는 빛의 궤적">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="VastHorizon — 당신의 세상은 생각보다 넓다">
+  <meta name="twitter:description" content="3D 하늘에서 천체를 고르면 수집한 문서에 근거해서만 답하는 우주 지식 서비스입니다. 당신의 세상은 생각보다 넓습니다.">
+  <meta name="twitter:image" content="https://vasthorizon.bnbong.com/data/brand/og-2026-10.jpg">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "VastHorizon",
+      "url": "https://vasthorizon.bnbong.com/",
+      "description": "3D 하늘에서 천체를 고르면 수집한 문서에 근거해서만 답하는 우주 지식 서비스입니다. 당신의 세상은 생각보다 넓습니다.",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "ko",
+      "author": {
+        "@type": "Person",
+        "name": "bnbong"
+      },
+      "isAccessibleForFree": true,
+      "image": "https://vasthorizon.bnbong.com/data/brand/og-2026-10.jpg"
+    }
+  </script>
   <link rel="stylesheet" href="style.css">
   <!-- API 서버 주소 — 비어 있으면 같은 서버. 화면만 따로 배포할 때 scripts/build_static.py가 채운다 -->
   <meta name="vh-api-base" content="">
@@ -13,6 +55,7 @@
   </script>
 </head>
 <body>
+  <noscript><p style="position:fixed;inset:auto 0 0;z-index:100;margin:0;padding:16px;text-align:center;color:#fffaf5;background:#222454">이 서비스는 JavaScript와 WebGL이 필요합니다.</p></noscript>
   <div class="app" id="app">
     <!-- 3D 무대 — 화면 전체 -->
     <section class="stage" id="stage" aria-label="3D 우주">

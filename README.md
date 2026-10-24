@@ -233,6 +233,7 @@ docker compose up -d --build      # 첫 실행에 색인을 만들고 http://서
 | RAG | LangChain, LangGraph, Chroma |
 | 서버 | FastAPI, SSE, Pydantic |
 | 화면 | HTML, CSS, JavaScript, Three.js / 검증 페이지 Streamlit |
+| 공개 메타데이터 | 파비콘, manifest, Open Graph, JSON-LD, robots.txt, sitemap.xml. 아이콘과 공유 이미지는 `python -m scripts.build_icons`로 다시 만듭니다 |
 
 ```
 vasthorizon/
