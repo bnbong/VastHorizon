@@ -22,6 +22,9 @@
 | POST /api/sky                         | 오늘 밤 나의 하늘 — 위치 계산 + 안내             |
 | GET  /api/perspective/themes          | 관점 전환 감정 버튼 (주제 · 서가 문서)           |
 | POST /api/perspective                 | 관점 전환 — 위기 표현이면 상담 창구 안내 먼저    |
+| POST /api/share                       | 편지 공유 — 캐시에 있는 편지 · 마음 한 줄만 링크로 |
+| GET  /api/l/{id}                      | 공유 링크 — 미리보기(OG) 태그가 있는 HTML         |
+| GET  /api/l/{id}.json · .png          | 공유 기록 그대로 · 1200×630 미리보기 이미지       |
 
 오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다.
 
@@ -51,9 +54,9 @@ import threading
 import hashlib
 from pathlib import Path
 
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from vasthorizon.api.schemas import (
@@ -61,7 +64,7 @@ from vasthorizon.api.schemas import (
     ExploreResponse, FigureResponse, FigureStar, FigureStats, HealthResponse, HistoryResponse, HistoryTurn,
     IntroResponse, IntroSection,
     ItemDetail, ItemSummary, LetterRequest, LetterResponse, PerspectiveRequest, PerspectiveResponse,
-    RelatedItem, SkyObjectOut, SkyRequest, SkyResponse, SourceRef,
+    RelatedItem, ShareInfo, ShareRequest, ShareResponse, SkyObjectOut, SkyRequest, SkyResponse, SourceRef,
     StageInfo, SupportLine, ThemeOut, UnfoldResponse,
 )
 from vasthorizon.api.services import ItemNotFoundError, Services, default_services
@@ -81,6 +84,9 @@ from vasthorizon.features.sky import SkyInputError, compute_sky
 from vasthorizon.features.space_map import constellation_list, map_points
 from vasthorizon.llm import MissingApiKeyError
 from vasthorizon.rag.retrieval import IndexMissingError
+from vasthorizon.share import (
+    ShareNotReadyError, ShareRefusedError, ShareUnavailableError, echoes, letter_record, perspective_record,
+)
 from vasthorizon.store.chroma import EmbeddingMismatchError
 
 log = logging.getLogger(__name__)
@@ -100,6 +106,9 @@ NOT_RECORDED_NOTICE = "답변하는 동안 대화 기록이 지워져, 이 답�
 # SSE 하트비트 간격(초). 이벤트 사이가 이보다 길면 주석 줄(: keepalive)을 보낸다.
 # Cloudflare는 원본이 100초 동안 바이트를 보내지 않으면 끊고, Nginx proxy_read_timeout도 이벤트 사이 간격에 걸린다.
 KEEPALIVE_SECONDS = 15.0
+# 공유 링크 만들기의 하루 한도 — 분당 한도([share] per_ip_per_minute)가 주된 제한이고, 이 값은 메모리 상한용
+SHARE_PER_IP_PER_DAY = 2000
+SHARE_GLOBAL_PER_DAY = 50000
 
 
 # ── 오류 → 안내 ───────────────────────────────────────────
@@ -117,6 +126,12 @@ def error_payload(error: Exception) -> tuple[int, ErrorResponse]:
         return 422, ErrorResponse(code="invalid_request", message=str(error))
     if isinstance(error, SkyInputError):
         return 422, ErrorResponse(code="invalid_request", message=str(error))
+    if isinstance(error, ShareNotReadyError):
+        return 404, ErrorResponse(code="share_not_ready", message="편지를 다시 받은 뒤 공유해 주세요.")
+    if isinstance(error, ShareRefusedError):
+        return 409, ErrorResponse(code="share_refused", message=error.message or "이 응답은 공유할 수 없습니다.")
+    if isinstance(error, ShareUnavailableError):
+        return 503, ErrorResponse(code="share_unavailable", message="지금은 공유 링크를 만들 수 없습니다. 잠시 뒤 다시 시도해 주세요.")
     if isinstance(error, ConversationBusyError):
         return 409, ErrorResponse(code="conversation_busy",
                                   message="이 항목의 이전 질문에 아직 답하는 중입니다. 답변이 끝난 뒤 다시 질문해 주세요.")
@@ -240,7 +255,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     # 예상한 오류는 개별 처리기로, 그 밖의 오류는 최상위 처리기로 (500 · 일반 안내 문구)
     for known in (ItemNotFoundError, ConversationBusyError, LetterUnavailableError, FigureUnavailableError,
-                  SkyInputError, PerspectiveInputError, MissingApiKeyError, IndexMissingError, EmbeddingMismatchError):
+                  SkyInputError, PerspectiveInputError, MissingApiKeyError, IndexMissingError, EmbeddingMismatchError,
+                  ShareNotReadyError, ShareRefusedError, ShareUnavailableError):
         app.add_exception_handler(known, handle_error)
     app.add_exception_handler(Exception, handle_error)
 
@@ -308,7 +324,11 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.get("/api/health", response_model=HealthResponse)
     def health() -> HealthResponse:
-        return svc().health()
+        services = svc()
+        report = services.health()
+        if services.share is not None:
+            report = report.model_copy(update={"share": ShareInfo(count=services.share.count())})
+        return report
 
     @app.get("/api/items", response_model=list[ItemSummary])
     def items(group: str | None = Query(None, description=" · ".join(GROUPS)),
@@ -596,6 +616,109 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
             items=[RelatedItem(**it) for it in result.items], disclaimer=result.disclaimer,
             support=[SupportLine(**line) for line in result.support], notice=notice, warnings=result.warnings)
         return response
+
+    # ── 편지 공유 ─────────────────────────────────────────────────────────
+    # 캐시 적중만 공유한다 — 임의 내용을 대신 호스팅하지 않는다. AI 예산 · 한도는 쓰지 않고, 따로 IP당 분당 한도
+    from vasthorizon import sharecard
+    from vasthorizon.config import LimitsConfig
+    share_limiter = RateLimiter(LimitsConfig(enabled=True, per_ip_per_minute=settings.share.per_ip_per_minute,
+                                             per_ip_per_day=SHARE_PER_IP_PER_DAY, global_per_day=SHARE_GLOBAL_PER_DAY))
+    app.state.share_limiter = share_limiter
+    public_base = settings.share.public_base
+
+    def cached_response(namespace: str, parts) -> dict:
+        """공유할 응답 — 서버 응답 캐시에 있어야 한다 (사용량 기록에 캐시 적중을 남기지 않는다)."""
+        key = cache_parts(parts)
+        hit = svc().cache.get(namespace, key) if key is not None else None
+        if hit is None:
+            raise ShareNotReadyError(namespace)
+        return hit
+
+    def share_links(record: dict) -> ShareResponse:
+        sid = record["id"]
+        return ShareResponse(id=sid, url=f"{public_base}/api/l/{sid}", image_url=f"{public_base}/api/l/{sid}.png",
+                             created=record["created"])
+
+    @app.post("/api/share", status_code=201, response_model=ShareResponse, responses=errors,
+              description="캐시에 있는 빛의 편지(item_id 또는 age) · 마음 한 줄(text · theme)을 공유 링크로. "
+                          "캐시에 없으면 404 share_not_ready, 위기 안내 · 인용 규칙 위반은 409. 같은 내용이면 200과 기존 링크")
+    def create_share(req: ShareRequest, request: Request, response: Response) -> ShareResponse:
+        verdict = share_limiter.check(client_key(request))
+        if not verdict.allowed:
+            raise RateLimitedError(Verdict(False, verdict.retry_after, "share"))
+        services = svc()
+        store = services.share
+        if store is None:
+            raise ShareUnavailableError()
+        if req.kind == "letter":
+            if (req.item_id is None) == (req.age is None):
+                raise LetterUnavailableError("천체(item_id)나 나이(age) 중 하나만 보내 주세요.")
+            item = star_for_age(services.items, req.age)[0] if req.age is not None else services.item(req.item_id)
+            content = letter_record(cached_response("letter", [item["id"]]), GROUPS.get(item.get("group"), "빛의 편지"))
+        else:
+            if req.text and keyword_crisis(req.text) is not None:          # 위기 표현 — 공유하지 않는다
+                raise ShareRefusedError("crisis")
+            # 사용자 문장은 캐시 키(해시)를 만드는 데만 쓴다 — 기록에는 답 · 주제 · 근거만
+            content = perspective_record(cached_response("perspective", [text_hash(req.text) if req.text else None,
+                                                                         req.theme]))
+            if echoes(req.text, content["text"]):                          # 답이 사용자 문장을 되풀이 — 문장이 링크에 남는다
+                raise ShareRefusedError("echo", "적어 주신 문장이 답에 들어 있어 공유할 수 없습니다")
+        record, created = store.put(content)
+        if created:
+            try:                                            # 미리보기 수집기가 오기 전에 이미지를 그려 둔다
+                store.save_image(record["id"], sharecard.share_image(record))
+            except Exception:                               # 이미지는 요청할 때 다시 그린다 — 공유는 막지 않는다
+                log.exception("공유 이미지를 그리지 못했습니다")
+        response.status_code = 201 if created else 200
+        return share_links(record)
+
+    def share_record(share_id: str) -> dict | None:
+        store = svc().share
+        return store.get(share_id) if store is not None else None
+
+    def share_headers(record: dict, max_age: int) -> dict:
+        """검색에 올리지 않고(X-Robots-Tag), 캐시는 만료 전까지만 — max-age = min(max_age, 남은 보관 시간)."""
+        left = int(float(record.get("expires", 0)) - svc().share.clock())
+        return {"Cache-Control": f"public, max-age={max(0, min(max_age, left))}", "X-Robots-Tag": "noindex, nofollow"}
+
+    def share_missing() -> JSONResponse:
+        return JSONResponse(status_code=404, content=ErrorResponse(
+            code="share_not_found", message="이 편지는 만료되었거나 없는 주소입니다.").model_dump())
+
+    # .json · .png를 먼저 — /api/l/{share_id}가 'abc.json'까지 받지 않게
+    @app.api_route("/api/l/{share_id}.json", methods=["GET", "HEAD"], responses=errors,
+                   description="저장한 공유 기록 그대로 (앱이 공유 링크를 열 때)")
+    def share_json(share_id: str):
+        record = share_record(share_id)
+        if record is None:
+            return share_missing()
+        return JSONResponse(record, headers=share_headers(record, 3600))
+
+    @app.api_route("/api/l/{share_id}.png", methods=["GET", "HEAD"], responses=errors,
+                   description="1200×630 미리보기 이미지 (og:image). 처음 요청할 때 그려 디스크에 둔다")
+    def share_png(share_id: str):
+        record = share_record(share_id)
+        if record is None:
+            return share_missing()
+        store = svc().share
+        path = store.image_path(share_id)
+        try:
+            data = path.read_bytes()
+        except FileNotFoundError:
+            data = sharecard.share_image(record)
+            try:
+                store.save_image(share_id, data)
+            except OSError as e:
+                log.warning("공유 이미지를 저장하지 못했습니다: %s", type(e).__name__)
+        return Response(data, media_type="image/png", headers=share_headers(record, 86400))
+
+    @app.api_route("/api/l/{share_id}", methods=["GET", "HEAD"], response_class=HTMLResponse,
+                   description="공유 링크 — og:title · og:description · og:image가 있는 HTML. 없는 · 만료된 링크는 404 HTML")
+    def share_html(share_id: str) -> HTMLResponse:
+        record = share_record(share_id)
+        if record is None:
+            return HTMLResponse(sharecard.missing_page(public_base), status_code=404)
+        return HTMLResponse(sharecard.share_page(record, public_base), headers=share_headers(record, 600))
 
     if web_dir and web_dir.exists():                    # 3D 프론트엔드 (9번 작업에서 추가)
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")

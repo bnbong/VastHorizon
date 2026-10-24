@@ -91,3 +91,12 @@ unfold_days = 30          # 별자리 펼치기 설명
 perspective_days = 1      # 마음 한 줄 (키는 문장의 해시)
 ask_days = 7              # 질의응답 답변 (대화 기록이 없는 첫 질문만)
 ask_live_days = 1         # 근거에 오늘 기준 실시간 위치 · 거리가 들어간 답변
+
+# 편지 공유 (vasthorizon/share.py) — 서버 응답 캐시에 있는 빛의 편지 · 마음 한 줄만 링크(/api/l/<id>)로 남긴다
+# 마음 한 줄은 사용자 문장을 저장하지 않는다 (답 · 주제 · 근거만). 링크 주소는 환경변수 VH_PUBLIC_BASE가 있으면 그 값
+[share]
+dir = "data/cache/share"
+days = 180                # 공유 링크 보관 기간 — 지나면 시작할 때와 하루 한 번 지운다
+public_base = "https://vasthorizon.bnbong.com"
+per_ip_per_minute = 20    # 공유 링크 만들기 한도 (AI 호출 한도 · 하루 예산과 별도)
+max_records = 20000       # 보관하는 공유 기록 상한 — 넘치면 새 공유는 503 share_unavailable

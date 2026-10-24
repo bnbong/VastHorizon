@@ -91,6 +91,19 @@ class CacheConfig:
     ask_live_days: float = 1                         # 근거에 '오늘 기준' 값(실시간 위치 · 거리)이 들어간 답변
 
 
+DEFAULT_PUBLIC_BASE = "https://vasthorizon.bnbong.com"
+
+
+@dataclass(frozen=True)
+class ShareConfig:
+    """편지 공유 (share.py) — 캐시에 있는 편지 · 마음 한 줄을 링크(/api/l/<id>)로 남긴다."""
+    dir: Path | None = None                          # 없으면 cache_dir/share
+    days: float = 180                                # 공유 링크 보관 기간 — 지나면 정리(sweep)한다
+    public_base: str = DEFAULT_PUBLIC_BASE           # 공유 링크 · 미리보기 이미지의 절대 주소 앞부분. 환경변수 VH_PUBLIC_BASE가 우선
+    per_ip_per_minute: int = 20                      # 공유 링크 만들기 한도 (AI 호출 한도와 별도)
+    max_records: int = 20000                         # 보관하는 공유 기록 상한 — 넘치면 새 공유는 503 share_unavailable
+
+
 @dataclass(frozen=True)
 class ServerConfig:
     cors_origins: tuple[str, ...] = ()   # 프런트엔드를 다른 주소(Cloudflare Pages 등)에 둘 때 허용할 출처
@@ -157,6 +170,7 @@ class Settings:
     server: ServerConfig = ServerConfig()
     usage: UsageConfig = UsageConfig()
     cache: CacheConfig = CacheConfig()
+    share: ShareConfig = ShareConfig()
 
 
 def _resolve(path: str) -> Path:
@@ -194,6 +208,11 @@ def get_settings() -> Settings:
     cache_raw = dict(raw.get("cache", {}))
     if cache_raw.get("dir"):
         cache_raw["dir"] = _resolve(cache_raw["dir"])
+    share_raw = dict(raw.get("share", {}))
+    if share_raw.get("dir"):
+        share_raw["dir"] = _resolve(share_raw["dir"])
+    base = os.environ.get("VH_PUBLIC_BASE", "").strip() or share_raw.get("public_base") or DEFAULT_PUBLIC_BASE
+    share_raw["public_base"] = base.rstrip("/")
     server = raw.get("server", {})
     cors = os.environ.get("VH_CORS_ORIGINS")          # 배포 환경에서 파일을 고치지 않고 바꿀 수 있게
     origins = tuple(o.strip() for o in (cors.split(",") if cors is not None else server.get("cors_origins", [])) if o.strip())
@@ -211,6 +230,7 @@ def get_settings() -> Settings:
         server=ServerConfig(cors_origins=origins),
         usage=UsageConfig(**usage_raw, prices=prices),
         cache=CacheConfig(**cache_raw),
+        share=ShareConfig(**share_raw),
     )
 
 

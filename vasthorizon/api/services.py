@@ -35,6 +35,7 @@ class Services:
     map_cache: dict | None = None               # /api/map 응답 — 항목이 바뀌지 않으므로 한 번만 계산
     cache: object | None = None                 # 서버 응답 캐시 (cache.ResponseCache) — 없으면 캐시하지 않는다
     usage: object | None = None                 # LLM 사용량 기록 (usage.UsageLog) — 하루 예산 · 상태 점검에 쓴다
+    share: object | None = None                 # 편지 공유 저장소 (share.ShareStore) — 없으면 공유하지 않는다 (503)
 
     def __post_init__(self) -> None:
         self._by_id = {it["id"]: it for it in self.items}
@@ -123,6 +124,7 @@ def default_services() -> Services:
     from vasthorizon.features.star_items import StarLookup, star_index
     from vasthorizon.rag.pipeline import ask
     from vasthorizon.cache import default_cache
+    from vasthorizon.share import default_share
     from vasthorizon.usage import default_log
 
     try:
@@ -134,7 +136,7 @@ def default_services() -> Services:
     stars = star_index(figures)
     usage = default_log()
     return Services(items=items, ask=ask, health=lambda: check_health(items, ref_year, usage),
-                    cache=default_cache(), usage=usage,
+                    cache=default_cache(), usage=usage, share=default_share(),
                     explore=lambda query: explore(query, items=items),
                     letter=lambda item: write_letter(item, ref_year), ref_year=ref_year, figures=figures,
                     stars=StarLookup(stars, load_star_index(PROJECT_ROOT / "web" / "data"),

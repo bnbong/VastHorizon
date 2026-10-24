@@ -34,6 +34,10 @@ class UsageToday(BaseModel):
     cache_hits: int = Field(description="서버 응답 캐시 적중 수 (LLM 호출 없음)")
 
 
+class ShareInfo(BaseModel):
+    count: int = Field(description="보관 중인 공유 링크 수")
+
+
 class HealthResponse(BaseModel):
     ready: bool = Field(description="질문을 받을 수 있는 상태인가 (키 설정 + 항목 색인 있음)")
     gms_key: bool = Field(description="LLM 키(GMS_KEY 또는 CLAUDE_API_KEY)가 설정됐는가 (값은 노출하지 않는다, 필드 이름은 호환을 위해 유지)")
@@ -42,6 +46,7 @@ class HealthResponse(BaseModel):
     docs_indexed: int
     notices: list[Notice] = []
     usage: UsageToday | None = Field(None, description="오늘(한국 시각) LLM 사용량 · 추정 비용 — 기록이 꺼져 있으면 없음")
+    share: ShareInfo | None = Field(None, description="편지 공유 — 공유 저장소가 없으면 없음")
 
 
 # ── 항목 ──────────────────────────────────────────────────────────────────
@@ -309,6 +314,23 @@ class PerspectiveResponse(BaseModel):
     notice: str | None = None
     warnings: list[str] = []
     cached: bool = Field(False, description="서버 응답 캐시에서 꺼낸 응답인가 (LLM을 부르지 않았다)")
+
+
+# ── 편지 공유 ─────────────────────────────────────────────────────────────
+
+class ShareRequest(BaseModel):
+    kind: Literal["letter", "perspective"]
+    item_id: str | None = Field(None, pattern=r"^(Q\d+|hip:\d+)$", description="letter — 편지를 받은 천체")
+    age: int | None = Field(None, ge=1, le=120, description="letter — 나이로 받은 편지면 그 나이")
+    text: str | None = Field(None, max_length=300, description="perspective — 보낸 마음 한 줄 (캐시 키를 만드는 데만 쓰고 저장하지 않는다)")
+    theme: str | None = Field(None, max_length=40, description="perspective — 감정 버튼 key")
+
+
+class ShareResponse(BaseModel):
+    id: str = Field(description="내용 해시 앞 16자 — 같은 편지는 같은 id (해시 앞부분이 겹치면 2자씩 더 길다)")
+    url: str = Field(description="공유 링크 (미리보기 카드가 있는 페이지)")
+    image_url: str = Field(description="미리보기 이미지 1200×630 PNG")
+    created: str = Field(description="처음 공유한 시각 (UTC, ISO 8601)")
 
 
 # ── 천체 소개 (읽고 나서 내 세계에 담기) ─────────────────────────────────────

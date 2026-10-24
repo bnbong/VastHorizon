@@ -28,4 +28,7 @@ uvicorn[standard]==0.52.4
 pydantic==2.13.5
 
 # 데이터 준비 도구 — 아이콘(scripts/build_icons.py) · 메시에 사진(vasthorizon/data/messier_images.py)
+# · 공유 카드 글꼴 서브셋(scripts/build_fonts.py). Pillow · fonttools는 서버도 쓴다 (공유 미리보기 이미지, vasthorizon/sharecard.py)
 Pillow==12.3.0
+fonttools==4.67.0
+brotli==1.2.1
