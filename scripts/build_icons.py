@@ -8,7 +8,7 @@
     apple-touch-icon.png   180×180 (가장자리까지 채운 사각 — iOS가 모서리를 깎는다)
     icon-192.png · icon-512.png   manifest 아이콘 — maskable 안전 영역(가운데 지름 80% 원) 안에 로고
     manifest.json          웹 앱 manifest (.webmanifest는 Nginx 기본 mime.types에 없어 .json으로)
-    data/brand/og-2026-10.jpg     공유 이미지 1200×630 — docs/images/brand/vasthorizon-thumbnail-v2.png를 잘라서
+    data/brand/og-2026-10b.jpg    공유 이미지 1200×630 — docs/images/brand/vasthorizon-thumbnail-v4.png를 잘라서
 
 SVG 래스터 라이브러리(cairosvg 등)에 기대지 않으려고 도형을 다각형으로 펴서 SVG와 PNG를 같은 점으로 그린다.
 """
@@ -23,8 +23,8 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
-THUMBNAIL = ROOT / "docs" / "images" / "brand" / "vasthorizon-thumbnail-v2.png"
-OG_IMAGE = WEB / "data" / "brand" / "og-2026-10.jpg"
+THUMBNAIL = ROOT / "docs" / "images" / "brand" / "vasthorizon-thumbnail-v4.png"
+OG_IMAGE = WEB / "data" / "brand" / "og-2026-10b.jpg"
 
 NIGHT = "#222454"     # --night (web/tokens/colors.css)
 PEACH = "#f3dad5"     # --peach — 궤적 · 출발점 · 별
@@ -190,8 +190,8 @@ def render(size: int, bold: float, fill: float, radius: float = 0.0, scale: int 
     return img.resize((size, size), Image.LANCZOS)
 
 
-def og_image(src: Path = THUMBNAIL, out: Path = OG_IMAGE, size=(1200, 630), top_share: float = 0.4) -> Path:
-    """썸네일을 1200×630으로 — 너비를 맞춘 뒤 남는 높이를 위 4 : 아래 6으로 잘라 로고 위 여백을 지킨다."""
+def og_image(src: Path = THUMBNAIL, out: Path = OG_IMAGE, size=(1200, 630), top_share: float = 0.8) -> Path:
+    """썸네일을 1200×630으로 — 너비를 맞춘 뒤 남는 높이를 위 8 : 아래 2로 잘라 아래 살구색 띠의 문구 밑 여백을 지킨다 (v4)."""
     img = Image.open(src).convert("RGB")
     h = round(img.height * size[0] / img.width)
     img = img.resize((size[0], h), Image.LANCZOS)

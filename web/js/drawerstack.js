@@ -2,6 +2,7 @@
 //
 //   설명자: { kind: "item", id } · { kind: "letter", body } · { kind: "mind", req } · { kind: "catalog", group, q }
 //           { kind: "explore", query } · { kind: "tonight" } · { kind: "unfold", id }
+//           { kind: "letters" }(받은 편지 목록) · { kind: "kept", key }(보관한 편지) · { kind: "kept", share }(공유 링크로 연 편지)
 //   밑줄(_)로 시작하는 필드는 다시 그릴 때만 쓰는 덧붙임(예: 하늘에서 누른 별의 화면 데이터)이라 같은 화면인지 볼 때 빼고 비교한다.
 //   스택에는 지금 화면 이전의 화면들만 쌓인다. 지금 화면은 main.js가 따로 들고 있다
 

@@ -55,7 +55,13 @@ export const api = {
   sky: (body) => post("/api/sky", body),
   themes: () => get("/api/perspective/themes"),
   perspective: (body) => post("/api/perspective", body),
+  // 공유 — 서버 응답 캐시에 있는 편지 · 마음 한 줄로 공유 카드를 만든다 ({ id, url, image_url, created }). 마음 한 줄의 문장은 카드에 싣지 않는다
+  share: (body) => post("/api/share", body),
+  sharedLetter: (id) => get(`/api/l/${encodeURIComponent(id)}.json`),
 };
+
+// 서버가 돌려준 주소(상대 경로일 수도 있다) → 절대 주소. 화면만 따로 배포했으면 API 서버 기준
+export const absoluteUrl = (u) => new URL(u, `${API_BASE || location.origin}/`).href;
 
 // 질문 — SSE(POST) 스트림을 읽어 진행 상태를 알리고 최종 답변을 돌려준다
 export async function askStream(itemId, question, onProgress) {

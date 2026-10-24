@@ -131,7 +131,8 @@ export function createScope(timers = globalThis) {
 
 let active = null;   // 이미 떠 있으면 그 프롤로그를 그대로 (두 번 겹쳐 뜨지 않게)
 
-// 프롤로그를 띄우고, 끝나면(마지막 장면의 '시작하기' · 건너뛰기) 끝난다
+// 프롤로그를 띄우고, 끝나면(마지막 장면의 '시작하기' · 건너뛰기) 끝난다.
+// 돌려주는 값: { next: "mind" | null } — 마지막 장면의 '마음 한 줄 먼저 남기기'로 끝냈으면 "mind"
 // onEarth: 구 장면에서 '당신의 자리'에 빛무리가 일 때 — 지구를 내 세계에 담는다 (main.js ensureEarth)
 export function playPrologue({ reducedMotion = false, onEarth = null } = {}) {
   if (active) return active;
@@ -168,7 +169,7 @@ export function playPrologue({ reducedMotion = false, onEarth = null } = {}) {
     let scope = createScope();            // 지금 장면의 타이머 · 프레임 · 리스너
     let pending = null, pendingFrame = 0;  // 아직 그리지 않은 요청 — 같은 프레임의 연타는 마지막 것만
 
-    const finish = () => {
+    const finish = (next = null) => {
       if (done) return;
       done = true;
       scope.cancel();
@@ -179,7 +180,7 @@ export function playPrologue({ reducedMotion = false, onEarth = null } = {}) {
       fx.set("rise");
       root.style.setProperty("--pl-progress", "1");          // 건너뛰어도 첫 하늘의 색으로 물러난다
       root.classList.add("leaving");
-      setTimeout(() => { fx.stop(); root.remove(); active = null; resolve(); }, reducedMotion ? 0 : 1400);
+      setTimeout(() => { fx.stop(); root.remove(); active = null; resolve({ next }); }, reducedMotion ? 0 : 1400);
     };
 
     // 무대 비우기 — 지금 장면은 물러나고(천천히 넘길 때만), 이미 물러나는 중인 장면은 바로 지운다. 무대에는 많아야 둘
@@ -222,7 +223,8 @@ export function playPrologue({ reducedMotion = false, onEarth = null } = {}) {
         ${beat.sources ? `<p class="pl-src">근거 · ${beat.sources.map((s) => s.url
           ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>` : `<span>${esc(s.label)}</span>`).join(" · ")}</p>` : ""}
         ${beat.note ? `<p class="pl-note">${esc(beat.note)}</p>` : ""}
-        ${beat.final ? `<button type="button" class="pl-start"><span>시작하기</span>${icon("arrow-up-right", 18)}</button>` : ""}`;
+        ${beat.final ? `<div class="pl-start-row"><button type="button" class="pl-start"><span>시작하기</span>${icon("arrow-up-right", 18)}</button>
+          <button type="button" class="pl-mind">마음 한 줄 먼저 남기기</button></div>` : ""}`;
       stage.appendChild(el);
       sound.sparkle();                                       // 장면이 실제로 바뀌는 순간에만 (연타 보호는 sound.js)
       root.querySelectorAll(".pl-dot").forEach((d, k) => {
@@ -248,6 +250,7 @@ export function playPrologue({ reducedMotion = false, onEarth = null } = {}) {
         try { onEarth?.(); } catch (e) { console.warn("지구를 내 세계에 담지 못했습니다", e); }
       }, reducedMotion ? 0 : textMs + 200);
       if (beat.final) scope.listen(el.querySelector(".pl-start"), "click", (e) => { e.stopPropagation(); finish(); });
+      if (beat.final) scope.listen(el.querySelector(".pl-mind"), "click", (e) => { e.stopPropagation(); finish("mind"); });   // 프롤로그를 끝내고 마음 한 줄 서랍으로
       if (beat.hold) scope.timeout(() => request("auto"), beat.hold + textMs);
     };
 
@@ -277,7 +280,7 @@ export function playPrologue({ reducedMotion = false, onEarth = null } = {}) {
     root.addEventListener("click", (e) => {
       if (e.target.closest(".pl-skip")) return request("skip");
       if (e.target.closest(".pl-sound")) { sound.unlock(); sound.enabled = !sound.enabled; return drawSound(); }   // 장면은 넘기지 않는다
-      if (e.target.closest("a") || e.target.closest(".pl-start")) return;   // 출처 링크는 그대로 열린다
+      if (e.target.closest("a") || e.target.closest(".pl-start, .pl-mind")) return;   // 출처 링크는 그대로 열린다
       const dot = e.target.closest(".pl-dot");
       if (dot) return request({ goto: Number(dot.dataset.i) });
       request("next");

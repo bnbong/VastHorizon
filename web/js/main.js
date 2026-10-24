@@ -2,10 +2,10 @@
 //
 //   하늘(첫 화면) ─ 흐릿한 빛 · 별을 누르면 그 천체의 이야기를 먼저 읽고, '내 세계에 담기'를 누르면
 //                   흐릿한 빛이 한 점으로 모이며 이름 · 거리가 생기고, 내 세계의 반지름이 넓어진다
-//   서랍         ─ 천체(물어보기) · 천체 목록 · 조건 탐색 · 빛의 편지 · 마음 한 줄 · 오늘 밤 하늘 · 별자리 펼치기
+//   서랍         ─ 천체(물어보기) · 천체 목록 · 조건 탐색 · 빛의 편지 · 마음 한 줄 · 오늘 밤 하늘 · 별자리 펼치기 · 받은 편지
 //   지평선 길    ─ 지평선(하늘) · 태양계 · 별 · 은하 · 우주의 끝 — 지평선 너머를 누르면 지구에서 떠오른다
 
-import { api, askStream } from "./api.js";
+import { absoluteUrl, api, API_BASE, askStream } from "./api.js";
 import { departureLabel, distanceText, horizonKm, horizonScale, measure, worldScaleLine } from "./astro.js";
 import { clearHistoryFlow, requestGate, runLatest } from "./flows.js";
 import { icon } from "./icons.js";
@@ -26,6 +26,8 @@ import { UnfoldMode } from "./unfold.js";
 import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
 import { advance, popView } from "./drawerstack.js";
 import { sound } from "./sound.js";
+import { addLetter, findLetter, firstSentence, letterDate, letterItemIds, LETTERS_KEY, makeEntry, plainText, removeLetter, restoreLetters,
+         sameLetter, serializeLetters, setShare, sharedView } from "./letters.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $("#app");
@@ -52,12 +54,16 @@ function answerHtml(text, scope) {
     .replace(/\n/g, "<br>");
 }
 
+// 원문 링크로 만들 주소 — http: · https:만 (javascript: · data: 등은 글자로만)
+const linkable = (url) => { try { return /^https?:$/.test(new URL(String(url ?? "")).protocol); } catch { return false; } };
+
 // 근거 목록 — 제목 · 원문 링크 · 출처 종류 태그(메타데이터 / 외부 문서) · 발췌
 function evidenceHtml(cited, scope) {
   return `<div><div class="evidence-title">근거</div><ol class="evidence" id="ev-${scope}">${cited.map((ev) => {
     const meta = ev.kind === "항목 메타데이터";
+    const name = `${esc(ev.title)}${ev.section ? `<span class="sec"> › ${esc(ev.section)}</span>` : ""}`;
     return `<li data-n="${ev.number}"><span class="num">${ev.number}</span><div>
-      <a href="${esc(ev.url)}" target="_blank" rel="noopener">${esc(ev.title)}${ev.section ? `<span class="sec"> › ${esc(ev.section)}</span>` : ""}</a>
+      ${linkable(ev.url) ? `<a href="${esc(ev.url)}" target="_blank" rel="noopener">${name}</a>` : `<span class="ev-title">${name}</span>`}
       <span class="meta"><span class="tag ${meta ? "meta-tag" : ""}">${meta ? "메타데이터" : "외부 문서"}</span><span class="src">${esc(ev.source_type)}</span></span>
       ${ev.excerpt ? `<div class="excerpt">${esc(ev.excerpt)}</div>` : ""}</div></li>`;
   }).join("")}</ol></div>`;
@@ -85,17 +91,31 @@ function measureHtml(km, { label, caption, size = "m", center = false, unitOnly 
 const btn = (label, { variant = "secondary", size = "sm", ic, icRight, id, attrs = "" } = {}) =>
   `<button type="button" class="btn btn-${variant} ${size ? `btn-${size}` : ""}" ${id ? `id="${id}"` : ""} ${attrs}>${ic ? icon(ic, size === "lg" ? 17 : 15) : ""}<span class="label-text">${esc(label)}</span>${icRight ? icon(icRight, 15) : ""}</button>`;
 
-function composerHtml(id, { ic = "message-circle", placeholder, type = "text", min, max } = {}) {
-  return `<form class="composer" id="${id}" autocomplete="off">${icon(ic, 16)}
-    <input type="${type}" ${min !== undefined ? `min="${min}" max="${max}"` : ""} maxlength="300" placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}">
+// multiline: 여러 줄 입력(textarea) — Enter로 보내고 Shift+Enter로 줄을 바꾼다 (마음 한 줄)
+function composerHtml(id, { ic = "message-circle", placeholder, type = "text", min, max, multiline = false, label } = {}) {
+  const field = multiline
+    ? `<textarea rows="1" maxlength="300" placeholder="${esc(placeholder)}" aria-label="${esc(label ?? placeholder)}"></textarea>`
+    : `<input type="${type}" ${min !== undefined ? `min="${min}" max="${max}"` : ""} maxlength="300" placeholder="${esc(placeholder)}" aria-label="${esc(label ?? placeholder)}">`;
+  return `<form class="composer ${multiline ? "multi" : ""}" id="${id}" autocomplete="off">${icon(ic, 16)}
+    ${field}
     <button class="send" type="submit" aria-label="보내기">${icon("arrow-up", 16)}</button></form>`;
 }
 
 // 입력이 있을 때만 보내기 버튼이 켜진다
 function bindComposer(form, onSubmit) {
-  const input = form.querySelector("input");
+  const input = form.querySelector("input, textarea");
   const sync = () => form.classList.toggle("ready", !!input.value.trim());
-  input.addEventListener("input", sync);
+  const grow = () => {                          // 여러 줄 입력은 내용만큼 (최대 5줄 남짓)
+    if (input.tagName !== "TEXTAREA") return;
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+  };
+  input.addEventListener("input", () => { sync(); grow(); });
+  if (input.tagName === "TEXTAREA") input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.shiftKey || e.isComposing || e.keyCode === 229) return;   // 한글 조합 중의 Enter는 글자를 마치는 것
+    e.preventDefault();
+    form.requestSubmit();
+  });
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const value = input.value.trim();
@@ -103,7 +123,14 @@ function bindComposer(form, onSubmit) {
     onSubmit(value, input);
     sync();
   });
-  return { input, setBusy: (b) => { if (b) form.dataset.busy = "1"; else delete form.dataset.busy; input.disabled = b; } };
+  let hadFocus = false;
+  return { input, setBusy: (b) => {
+    if (b) { form.dataset.busy = "1"; hadFocus = form.contains(document.activeElement); }
+    else delete form.dataset.busy;
+    input.disabled = b;
+    // 기다리는 동안 입력창이 잠겨 포커스가 문서 처음으로 빠졌다 — 키보드로 쓰던 사람이 제자리에서 이어 가게
+    if (!b && hadFocus && form.isConnected && (!document.activeElement || document.activeElement === document.body)) input.focus({ preventScroll: true });
+  } };
 }
 
 drawerBody.addEventListener("click", (e) => {
@@ -124,6 +151,7 @@ const errorText = (e) => e?.message || "처리 중 문제가 생겼습니다.";
 let panelGen = 0;
 let panelLeave = null;                         // 지금 서랍 화면이 떠날 때 정리할 일 (예: 오늘 밤 하늘의 시각 막대 타이머)
 function claimPanel() {
+  stopSpeaking();                              // 읽어 주던 편지는 화면이 바뀌면 멈춘다
   const gen = ++panelGen;
   const leave = panelLeave;
   panelLeave = null;
@@ -156,7 +184,8 @@ function openDrawer(kind, html) {
   if (drawer.inert) {                          // 닫혀 있다 열릴 때만 — 포커스를 서랍으로, 닫으면 원래 자리로
     drawer.inert = false;
     sound.open();
-    openDrawer.returnTo = document.activeElement;
+    // 메뉴 안에서 열었으면 닫을 때 메뉴 버튼으로 (메뉴는 닫혀 숨는다)
+    openDrawer.returnTo = document.activeElement?.closest?.("#menu") ? $("#menu-btn") : document.activeElement;
     $("#drawer-close").focus({ preventScroll: true });
   }
   drawer.setAttribute("aria-hidden", "false");
@@ -213,6 +242,8 @@ function openView(v) {
     case "letter": return showLetter(v.body);
     case "perspective": return showPerspective({ req: v.req });
     case "tonight": return showSkyGuide();
+    case "letters": return showLetters();
+    case "kept": return showKept(v);
     case "unfold":
       if (state.mode === "unfold" && state.unfold?.con.item_id === v.id) return showUnfoldPanel(state.unfold.con);
       return setMode("unfold", v.id);
@@ -348,11 +379,14 @@ function showDiscovery(d) {
     : d.group === "constellation" ? `별자리는 여러 거리의 별이 모인 모양이라 지도에는 놓지 않고, 알아간 빛 기록에 남겼습니다`
     : `거리는 아직 확인되지 않았지만, 알아간 빛 기록에 남았습니다`;
   const go = d.farther ? "넓어진 내 세계 보기" : d.km ? "내 세계에서 보기" : "알아간 빛 기록 보기";
+  // 별 · 메시에 천체처럼 빛이 출발한 해를 셀 수 있는 천체면 그 빛의 편지로 (이미 편지 화면에서 담았으면 빼고)
+  const canLetter = (d.group === "star" || d.group === "messier") && d.km > 0 && state.drawer !== "letter";
   el.innerHTML = `<div class="growth-head"><span class="growth-x">${d.count.toLocaleString("ko-KR")}번째 빛</span>
       <span>내 세계에 새로운 빛 하나가 더해졌습니다 · <em class="kw plain">${esc(d.name)}</em></span></div>
     <p class="growth-in">${line}</p>
     ${d.passed.length ? `<p class="growth-in">그 사이에 아직 알아가지 않은 천체 ${d.passed.length.toLocaleString("ko-KR")}개 · 앞으로 알아갈 가능성입니다</p>` : ""}
-    <button type="button" class="btn btn-horizon btn-sm" id="growth-go">${icon("globe", 14)}<span>${go}</span></button>`;
+    <div class="growth-actions"><button type="button" class="btn btn-horizon btn-sm" id="growth-go">${icon("globe", 14)}<span>${go}</span></button>
+      ${canLetter ? `<button type="button" class="btn btn-horizon btn-sm" id="growth-letter">${icon("mail", 14)}<span>이 빛의 편지 받기</span></button>` : ""}</div>`;
   el.hidden = false;
   el.classList.remove("show");
   void el.offsetWidth;
@@ -363,6 +397,10 @@ function showDiscovery(d) {
     el.hidden = true;
     if (d.farther) playGrowth(d);
     else openWorld(d.km ? { focus: d.id } : { log: true });
+  });
+  $("#growth-letter")?.addEventListener("click", () => {
+    el.hidden = true;
+    showLetter({ item_id: d.id });
   });
 }
 
@@ -449,6 +487,154 @@ function drawMeter(km) {
   el.title = `${worldScaleLine(km)} · 눌러서 내 세계 보기`;
 }
 
+// ── 받은 편지 — 빛의 편지 · 마음 한 줄을 이 기기에 남긴다 (letters.js, localStorage "vh-letters") ─────────────
+
+let letters = loadLetters();
+
+function loadLetters() {
+  try { return restoreLetters(localStorage.getItem(LETTERS_KEY)); } catch { return []; }
+}
+
+function saveLetters() {
+  try { localStorage.setItem(LETTERS_KEY, serializeLetters(letters)); } catch { /* 저장소를 못 쓰면 이번 화면에서만 */ }
+  state.map?.setLetters(letterItemIds(letters));       // 내 세계 지도의 ✉ 표식
+}
+
+// 받은 편지 하나를 남긴다 — 이미 있으면 그 기록(공유 정보가 채워졌을 수 있다)을 돌려준다
+function keepLetter(fields) {
+  const entry = makeEntry(fields);
+  letters = addLetter(letters, entry);
+  saveLetters();
+  return letters.find((e) => sameLetter(e, entry)) ?? entry;
+}
+
+function keepShare(key, share) {
+  letters = setShare(letters, key, share);
+  saveLetters();
+}
+
+const shareCardUrl = (id) => absoluteUrl(`/api/l/${encodeURIComponent(id)}`);
+const shareImageUrl = (id) => absoluteUrl(`/api/l/${encodeURIComponent(id)}.png`);
+
+// 읽어 주기 — 브라우저 음성 합성(ko-KR). 지원하지 않으면 버튼을 내지 않는다
+const speech = typeof window.speechSynthesis !== "undefined" && typeof window.SpeechSynthesisUtterance !== "undefined" ? window.speechSynthesis : null;
+let speakingButton = null;
+
+function drawSpeakButton(b, on) {
+  b.innerHTML = `${icon(on ? "square" : "volume", 15)}<span class="label-text">${on ? "멈추기" : "읽어 주기"}</span>`;
+}
+
+function stopSpeaking() {
+  if (!speech) return;
+  const b = speakingButton;
+  speakingButton = null;
+  if (b?.isConnected) drawSpeakButton(b, false);
+  if (speech.speaking || speech.pending) speech.cancel();
+}
+
+function toggleSpeak(text, b) {
+  if (speakingButton === b) { stopSpeaking(); return; }
+  stopSpeaking();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ko-KR";
+  const voice = speech.getVoices().find((v) => /^ko([-_]|$)/i.test(v.lang));
+  if (voice) u.voice = voice;
+  u.rate = 0.95;
+  const done = () => { if (speakingButton === b) { speakingButton = null; if (b.isConnected) drawSpeakButton(b, false); } };
+  u.onend = done;
+  u.onerror = done;
+  speakingButton = b;
+  drawSpeakButton(b, true);
+  speech.speak(u);
+}
+
+// 결과 아래 버튼 묶음 — 링크 복사 · 이미지로 저장 · 읽어 주기. note: 버튼 아래 한 줄 안내
+function shareBarHtml({ note = "", shareable = true } = {}) {
+  return `<div class="share-bar" data-share-bar>
+    <div class="row">${shareable ? btn("링크 복사", { ic: "link", attrs: 'data-act="copy"' }) + btn("이미지로 저장", { ic: "download", attrs: 'data-act="image"' }) : ""}
+      ${speech ? `<button type="button" class="btn btn-ghost btn-sm" data-act="speak">${icon("volume", 15)}<span class="label-text">읽어 주기</span></button>` : ""}</div>
+    ${note ? `<p class="disclaimer">${esc(note)}</p>` : ""}
+    <div class="share-slot" data-share-slot></div></div>`;
+}
+
+function shareErrorText(e) {
+  const own = e?.message && !/^요청 실패/.test(e.message) ? e.message : null;
+  if (e?.status === 404 || e?.code === "share_not_ready") return own ?? "편지를 다시 받은 뒤 공유해 주세요.";
+  if (e?.status === 409) return own ?? "이 응답은 공유할 수 없습니다.";
+  if (e?.status === 429) return own ?? "공유 요청이 많습니다. 잠시 뒤에 다시 시도해 주세요.";
+  return errorText(e);
+}
+
+// body: POST /api/share 본문 · share: 이미 있는 공유({ id, url, image_url }) · text: 읽어 줄 글 · keepKey: 보관함 기록의 열쇠
+function bindShareBar(bar, { body = null, share = null, text = "", keepKey = null } = {}) {
+  if (!bar) return;
+  let current = share;
+  let pending = null;
+  const slot = bar.querySelector("[data-share-slot]");
+  const ensure = () => {
+    if (current) return Promise.resolve(current);
+    pending ??= api.share(body).then((res) => {
+      current = { id: res.id, url: absoluteUrl(res.url), image_url: absoluteUrl(res.image_url ?? `/api/l/${res.id}.png`) };
+      if (keepKey) keepShare(keepKey, { id: current.id, url: current.url });
+      return current;
+    }).finally(() => { pending = null; });
+    return pending;
+  };
+  bar.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-act]");
+    if (!b) return;
+    if (b.dataset.act === "speak") { toggleSpeak(text, b); return; }
+    if (b.dataset.busy) return;                // disabled 대신 — 누른 버튼에서 키보드 포커스가 빠지지 않게
+    b.dataset.busy = "1";
+    b.setAttribute("aria-busy", "true");
+    slot.innerHTML = "";
+    try {
+      const s = await ensure();
+      if (!bar.isConnected) return;
+      if (b.dataset.act === "copy") await copyLink(s.url, slot);
+      else saveImage(s);
+    } catch (err) {
+      if (bar.isConnected) slot.innerHTML = statusHtml(shareErrorText(err), "warn");
+    } finally {
+      delete b.dataset.busy;
+      b.removeAttribute("aria-busy");
+    }
+  });
+}
+
+// 클립보드에 링크를 — 안 되면(권한 · 오래된 브라우저) 선택해 둔 입력창으로 직접 복사하게
+async function copyLink(url, slot) {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("clipboard");
+    await navigator.clipboard.writeText(url);
+    toast("링크를 복사했습니다. 카카오톡에 붙여 넣으면 카드로 보여요");
+  } catch {
+    slot.innerHTML = `<label class="share-url"><span>이 링크를 길게 눌러 복사해 주세요</span><input type="text" readonly value="${esc(url)}"></label>`;
+    const input = slot.querySelector("input");
+    input.focus({ preventScroll: true });
+    input.select();
+  }
+}
+
+function saveImage(s) {
+  // 화면과 API가 다른 출처면(API_BASE로 분리 배포) download 속성이 무시된다 — 새 탭으로 열어 거기서 저장하게
+  let crossOrigin = false;
+  try { crossOrigin = !!API_BASE && new URL(s.image_url, location.href).origin !== location.origin; } catch { crossOrigin = false; }
+  if (crossOrigin) {
+    window.open(s.image_url, "_blank", "noopener");
+    toast("새 탭에서 공유 카드 이미지를 열었습니다. 길게 누르거나 오른쪽 클릭으로 저장해 주세요");
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = s.image_url;
+  a.download = `vasthorizon-${s.id}.png`;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast("공유 카드 이미지를 저장합니다");
+}
+
 // ── 머리 · 발 ─────────────────────────────────────────────────────────────
 
 const TOOLS = [["explore", "search", "조건 탐색"], ["letter", "mail", "빛의 편지"], ["mind", "moon-star", "마음 한 줄"],
@@ -463,6 +649,7 @@ function renderChrome() {
   $("#launcher").innerHTML = TOOLS.map(([id, ic, label]) =>
     `<button type="button" class="menu-item ${state.drawer === id ? "on" : ""}" data-tool="${id}">${icon(ic, 16)}<span>${label}</span></button>`).join("");
   $("#catalog-btn").classList.toggle("on", state.drawer === "catalog");
+  $("#menu-letters").classList.toggle("on", state.drawer === "letters");
   $("#nav-sky").toggleAttribute("aria-current", state.mode === "sky");
   $("#nav-world").toggleAttribute("aria-current", state.mode === "map");
 
@@ -482,11 +669,23 @@ function renderChrome() {
 
   if (meterKm !== world.km) rollMeter(world.km);
   else drawMeter(world.km);
+  renderRibbonCopy();
   renderFirstSky();
   renderWorldHeading();
   renderHint();
   renderWorldCard();
   syncHush();                                   // 요약 카드의 자리가 정해진 뒤에 지도 이름표 숨김 구역을 다시
+}
+
+// 살구색 리본 오른쪽 문구 — 알아간 빛이 지구뿐인 사람이 밤늦게(22시~5시) 들어왔으면 마음 한 줄로 이어 준다
+const RIBBON_COPY = "아직 모르는 빛은<br>가능성으로 남겨 둡니다.";
+function renderRibbonCopy() {
+  const el = $(".ribbon-copy");
+  const h = new Date().getHours();
+  const late = !metBeyondEarth() && (h >= 22 || h < 5);
+  if (el.dataset.late === String(late)) return;       // 그대로면 다시 그리지 않는다 (포커스가 버튼에 있을 수 있다)
+  el.dataset.late = String(late);
+  el.innerHTML = late ? `<button type="button" class="ribbon-mind" data-mind>힘든 하루였다면,<br>한 줄만 적어 보세요</button>` : RIBBON_COPY;
 }
 
 // 내 세계 지도의 머리글 — 오늘 새로 알아간 빛 · 두 줄 제목 · 범례 (design-proposal .collect-heading · .map-legend)
@@ -691,11 +890,12 @@ function startPrologue() {
   sound.ambient("prologue");
   // 구 장면에서 지구를 담는다 (이미 담겼으면 빛무리만). 건너뛰었으면 끝날 때 조용히
   playPrologue({ reducedMotion: reducedMotion(), onEarth: ensureEarth })
-    .then(() => {
+    .then((r) => {
       ensureEarth();
       $("#chrome").hidden = false;
       sound.arrive();                                      // 첫 하늘에 도착하는 화음, 그 뒤로 지금 화면의 배경음
       sound.ambient(ambientOf(state.mode));
+      if (r?.next === "mind") { showPerspective(); wake(); return; }   // 마지막 장면의 '마음 한 줄 먼저 남기기'
       arriveFirstSky();
       wake();
     });
@@ -1177,9 +1377,11 @@ function showExplore({ query = "" } = {}) {
 async function showLetter(body) {
   enterView({ kind: "letter", body: body ?? null });
   const alive = claimPanel();
-  const target = body?.item_id && state.item?.id === body.item_id ? state.item.name : null;
+  // 천체를 정해 왔으면(천체 서랍 · 발견 알림) 그 이름으로 — 지금 서랍의 천체가 아니면 알아간 빛 기록에서 찾는다
+  const target = !body?.item_id ? null
+    : state.item?.id === body.item_id ? state.item.name : world.visited.find((v) => v.id === body.item_id)?.name ?? null;
   openDrawer("letter", `
-    ${toolHead("빛의 편지", target ? `${esc(target)}의 빛이<br>출발했을 때` : "당신이 태어난 해에<br>출발한 빛",
+    ${toolHead("빛의 편지", target ? `${esc(target)}의 빛이<br>출발했을 때` : body?.item_id ? "이 빛이<br>출발했을 때" : "당신이 태어난 해에<br>출발한 빛",
       "지금 당신에게 닿은 이 빛이 출발했을 때, 지구에서는 무슨 일이 있었을까요? 나이를 넣으면 나이만큼 먼 별을 찾습니다.")}
     ${composerHtml("letter-form", { ic: "mail", type: "number", min: 1, max: 120, placeholder: "나이 (예: 25)" })}
     <div class="stack lg" id="letter-out"></div>`);
@@ -1202,15 +1404,22 @@ async function showLetter(body) {
         ${res.warnings.map((w) => `<p class="status warn">${esc(w)}</p>`).join("")}
         ${res.cited.length ? `${res.notice ? `<p class="status warn">${esc(res.notice)}</p>` : ""}${evidenceHtml(res.cited, "letter")}`
           : `<p class="no-cite">${esc(res.notice || NO_CITE)}</p>`}
+        ${res.status === "rejected" ? "" : shareBarHtml()}
         <div id="letter-collect">${collectButtonHtml({ id: res.item_id, name: res.item_name, distance_km: km, kindWord: "별" })}</div>`;
       bindCollect($("#letter-collect"), { id: res.item_id, name: res.item_name, distance_km: km });
+      if (res.status === "rejected") return;    // 거절된 응답은 보관 · 공유하지 않는다
+      const kept = keepLetter({ kind: "letter", item_id: res.item_id, item_name: res.item_name, title: label, text: res.letter, req });
+      bindShareBar(out.querySelector("[data-share-bar]"), {
+        body: { kind: "letter", ...req }, text: `${label}. ${plainText(res.letter)}`, keepKey: kept.key,
+        share: kept.shareId ? { id: kept.shareId, url: kept.url ?? shareCardUrl(kept.shareId), image_url: shareImageUrl(kept.shareId) } : null,
+      });
     },
   });
   composer = bindComposer($("#letter-form"), (age) => {
     updateView({ kind: "letter", body: { age: Number(age) } });
     run({ age: Number(age) });
   });
-  if (target) run(body);
+  if (body?.item_id) run(body);
   else if (body?.age) { composer.input.value = String(body.age); composer.input.dispatchEvent(new Event("input")); run(body); }   // 뒤로 돌아온 나이
 }
 
@@ -1225,7 +1434,7 @@ async function showPerspective({ req: startReq = null } = {}) {
   openDrawer("mind", `
     ${toolHead("마음 한 줄", "지금의 마음 곁에<br>사실 하나를", "지금의 마음을 한 줄로 적거나 골라 주세요. 그 곁에 우주의 사실 하나를 근거와 함께 놓아 드립니다.")}
     <div class="chips" id="themes"></div>
-    ${composerHtml("mind-form", { ic: "moon-star", placeholder: "예: 요즘 내가 너무 작게 느껴져" })}
+    ${composerHtml("mind-form", { ic: "moon-star", placeholder: "짧아도 괜찮아요. 지금 마음을 한 줄만", label: "지금 마음 한 줄 (Enter로 보내기, Shift+Enter로 줄 바꾸기)", multiline: true })}
     <div class="stack lg" id="mind-out"></div>
     <div class="spacer"></div>
     <p class="disclaimer">VastHorizon은 전문 심리상담을 대신하지 않습니다.</p>`);
@@ -1243,14 +1452,26 @@ async function showPerspective({ req: startReq = null } = {}) {
         out.innerHTML = `<div class="answer lead">${esc(res.answer)}</div>${supportHtml(res, true)}`;
       } else {
         const items = res.items.map((it) => `<button type="button" class="chip" data-id="${esc(it.id)}">${esc(it.name)}</button>`).join("");
+        const shareable = res.status !== "rejected";          // 위기 · 거절 응답에는 공유 · 보관 버튼을 내지 않는다
         out.innerHTML = `${resultHtml(res.answer, res.cited, "mind", res.notice, res.warnings, "lead")}
+          ${shareable ? shareBarHtml({ note: "공유 카드에는 적어 주신 문장은 담기지 않고, 곁에 놓인 우주의 사실만 담깁니다." }) : ""}
           ${items ? `<div class="eyebrow">이어서 둘러보기</div><div class="chips">${items}</div>` : ""}${supportHtml(res, false)}`;
+        if (shareable) {
+          // 보관함에는 사람이 적은 문장을 남기지 않는다 — 다시 받을 수 있게 고른 감정만
+          const kept = keepLetter({ kind: "perspective", item_id: res.items[0]?.id ?? null, item_name: res.items[0]?.name ?? null,
+                                    title: "마음 한 줄 곁의 사실", text: res.answer, req: req.theme ? { theme: req.theme } : null });
+          bindShareBar(out.querySelector("[data-share-bar]"), {
+            body: { kind: "perspective", ...req }, text: plainText(res.answer), keepKey: kept.key,
+            share: kept.shareId ? { id: kept.shareId, url: kept.url ?? shareCardUrl(kept.shareId), image_url: shareImageUrl(kept.shareId) } : null,
+          });
+        }
       }
     },
   });
   composer = bindComposer($("#mind-form"), (text) => run({ text }));
   if (startReq?.text) { composer.input.value = startReq.text; composer.input.dispatchEvent(new Event("input")); }
   if (startReq) run(startReq);                 // 뒤로 돌아온 마음 한 줄 — 같은 결과
+  else composer.input.focus({ preventScroll: true });   // 처음 열면 바로 적을 수 있게 (키보드: 메뉴 → 마음 한 줄 → 입력)
   $("#mind-out").addEventListener("click", (e) => { const c = e.target.closest("[data-id]"); if (c) pickItem(c.dataset.id); });
   const themes = await api.themes().catch(() => []);
   if (!alive()) return;               // 감정 버튼을 받는 사이 다른 서랍으로 갔다
@@ -1363,6 +1584,123 @@ function showUnfoldPanel(con) {
     onError: (e) => { $("#unfold-out").innerHTML = statusHtml(errorText(e), "err"); },
     onSettled: () => { $("#unfold-explain").disabled = false; },
   }));
+}
+
+// ── 서랍: 받은 편지 ─────────────────────────────────────────────────────
+//   목록(날짜 · 천체 · 첫 문장) → 다시 열기 · 삭제. 공유한 편지는 /api/l/<id>.json으로 전체를, 아니면 보관한 앞부분을
+
+const kindLabel = (kind) => (kind === "perspective" ? "마음 한 줄" : "빛의 편지");
+
+function showLetters() {
+  enterView({ kind: "letters" });
+  claimPanel();
+  openDrawer("letters", `
+    ${toolHead("받은 편지", "지금까지 받은<br>빛의 편지", "빛의 편지와 마음 한 줄을 이 기기에 최대 50개까지 남겨 둡니다. 다른 기기와는 이어지지 않습니다.")}
+    <div id="letters-out"></div>`);
+  const out = $("#letters-out");
+  const draw = () => {
+    out.innerHTML = letters.length ? `<ol class="letter-list">${letters.map((e) => `<li>
+        <button type="button" class="letter-row" data-open="${esc(e.key)}">
+          <span class="lr-meta">${esc(letterDate(e.at))} · ${esc(e.item_name || kindLabel(e.kind))}${e.shareId ? ` · <span class="lr-shared">공유함</span>` : ""}</span>
+          <span class="lr-title">${esc(e.title || kindLabel(e.kind))}</span>
+          <span class="lr-first">${esc(firstSentence(e.text))}</span></button>
+        <button type="button" class="letter-del" data-del="${esc(e.key)}" aria-label="${esc(`${letterDate(e.at)} ${e.title || kindLabel(e.kind)} 삭제`)}">${icon("x", 14)}</button></li>`).join("")}</ol>`
+      : `<p class="sub">아직 받은 편지가 없습니다. 빛의 편지를 받거나 마음 한 줄을 남기면 여기에 쌓입니다.</p>
+        <div class="row">${btn("빛의 편지 받기", { ic: "mail", attrs: 'data-go="letter"' })}${btn("마음 한 줄 남기기", { ic: "moon-star", attrs: 'data-go="mind"' })}</div>`;
+  };
+  draw();
+  out.addEventListener("click", (e) => {
+    const go = e.target.closest("[data-go]");
+    if (go) { TOOL_OPEN[go.dataset.go](); return; }
+    const del = e.target.closest("[data-del]");
+    if (del) {
+      const rows = [...out.querySelectorAll("[data-del]")];
+      const at = rows.indexOf(del);
+      letters = removeLetter(letters, del.dataset.del);
+      saveLetters();
+      draw();
+      toast("받은 편지 하나를 지웠습니다");
+      // 지운 자리의 다음 항목으로 포커스 — 다 지웠으면 제목으로
+      const next = out.querySelectorAll("[data-del]")[Math.min(at, letters.length - 1)];
+      if (next) next.focus({ preventScroll: true });
+      else focusDrawerHeading();
+      return;
+    }
+    const row = e.target.closest("[data-open]");
+    if (row) showKept({ key: row.dataset.open });
+  });
+}
+
+// 받은 편지 하나 — key: 보관함 기록 · share: 공유 ID(딥링크 ?letter=<id>)
+async function showKept({ key = null, share = null } = {}) {
+  enterView(share ? { kind: "kept", share } : { kind: "kept", key });
+  const alive = claimPanel();
+  const entry = key ? findLetter(letters, key) : null;
+  const shareId = share ?? entry?.shareId ?? null;
+  if (!shareId) {
+    if (entry) drawKeptLocal(entry);
+    else openDrawer("kept", `${toolHead("받은 편지", "지운 편지입니다", "")}<div class="row">${btn("받은 편지 모두 보기", { id: "kept-list" })}</div>`);
+    $("#kept-list")?.addEventListener("click", showLetters);
+    return;
+  }
+  openDrawer("kept", statusHtml("편지를 불러오는 중…"));
+  let rec;
+  try {
+    rec = await api.sharedLetter(shareId);
+  } catch (e) {
+    if (!alive()) return;
+    if (entry) { drawKeptLocal(entry, "공유한 편지를 불러오지 못해 보관한 앞부분을 보여 드립니다."); return; }
+    closeDrawer();
+    toast(e.status === 404 ? "편지를 찾지 못했습니다 · 링크가 지워졌거나 주소가 잘못되었을 수 있어요" : esc(errorText(e)));
+    return;
+  }
+  if (!alive()) return;
+  const view = sharedView(rec);
+  const kept = keepLetter({ kind: view.kind, item_id: view.item_id, item_name: view.item_name,
+                            title: view.title, text: view.text, shareId, url: entry?.url ?? shareCardUrl(shareId), req: entry?.req ?? null });
+  drawShared(view, kept, shareId);
+}
+
+// 공유된 편지 전체 — sharedView(서버의 편지 기록 { kind, item_id, item_name, title, text, departure?, cited, themes?, created })
+function drawShared(rec, kept, shareId) {
+  const { isLetter, cited, title } = rec;
+  const d = rec.departure;
+  openDrawer("kept", `
+    ${toolHead(kindLabel(rec.kind), esc(title), "")}
+    <p class="sub">${esc(letterDate(rec.created ?? kept.at))}${rec.item_name ? ` · ${esc(rec.item_name)}` : ""}</p>
+    <div class="stack lg" id="kept-out">
+      <div class="card emphasis pad-l">
+        ${d?.light_years ? measureHtml(d.light_years * LY_KM, { label: `${rec.item_name ?? ""}의 빛`, size: "s" }) : ""}
+        ${d?.summary ? `<p class="sub" style="margin-top:10px">${esc(d.summary)}</p>` : ""}
+        <div class="answer serif" style="margin-top:12px">${answerHtml(rec.text, "kept")}</div></div>
+      ${cited.length ? evidenceHtml(cited, "kept") : `<p class="no-cite">${esc(NO_CITE)}</p>`}
+      ${shareBarHtml()}
+      <div class="row">${isLetter && rec.item_id ? btn("이 천체 보기", { ic: "sparkles", id: "kept-item" }) : ""}${btn("받은 편지 모두 보기", { variant: "ghost", id: "kept-list" })}</div></div>`);
+  bindShareBar($("#kept-out [data-share-bar]"), {
+    share: { id: shareId, url: kept.url ?? shareCardUrl(shareId), image_url: shareImageUrl(shareId) },
+    text: `${title}. ${plainText(rec.text)}`,
+  });
+  $("#kept-item")?.addEventListener("click", () => pickItem(rec.item_id));
+  $("#kept-list").addEventListener("click", showLetters);
+}
+
+// 공유하지 않은 편지 — 보관한 앞부분과, 다시 받는 길
+function drawKeptLocal(entry, note = "보관함에는 편지의 앞부분만 남겨 둡니다. 전체를 다시 읽으려면 편지를 다시 받아 보세요.") {
+  const again = entry.req && (entry.kind === "letter" || entry.req.theme);
+  openDrawer("kept", `
+    ${toolHead(kindLabel(entry.kind), esc(entry.title || kindLabel(entry.kind)), "")}
+    <p class="sub">${esc(letterDate(entry.at))}${entry.item_name ? ` · ${esc(entry.item_name)}` : ""}</p>
+    <div class="stack lg" id="kept-out">
+      <div class="card emphasis pad-l"><div class="answer serif">${esc(entry.text)}</div></div>
+      <p class="disclaimer">${esc(note)}</p>
+      ${again ? shareBarHtml() : speech ? shareBarHtml({ shareable: false }) : ""}
+      <div class="row">${again ? btn("이 편지 다시 받기", { variant: "primary", ic: "mail", id: "kept-again" }) : ""}
+        ${entry.kind === "letter" && entry.item_id ? btn("이 천체 보기", { ic: "sparkles", id: "kept-item" }) : ""}
+        ${btn("받은 편지 모두 보기", { variant: "ghost", id: "kept-list" })}</div></div>`);
+  bindShareBar($("#kept-out [data-share-bar]"), { body: again ? { kind: entry.kind, ...entry.req } : null, text: `${entry.title}. ${entry.text}`, keepKey: entry.key });
+  $("#kept-again")?.addEventListener("click", () => (entry.kind === "letter" ? showLetter(entry.req) : showPerspective({ req: entry.req })));
+  $("#kept-item")?.addEventListener("click", () => pickItem(entry.item_id));
+  $("#kept-list").addEventListener("click", showLetters);
 }
 
 const TOOL_OPEN = {
@@ -1534,6 +1872,22 @@ function setMenu(open) {
   else if (menu.contains(document.activeElement)) b.focus({ preventScroll: true });
 }
 
+// 글자 크게 — html[data-text="large"]면 서랍 본문 15 → 17px, 핵심 사실 · 제목도 같은 비율로 (style.css). 설정은 localStorage "vh-text"
+const TEXT_KEY = "vh-text";
+const textLarge = () => document.documentElement.dataset.text === "large";
+function setTextLarge(on) {
+  if (on) document.documentElement.dataset.text = "large";
+  else delete document.documentElement.dataset.text;
+  try { localStorage.setItem(TEXT_KEY, on ? "large" : "normal"); } catch { /* 무시 */ }
+  renderTextItem();
+}
+function renderTextItem() {
+  const b = $("#menu-text"), on = textLarge();
+  b.innerHTML = `${icon("type", 16)}<span>글자 크게</span><span class="menu-state" aria-hidden="true">${on ? "켜짐" : "꺼짐"}</span>`;
+  b.setAttribute("aria-pressed", String(on));
+}
+try { if (localStorage.getItem(TEXT_KEY) === "large") document.documentElement.dataset.text = "large"; } catch { /* 무시 */ }
+
 // 메뉴의 소리 항목 — 이름은 "소리"로 고정, 상태는 aria-pressed와 아이콘(옆의 "켜짐" · "꺼짐"은 보기용, 읽지 않는다).
 // 설정은 sound.js가 localStorage "vh-sound"에 (프롤로그의 소리 버튼과 같은 상태)
 function renderSoundItem() {
@@ -1546,7 +1900,7 @@ function bindChrome() {
   $("#menu-btn").innerHTML = icon("menu", 16);
   $("#menu-btn").addEventListener("click", () => setMenu($("#menu").hidden));
   document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".menu-wrap")) setMenu(false); });
-  $("#menu").addEventListener("click", (e) => { if (e.target.closest(".menu-item:not(#menu-sound)")) setMenu(false); });   // 소리는 켜고 끈 결과가 보이게 열어 둔다
+  $("#menu").addEventListener("click", (e) => { if (e.target.closest(".menu-item:not(#menu-sound):not(#menu-text)")) setMenu(false); });   // 소리 · 글자 크기는 켜고 끈 결과가 보이게 열어 둔다
   $("#menu-sky").innerHTML = `${icon("sparkles", 16)}<span>오늘의 하늘</span>`;
   $("#menu-world").innerHTML = `${icon("globe", 16)}<span>내 세계</span>`;
   $("#nav-sky").addEventListener("click", goSky);
@@ -1559,9 +1913,16 @@ function bindChrome() {
   $("#menu-prologue").addEventListener("click", () => { closeScene(); closeDrawer(); startPrologue(); });
   renderSoundItem();
   $("#menu-sound").addEventListener("click", () => { sound.unlock(); sound.enabled = !sound.enabled; renderSoundItem(); });
+  renderTextItem();
+  $("#menu-text").addEventListener("click", () => setTextLarge(!textLarge()));
+  $("#menu-letters").innerHTML = `${icon("mail", 16)}<span>받은 편지</span>`;
+  $("#menu-letters").addEventListener("click", () => (state.drawer === "letters" ? closeDrawer() : showLetters()));
   $("#first-light").addEventListener("click", () => { sound.tick(); meetFirstLight(); });
   $("#first-prologue").innerHTML = `${icon("play", 14)}<span>프롤로그 다시 보기</span>`;
   $("#first-prologue").addEventListener("click", () => { closeScene(); closeDrawer(); startPrologue(); });
+  $("#first-mind").innerHTML = `${icon("moon-star", 14)}<span>오늘 마음 한 줄 남기기</span>`;
+  $("#first-mind").addEventListener("click", () => showPerspective());
+  $(".ribbon-copy").addEventListener("click", (e) => { if (e.target.closest("[data-mind]")) showPerspective(); });
   $("#catalog-btn").innerHTML = `${icon("list", 16)}<span>천체 목록</span>`;
   $("#catalog-btn").addEventListener("click", () => (state.drawer === "catalog" ? closeDrawer() : showCatalog()));
   $("#drawer-close").innerHTML = icon("x", 15);
@@ -1620,15 +1981,25 @@ async function start() {
     state.sky = new SkyMode(state.constellations, map.points.filter((p) => p.placement === "sky"),
                             map.points.filter((p) => p.group === "solar_system"));
     state.sky.setObserved(world.visited);
+    state.map.setLetters(letterItemIds(letters));
     bindStage();
     await leaveLoading();
-    // 바로 가기 주소 — ?mode=sky · ?mode=unfold&con=Q8860 · ?item=Q48469 · ?mode=map&journey=end · ?panel=catalog|explore|letter|mind|tonight (시연 · 공유용)
+    // 바로 가기 주소 — ?mode=sky · ?mode=unfold&con=Q8860 · ?item=Q48469 · ?mode=map&journey=end · ?panel=catalog|explore|letter|mind|tonight|letters (시연 · 공유용)
+    // 공유 링크 — ?letter=<id> 그 편지를 서랍에 열고 보관함에도 남긴다 (프롤로그는 건너뛴다 · 주소에서는 지워 새로 고쳐도 다시 열리지 않게)
     const params = new URLSearchParams(location.search);
+    const letterId = params.get("letter");
+    if (letterId) {
+      const rest = new URLSearchParams(params);
+      rest.delete("letter");
+      history.replaceState(null, "", `${location.pathname}${rest.toString() ? `?${rest}` : ""}${location.hash}`);
+    }
     const mode = ["map", "sky", "unfold"].includes(params.get("mode")) ? params.get("mode") : "sky";
     setMode(mode, params.get("con"), { journey: mode === "map" && !params.get("item") && params.get("journey") !== "end" });
     let prologue = false;                                   // 지구는 프롤로그의 구 장면에서 (건너뛰면 끝날 때)
     if (params.get("item")) selectItem(params.get("item"), { fly: true });
+    else if (letterId) showKept({ share: letterId });
     else if (params.get("panel") === "catalog") showCatalog();
+    else if (params.get("panel") === "letters") showLetters();
     else if (TOOL_OPEN[params.get("panel")]) TOOL_OPEN[params.get("panel")]();
     else if (mode === "sky" && prologueWanted(params)) { prologue = true; startPrologue(); }
     else if (mode === "sky" && !params.has("mode")) arriveFirstSky();
@@ -1646,6 +2017,7 @@ async function start() {
 
 if (new URLSearchParams(location.search).get("debug") === "1") {
   window.__vh = { state, world, selectItem, setMode, discover, openWorld, startJourney, resetWorld, showExplore, showPerspective, showSkyGuide, showCatalog, closeDrawer,
+                  showLetter, showLetters, showKept, get letters() { return letters; },
                   refreshSky, get stage() { return stage; } };
 }
 

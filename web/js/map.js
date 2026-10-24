@@ -237,6 +237,7 @@ export class MapMode {
       const mark = knownMark(p.name, { fresh: p.id === fresh });
       mark.element.classList.toggle("quiet", !named.has(p.id));   // 많아지면 이름표는 최근 것과 고른 것만
       mark.element.classList.toggle("is-selected", p.id === this.selectedId);
+      mark.element.classList.toggle("has-letter", !!this.letterIds?.has(p.id));   // 빛의 편지를 받은 천체 — 작은 ✉ 표식
       mark.position.copy(p.position);
       this.visitedTags.set(p.id, mark);
       this.visitedGroup.add(mark);
@@ -368,6 +369,12 @@ export class MapMode {
   describe(p) {
     const note = { illustrative: " · 방향은 예시", proxy: " · 위치는 근삿값" }[p.placement] ?? "";
     return `${p.name} — ${distanceText(p.km)}${note}`;
+  }
+
+  // 빛의 편지를 받은 천체 ID(letters.js letterItemIds) — 알아간 빛의 이름표에 작은 ✉ 표식 (.world-star.has-letter)
+  setLetters(ids) {
+    this.letterIds = ids;
+    for (const [id, tag] of this.visitedTags ?? []) tag.element.classList.toggle("has-letter", ids.has(id));
   }
 
   // 선택 — 알아간 천체는 표식 바깥의 흰 1px 고리와 이름표, 아직 만나지 않은 천체는 맥박 고리와 이름표.
