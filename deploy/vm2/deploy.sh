@@ -24,8 +24,10 @@
 #     $DEPLOY_DIR/deploy-failures/<UTC>.log에 남긴다.
 #   - 되돌린 뒤에도 같은 health 확인을 수행한다. 이전 image까지 실패하면 서비스가
 #     중단된 상태이므로 종료 코드 3으로 알린다.
-#   - docker image prune은 실행하지 않는다. API 호스트에는 다른 stack의 image도 있다.
-#     오래된 VastHorizon image는 사람이 판단하여 지운다.
+#   - 배포 성공 뒤 이전 image를 정리한다. ghcr.io/bnbong/vasthorizon 저장소의 image 가운데
+#     이번 image, 롤백 태그가 가리키는 image, 컨테이너가 쓰는 image만 남기고 ID로 지운다.
+#     docker image prune은 실행하지 않는다. API 호스트에는 다른 stack의 image도 있다.
+#     정리가 실패해도 배포 결과(종료 코드)는 바뀌지 않으며, 롤백한 경우에는 정리하지 않는다.
 #
 # health 대기 시간
 #   첫 기동이나 임베딩 모델이 바뀐 뒤에는 색인을 다시 만들기 때문에 health가 200이
@@ -50,6 +52,7 @@
 #   HEALTH_RETRIES    기본 100
 #   HEALTH_INTERVAL   기본 10 (초)
 #   FAILURE_LOG_DIR   기본 $DEPLOY_DIR/deploy-failures
+#   PRUNE_IMAGES      기본 1. 0 등 1이 아닌 값이면 배포 성공 뒤 이전 image를 정리하지 않는다.
 #   DOCKER, CURL, FLOCK
 #                     기본 docker, curl, flock. docker가 없는 곳에서 인자 검증과
 #                     .env 교체만 시험할 때 가짜 명령으로 바꾼다.
@@ -67,6 +70,7 @@ FAILURE_LOG_DIR="${FAILURE_LOG_DIR:-$DEPLOY_DIR/deploy-failures}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8020/api/health}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-100}"
 HEALTH_INTERVAL="${HEALTH_INTERVAL:-10}"
+PRUNE_IMAGES="${PRUNE_IMAGES:-1}"
 
 DOCKER="${DOCKER:-docker}"
 CURL="${CURL:-curl}"
@@ -180,7 +184,7 @@ fi
 # ----------------------------------------------------------------------------
 # 3. image 내려받기
 # ----------------------------------------------------------------------------
-log "[1/5] image를 내려받는다."
+log "[1/6] image를 내려받는다."
 if ! "$DOCKER" pull "$IMAGE_REF"; then
     err "docker pull에 실패했다: $IMAGE_REF"
     err "GHCR 패키지가 public인지, 태그가 실제로 존재하는지, 아키텍처가 arm64인지 확인한다."
@@ -192,7 +196,7 @@ log "image id: $NEW_IMAGE_ID"
 # ----------------------------------------------------------------------------
 # 4. 이전 상태 기억
 # ----------------------------------------------------------------------------
-log "[2/5] 이전 상태를 기억한다."
+log "[2/6] 이전 상태를 기억한다."
 
 # .env에 적힌 이전 값. 줄이 없거나 비어 있으면 compose 기본값(:main)을 쓰던 상태다.
 PREV_VALUE="$(awk -v var="$IMAGE_VAR" '
@@ -225,7 +229,7 @@ trap cleanup EXIT
 # ----------------------------------------------------------------------------
 # 5. .env의 image 변수 갱신
 # ----------------------------------------------------------------------------
-log "[3/5] .env의 $IMAGE_VAR 값을 갱신한다."
+log "[3/6] .env의 $IMAGE_VAR 값을 갱신한다."
 
 # 권한을 그대로 유지해야 한다. 새로 만든 파일로 바꾸면 umask에 따라 0644가 되어
 # 비밀 값이 다른 사용자에게 읽힐 수 있다.
@@ -265,7 +269,7 @@ update_env_var "$IMAGE_VAR" "$IMAGE_REF"
 # ----------------------------------------------------------------------------
 # 6. 컨테이너 교체와 health 확인
 # ----------------------------------------------------------------------------
-log "[4/5] 컨테이너를 교체한다."
+log "[4/6] 컨테이너를 교체한다."
 
 # 200이 나오고, 응답한 컨테이너가 기대한 image로 돌고 있을 때만 성공으로 본다.
 # image까지 대조해야 compose가 컨테이너를 바꾸지 못하고 이전 컨테이너가 계속
@@ -399,12 +403,91 @@ fi
 # ----------------------------------------------------------------------------
 # 8. 기록
 # ----------------------------------------------------------------------------
-log "[5/5] release 기록을 남긴다."
+log "[5/6] release 기록을 남긴다."
 # 시각, 이번 참조, 이번 image ID, 이전 참조, 이전 image ID를 탭으로 구분해 남긴다.
 printf '%s\t%s\t%s\t%s\t%s\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$IMAGE_REF" "$NEW_IMAGE_ID" \
     "${PREV_VALUE:--}" "${PREV_IMAGE_ID:--}" \
     >>"$RELEASES_LOG"
+
+# ----------------------------------------------------------------------------
+# 9. 이전 image 정리
+# ----------------------------------------------------------------------------
+# 배포할 때마다 VastHorizon image가 하나씩 쌓여 API 호스트의 디스크를 채운다.
+# 이 저장소의 image 가운데 아래를 뺀 나머지를 image ID로 지운다.
+#   - 이번에 배포한 image
+#   - $ROLLBACK_TAG 가 가리키는 image (손으로 되돌릴 때 쓴다)
+#   - 멈춘 것을 포함해 어떤 컨테이너든 쓰고 있는 image
+# 태그가 떨어진 image와 digest 참조만 남은 image도 대상에 넣는다. -f는 쓰지 않는다.
+# 다른 저장소의 태그가 함께 붙은 image는 docker가 거부하므로 경고만 남기고 넘어간다.
+# 이 단계의 실패는 배포 결과를 바꾸지 않는다. 호출하는 쪽에서 || 로 감싼다.
+prune_old_images() {
+    local keep="" candidates="" cids="" id="" refs="" size="" out=""
+    local removed=0 failed=0 freed=0
+    local cid_list=()
+
+    keep="${NEW_IMAGE_ID}"$'\n'
+    id="$("$DOCKER" image inspect --format '{{.Id}}' "$ROLLBACK_TAG" 2>/dev/null || true)"
+    if [ -n "$id" ]; then
+        keep+="${id}"$'\n'
+    fi
+
+    cids="$("$DOCKER" ps -aq --no-trunc 2>/dev/null || true)"
+    while IFS= read -r id; do
+        if [ -n "$id" ]; then
+            cid_list+=("$id")
+        fi
+    done <<<"$cids"
+    if [ "${#cid_list[@]}" -gt 0 ]; then
+        keep+="$("$DOCKER" inspect --type container --format '{{.Image}}' "${cid_list[@]}" 2>/dev/null || true)"$'\n'
+    fi
+
+    candidates="$("$DOCKER" images --no-trunc --format '{{.ID}}' "$IMAGE_REPO" 2>/dev/null || true)"
+    # 태그가 모두 떨어진 image는 저장소 이름으로 걸러지지 않을 수 있다. dangling 목록에서
+    # 남은 참조(RepoTags, RepoDigests)가 이 저장소인 것만 더한다.
+    for id in $("$DOCKER" images --no-trunc --filter dangling=true --format '{{.ID}}' 2>/dev/null || true); do
+        refs="$("$DOCKER" image inspect --format '{{join .RepoTags " "}} {{join .RepoDigests " "}}' "$id" 2>/dev/null || true)"
+        case " $refs" in
+            *" ${IMAGE_REPO}@"* | *" ${IMAGE_REPO}:"*) candidates+=$'\n'"$id" ;;
+        esac
+    done
+
+    while IFS= read -r id <&3; do
+        if [ -z "$id" ] || grep -Fxq -- "$id" <<<"$keep"; then
+            continue
+        fi
+        size="$("$DOCKER" image inspect --format '{{.Size}}' "$id" 2>/dev/null || true)"
+        case "$size" in
+            '' | *[!0-9]*) size=0 ;;
+        esac
+        if out="$("$DOCKER" rmi "$id" 2>&1 </dev/null)"; then
+            removed=$((removed + 1))
+            freed=$((freed + size))
+            log "  지웠다: $id"
+        else
+            failed=$((failed + 1))
+            warn "  지우지 못했다: $id ($(printf '%s' "$out" | tail -n 1))"
+        fi
+    done 3< <(printf '%s\n' "$candidates" | sort -u)
+
+    if [ "$removed" -eq 0 ] && [ "$failed" -eq 0 ]; then
+        log "지울 이전 image가 없다."
+    else
+        # image 크기를 더한 값이라 남은 image와 layer를 공유하면 실제 회수량보다 크게 나온다.
+        log "이전 image ${removed}개를 지웠다. 회수한 용량은 약 $((freed / 1024 / 1024))MB다."
+    fi
+    if [ "$failed" -ne 0 ]; then
+        warn "이전 image ${failed}개는 지우지 못했다. 배포 결과에는 영향이 없다."
+    fi
+    return 0
+}
+
+if [ "$PRUNE_IMAGES" = "1" ]; then
+    log "[6/6] 이전 image를 정리한다."
+    prune_old_images || warn "이전 image를 정리하다가 오류가 났다. 배포 결과에는 영향이 없다."
+else
+    log "[6/6] PRUNE_IMAGES=${PRUNE_IMAGES} 이므로 이전 image를 정리하지 않는다."
+fi
 
 echo ""
 echo "=== 배포를 완료했다 ==="
