@@ -1,6 +1,7 @@
 """읽어 주기 음성 비교 — Google Cloud TTS 음성마다 같은 글을 MP3로 만들어 들어 본다.
 
     python -m scripts.tts_sample --out data/cache/tts-sample
+    python scripts/tts_sample.py --out <폴더>
     python -m scripts.tts_sample --voices ko-KR-Chirp3-HD-Aoede,ko-KR-Neural2-A --rate 0.95 --text "..." --out <폴더>
 
 키는 환경변수(.env) GOOGLE_TTS_API_KEY에서 읽고, 출력하지 않는다.
@@ -13,6 +14,8 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # python scripts/tts_sample.py 직접 실행 지원
 
 from vasthorizon.config import get_settings, get_tts_key
 from vasthorizon.tts import TtsError, synthesize_text
