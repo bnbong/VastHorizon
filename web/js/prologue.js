@@ -330,6 +330,18 @@ export function lemniscate(t) {
   return [c / d, (s * c) / d];
 }
 
+// 구 · 팽창 고리의 반지름(px) — 높이 기준이되, 세로 화면에서는 폭을 넘지 않게 (가로 화면은 min이 높이라 그대로)
+export const sphereRadiusPx = (f, w, h) => f * Math.min(h, w * 1.15);
+
+// 무한 기호의 크기(A, px)와 중심 높이(비율) — 세로 화면에서는 크게 키워 글 상자 아래로 내린다. textBottom: 글 상자의 아래 끝(px), 없으면 null
+export function cloudFrame(w, h, textBottom = null) {
+  if (h <= w) return { A: Math.min(w * 0.36, h * 0.9), cy: 0.47 };
+  const A = Math.min(w * 0.44, h * 0.26);
+  if (textBottom == null) return { A, cy: 0.7 };
+  const half = 0.35 * 1.12 * A;                                // 가장 바깥 궤도(lane 1.12)의 위아래 반폭
+  return { A, cy: Math.min(0.8, (textBottom + 24 + half) / h) };
+}
+
 class Particles {
   constructor(canvas, still) {
     this.canvas = canvas;
@@ -348,7 +360,7 @@ class Particles {
     this.p = Array.from({ length: count }, (_, i) => {
       const big = Math.random() < 0.03, r = Math.random();
       return {
-        x: Math.random(), y: Math.random(), seed: Math.random(), u: Math.random(), v: Math.random(), k: i / count, big,
+        x: Math.random(), y: Math.random(), seed: Math.random(), u: Math.random(), v: Math.random(), w: Math.random(), k: i / count, big,
         vx: 0, vy: 0,
         size: big ? 1.8 + Math.random() * 1.0 : 0.5 + Math.random() * 1.0,
         tone: r < 0.68 ? 0 : r < 0.9 ? 1 : 2,                  // 종이색 · 살구 · 옅은 청록
@@ -382,6 +394,8 @@ class Particles {
     const r = this.anchor?.();
     this.boxRect = r && r.width ? { pl: r.left, pt: r.top, pr: r.right, pb: r.bottom } : null;
     this.rects = (this.shield?.() ?? []).filter((x) => x.width);
+    const bottoms = [this.boxRect?.pb, ...this.rects.map((x) => x.bottom)].filter((v) => v != null);
+    this.cloud = cloudFrame(innerWidth, innerHeight, bottoms.length ? Math.max(...bottoms) : null);
   }
 
   // 모드 전환 — 입자는 그대로 두고 향하는 자리만 바꾼다(보간). 제목 둘레에 머물던 별 먼지는 다음 장면으로 넘어갈 때 흩어진다
@@ -414,7 +428,8 @@ class Particles {
     const w = innerWidth, h = innerHeight;
     const { pl: L, pt: T, pr: R, pb: B } = box ?? { pl: w * 0.3, pt: h * 0.42, pr: w * 0.7, pb: h * 0.5 };
     const bw = R - L, bh = B - T;
-    const side = p.u < 0.36 ? 0 : p.u < 0.72 ? 1 : p.u < 0.86 ? 2 : 3;   // 위 · 아래 · 왼쪽 · 오른쪽
+    let side = p.u < 0.36 ? 0 : p.u < 0.72 ? 1 : p.u < 0.86 ? 2 : 3;     // 위 · 아래 · 왼쪽 · 오른쪽
+    if (side >= 2 && (L < 40 || w - R < 40)) side = p.u < 0.86 ? 0 : 1;   // 좌우 여백이 좁으면(휴대폰) 화면 밖 대신 위 · 아래 띠로
     const drift = 0.04 * Math.sin(t / (6000 + p.seed * 5000) + p.seed * 20);
     const off = 9 + Math.pow((p.v * 2) % 1, 1.6) * 38;                     // 가장자리에 가까울수록 많이
     let x, y;
@@ -434,7 +449,7 @@ class Particles {
 
   // 장면마다 입자가 향하는 자리 (화면 비율 0~1), 밝기, 그리고 바로 놓을지(true) · 따라갈지
   target(p, t, s, box) {
-    const cx = 0.5, cy = 0.5, w = innerWidth, h = innerHeight, asp = h / w;
+    const cx = 0.5, cy = 0.5, w = innerWidth, h = innerHeight;
     const ang = p.seed * Math.PI * 2;
     const tt = this.still ? 0 : t;
     switch (this.mode) {
@@ -452,38 +467,45 @@ class Particles {
           const fade = 650;
           if (!this.still && s < fade && p.drop !== this.epoch) return [p.x, p.y, 0, true];   // 지금 자리에서 먼저 사그라든다
           const [sx, sy] = this.haloSlot(p, box, tt);
-          const startY = -0.04 - p.seed * 0.3;
+          const startY = -0.04 - p.w * 0.3;                    // 낙하 높이 · 지연은 가로 자리(seed)와 따로 — 같으면 대각선 한 줄로 내려온다
           if (p.drop !== this.epoch) {                         // 화면 위로 옮겨 두고, 거기서부터 내려온다
             p.drop = this.epoch;
             if (!this.still) { p.x = sx; p.y = startY; p.a = 0; }
           }
-          const prog = this.still ? 1 : clamp01((s - fade - p.seed * 2600) / 4600);
+          const prog = this.still ? 1 : clamp01((s - fade - p.w * 2600) / 4600);
           const e = 1 - Math.pow(1 - prog, 3);
           const sway = (1 - e) * 0.012 * Math.sin(tt / 1400 + p.seed * 13);
           return [sx + sway, startY + (sy - startY) * e, 0.22 + 0.5 * e, true];
         }
         // 나머지 — 화면 전체에 아주 느리게 내려앉는 옅은 먼지
+        // 앞 장면(빛줄기)의 모양이 남지 않게 — 사그라든 뒤 화면 아무 데로 옮겨 제자리에서 옅게 떠오른다
+        if (p.drop !== this.epoch) {
+          if (!this.still && s < 650) return [p.x, p.y, 0, true];
+          p.drop = this.epoch;
+          p.x = Math.random(); p.y = Math.random();
+          if (!this.still) p.a = 0;
+        }
         return [p.x + 0.00003 * Math.sin(tt / 1300 + p.seed * 9), (p.y + (this.still ? 0 : 0.00018 * (0.4 + p.seed)) + 1.05) % 1.05 - 0.025, 0.2, true];
       }
       case "cloud": {                                         // 정해지지 않은 세상 — 무한 기호 궤도를 따라 흐르며 되풀이된다
         if (p.u >= 0.64) return [p.x, p.y, 0.14];               // 나머지는 옅은 배경 별로 머문다
         const lane = 0.88 + 0.24 * p.v;                          // 여러 겹의 궤도 — 고리 쪽은 띠처럼, 가운데 교차점은 가늘게
         const phi = p.seed * Math.PI * 2 + tt / (2300 * (1 + 0.06 * (p.v - 0.5)));
-        const A = Math.min(w * 0.36, h * 0.9);
+        const { A, cy: ly0 } = this.cloud ?? cloudFrame(w, h);
         const [lx, ly] = lemniscate(phi);
-        p.phi = phi; p.lane = lane * A;
+        p.phi = phi; p.lane = lane * A;                          // 잔상도 같은 크기로
         const tw = 0.7 + 0.3 * Math.sin(tt / (600 + p.seed * 800) + p.seed * 9);
-        return [cx + (lx * lane * A) / w, 0.47 + (ly * lane * A) / h, 0.5 * tw];
+        return [cx + (lx * lane * A) / w, ly0 + (ly * lane * A) / h, 0.5 * tw];
       }
       case "expand": {                                        // 팽창 — 고리가 계속 밖으로
         const ring = Math.floor(p.k * 6);
-        const r = ((t / 4200 + ring / 6) % 1) * 0.75;
-        return [cx + Math.cos(ang) * r * asp, cy - 0.04 + Math.sin(ang) * r, 0.9 * (1 - r / 0.75)];
+        const r = ((t / 4200 + ring / 6) % 1) * 0.75, rpx = sphereRadiusPx(r, w, h);
+        return [cx + (Math.cos(ang) * rpx) / w, cy - 0.04 + (Math.sin(ang) * rpx) / h, 0.9 * (1 - r / 0.75)];
       }
       case "sphere": {                                        // 관측 가능한 우주 — 당신을 중심으로 한 구, 가장자리가 금빛으로
         if (p.k < 0.04) return [cx + (p.seed - 0.5) * 0.004, SPHERE_CY + (p.k - 0.02) * 0.1, 1];
-        const r = 0.36 * Math.min(1, 0.15 + s / 3400);
-        return [cx + Math.cos(ang + t / 30000) * r * asp, SPHERE_CY + Math.sin(ang + t / 30000) * r, 0.8];
+        const rpx = sphereRadiusPx(0.36 * Math.min(1, 0.15 + s / 3400), w, h);
+        return [cx + (Math.cos(ang + t / 30000) * rpx) / w, SPHERE_CY + (Math.sin(ang + t / 30000) * rpx) / h, 0.8];
       }
       case "rise":                                            // 끝 — 하늘로 떠올라 실제 하늘에 녹아든다
         return [p.x, p.y - 0.4, 0];

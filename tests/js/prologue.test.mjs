@@ -2,7 +2,7 @@
 //     node --test "tests/js/*.test.mjs"
 import assert from "node:assert/strict";
 import test from "node:test";
-import { acceptsRequest, BEATS, createScope, decideStep, FINAL_GUARD_MS, keyAction, lemniscate, splitGlyphs } from "../../web/js/prologue.js";
+import { acceptsRequest, BEATS, cloudFrame, createScope, decideStep, FINAL_GUARD_MS, keyAction, lemniscate, sphereRadiusPx, splitGlyphs } from "../../web/js/prologue.js";
 
 test("사실을 말하는 장면은 모두 출처가 있다 (위로를 지어내지 않는다)", () => {
   for (const b of BEATS) {
@@ -142,4 +142,21 @@ test("구 장면에서 지구를 담는다 — 지구 장면은 하나, 관측 �
   assert.equal(earth.length, 1);
   assert.equal(earth[0].fx, "sphere");
   assert.match(earth[0].lines.join(" "), /바라보는 당신/);
+});
+
+test("구의 반지름 — 세로 화면에서도 폭 안에 들어오고, 가로 화면은 높이 기준 그대로", () => {
+  assert.ok(sphereRadiusPx(0.36, 390, 844) < 390 / 2);                  // 휴대폰 세로 — 좌우가 잘리지 않는다
+  assert.ok(sphereRadiusPx(0.36, 360, 780) < 360 / 2);
+  assert.equal(sphereRadiusPx(0.36, 1440, 900), 0.36 * 900);              // 데스크톱 — 예전 값 (높이 기준)
+  assert.equal(sphereRadiusPx(0.75, 1024, 768), 0.75 * 768);
+});
+
+test("무한 기호 — 가로 화면은 예전 크기 · 자리, 세로 화면은 크게 키워 글 상자 아래로", () => {
+  assert.deepEqual(cloudFrame(1440, 900, 500), { A: 1440 * 0.36, cy: 0.47 });
+  const m = cloudFrame(390, 844, 560);
+  assert.ok(m.A > Math.min(390 * 0.36, 844 * 0.9));                      // 예전(140px)보다 크다
+  assert.ok(m.A * 1.12 <= 390 / 2 + 1e-9);                               // 가장 바깥 궤도도 폭 안
+  assert.ok(m.cy * 844 - 0.35 * 1.12 * m.A >= 560);                      // 위 끝이 글 상자 아래
+  assert.ok(m.cy <= 0.8);
+  assert.equal(cloudFrame(390, 844).cy, 0.7);
 });
