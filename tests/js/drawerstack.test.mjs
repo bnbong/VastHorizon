@@ -55,3 +55,10 @@ test("화면 바꾸기 — 지금 화면을 스택에 올리고, 같은 화면�
   assert.deepEqual(nav.stack, [item("Q2")]);
   assert.equal(nav.current.kind, "letter");
 });
+
+test("같은 화면 — 시트 높이(_snap)를 남긴 설명자도 같은 화면", () => {
+  assert.ok(sameView({ kind: "catalog", group: "all", q: "", _snap: "full" }, { kind: "catalog", group: "all", q: "" }));
+  assert.ok(sameView({ ...item("Q2"), _snap: "peek" }, { ...item("Q2"), _snap: "half" }));
+  const nav = advance({ stack: [], current: { kind: "catalog", group: "all", q: "", _snap: "full" } }, item("Q2"));
+  assert.equal(popView(nav.stack).view._snap, "full");           // 뒤로 가기로 꺼내면 떠날 때의 높이가 남아 있다
+});

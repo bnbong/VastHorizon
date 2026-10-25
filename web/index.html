@@ -63,6 +63,7 @@
     <section class="stage" id="stage" aria-label="3D 우주">
       <div class="tooltip" id="tooltip" hidden></div>
     </section>
+    <div class="body-stage" id="body-stage" hidden></div>
 
     <!-- 색인 · 키 상태 안내 -->
     <div class="notices" id="notices" role="status"></div>
@@ -143,6 +144,8 @@
 
     <!-- 서랍 — 천체 · 목록 · 기능 -->
     <aside class="drawer" id="drawer" aria-hidden="true" inert>
+      <button class="sheet-grip" id="sheet-grip" type="button" aria-controls="drawer-body" aria-expanded="false" aria-label="설명 더 보기"></button>
+      <div class="sheet-peek" id="sheet-peek" hidden></div>
       <button class="drawer-back" id="drawer-back" type="button" aria-label="뒤로" hidden></button>
       <button class="drawer-close" id="drawer-close" type="button" aria-label="닫기"></button>
       <div class="drawer-body" id="drawer-body" aria-live="polite"></div>

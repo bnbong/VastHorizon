@@ -238,6 +238,21 @@ export class Stage {
     this.tweens.add(ms, step, done, { instant });
   }
 
+  // 그리기를 멈춘다 — 휴대폰에서 천체 3D 오버레이(main.js #body-stage)가 무대를 덮는 동안. 진행 중이던 카메라 이동 · 연출은 다시 돌 때 이어진다
+  pause() {
+    if (this.paused) return;
+    this.paused = true;
+    this.renderer.setAnimationLoop(null);
+  }
+
+  // 멈춘 시간은 버린다 — 다음 프레임의 dt로 들어가 연출이 한 번에 건너뛰지 않게
+  resume() {
+    if (!this.paused) return;
+    this.paused = false;
+    this.clock.getDelta();
+    this.renderer.setAnimationLoop(() => this.frame());
+  }
+
   frame() {
     const dt = Math.min(this.clock.getDelta(), 0.1);
     this.tweens.tick(dt * 1000);

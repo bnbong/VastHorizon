@@ -7,11 +7,16 @@
 //   베누 · 류구는 적도가 불룩한 팽이 모양, 아로코트 · 67P는 두 덩이, 핼리 혜성 핵은 땅콩 모양. 혜성은 핵 둘레에 희미한 코마.
 // - 하늘에서 이미 그리는 태양 · 달 · 행성은 solar.js의 셰이더(BODY_FRAG)와 토성 고리를 그대로 쓴다.
 // - 한 번에 하나만 — 새로 띄우면 앞의 것을 정리한다. 정리할 때 WebGL 컨텍스트까지 놓아 준다 (forceContextLoss).
+// - 휴대폰 시트 배치에서는 서랍 카드 대신 무대 위 오버레이(#body-stage)의 캔버스에 띄운다 (main.js placeBodyView).
+//   fit — 캔버스 크기를 따라가고(ResizeObserver) 시트에 가리지 않는 영역(setRegion)의 가운데에 천체를 둔다 (sheet.js fitBodyView).
+//   pixelBudget — 화면 전체 크기라 화소 수 예산 안으로 픽셀 비율을 낮춘다 (sheet.js bodyPixelRatio).
+//   interactive — 끌어서 돌리기(가로: 자전축 둘레 · 세로: 앞뒤로 기울이기) · 관성 · 짧게 누르면 onTap
 
 import { THREE } from "./scene.js";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { BODY_FRAG, BODY_VERT, TYPES, saturnRings } from "./solar.js";
 import { axisRatios, bodyInfo } from "./solarbodies.js";
+import { bodyPixelRatio, fitBodyView } from "./sheet.js";
 
 // 표면 무늬 번호 — SURFACE_FRAG의 uSurf 분기
 const SURFACES = { earth: 0, io: 1, europa: 2, ganymede: 3, callisto: 4, titan: 5, enceladus: 6, triton: 7, charon: 8, pluto: 9,
@@ -425,8 +430,10 @@ export function buildBodyMesh(info, { track = (x) => x, onLoad, detail = DRAWER_
 
 let active = null;
 
-// 그 항목의 천체를 canvas에 그린다. 반환: { stop } (WebGL을 쓸 수 없거나 태양계 천체가 아니면 null)
-export function mountBodyView(canvas, id, { still = false } = {}) {
+// 그 항목의 천체를 canvas에 그린다. 반환: { stop, pause, resume, setRegion, center } (WebGL을 쓸 수 없거나 태양계 천체가 아니면 null)
+//   pause · resume — 멈춘 시간만큼 시간 기준을 옮겨, 다시 돌 때 천체가 갑자기 돌아가 있지 않게
+//   setRegion({ top, bottom }) — fit일 때 천체를 둘 세로 영역 (캔버스 안 px) · center() — 천체 가운데의 화면 좌표(client px)
+export function mountBodyView(canvas, id, { still = false, fit = false, pixelBudget = null, interactive = false, onTap = null } = {}) {
   active?.stop();
   const info = bodyInfo(id);
   if (!info) return null;
@@ -446,7 +453,10 @@ export function mountBodyView(canvas, id, { still = false } = {}) {
 
   let onTexture = null;
   const { tilt, spin, start } = buildBodyMesh(info, { track, onLoad: () => onTexture?.() });
-  scene.add(tilt);
+  // 끌어서 돌릴 때 앞뒤로 기울이는 그룹 — buildBodyMesh가 정한 자전축 기울기(tilt)는 그대로 두고 그 바깥에
+  const turn = new THREE.Group();
+  turn.add(tilt);
+  scene.add(interactive ? turn : tilt);
 
   // 테두리 빛 · 코마 — 천체 뒤에 카메라를 보는 판
   const glow = GLOW[info.surface] ?? GLOW[info.key];
@@ -463,40 +473,151 @@ export function mountBodyView(canvas, id, { still = false } = {}) {
     scene.add(plane);
   }
 
+  let region = null, fitted = null;
+  const fitCamera = (w, h) => {
+    fitted = fitBodyView({ W: w, H: h, top: region.top, bottom: region.bottom, extent, fov: camera.fov });
+    const v = fitted.view;
+    if (v) camera.setViewOffset(v.fullWidth, v.fullHeight, v.x, v.y, v.width, v.height);   // 가로세로 비도 전체(가상) 크기로 바뀐다
+    else {
+      camera.clearViewOffset();
+      camera.aspect = w / h;
+    }
+    camera.position.set(0, 0, fitted.distance);
+    camera.updateProjectionMatrix();
+  };
   const size = () => {
     const w = canvas.clientWidth || 320, h = canvas.clientHeight || 200;
+    if (pixelBudget) renderer.setPixelRatio(bodyPixelRatio({ dpr: window.devicePixelRatio || 1, w, h, budget: pixelBudget }));
     renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    if (fit && region) fitCamera(w, h);
+    else {
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
   };
   size();
   const period = (info.spinSec ?? 10) * 1000;
-  const t0 = performance.now();
-  let raf = 0, stopped = false;
+  let t0 = performance.now();
+  let raf = 0, stopped = false, pausedAt = null, frames = 0;
+
+  // 끌어서 돌리기 — 손을 떼면 0.35초 시상수로 잦아드는 관성, 2.5초 뒤부터 다시 자전 (움직임 줄이기에서는 관성 · 자전 없이 끄는 동안만 그린다)
+  const rot = { angle: start, vx: 0, vy: 0, idleUntil: 0, last: null, down: null };
   const draw = () => {
-    const t = still ? 0 : (performance.now() - t0) / 1000;
-    spin.rotation.z = start + (2 * Math.PI * (t * 1000)) / period;
-    if (spin.userData.uniforms) spin.userData.uniforms.uTime.value = t;
+    frames++;
+    if (interactive) {
+      const now = performance.now();
+      const dt = rot.last == null ? 0 : Math.min(0.1, (now - rot.last) / 1000);
+      rot.last = now;
+      if (!rot.down && !still) {
+        if (rot.vx || rot.vy) {
+          rot.angle += rot.vx * dt;
+          turn.rotation.x = THREE.MathUtils.clamp(turn.rotation.x + rot.vy * dt, -0.9, 0.9);
+          const k = Math.exp(-dt / 0.35);
+          rot.vx *= k;
+          rot.vy *= k;
+          if (Math.hypot(rot.vx, rot.vy) < 0.01) rot.vx = rot.vy = 0;
+        }
+        if (now > rot.idleUntil) rot.angle += (2 * Math.PI * dt * 1000) / period;
+      }
+      spin.rotation.z = rot.angle;
+      if (spin.userData.uniforms) spin.userData.uniforms.uTime.value = still ? 0 : (now - t0) / 1000;
+    } else {
+      const t = still ? 0 : (performance.now() - t0) / 1000;
+      spin.rotation.z = start + (2 * Math.PI * (t * 1000)) / period;
+      if (spin.userData.uniforms) spin.userData.uniforms.uTime.value = t;
+    }
     renderer.render(scene, camera);
   };
+  const ro = fit ? new ResizeObserver(() => { if (stopped) return; size(); if (still || pausedAt != null) draw(); }) : null;
+  ro?.observe(canvas);
   const handle = {
     stop() {
       if (stopped) return;
       stopped = true;
       cancelAnimationFrame(raf);
+      ro?.disconnect();
+      for (const off of offs) off();
       for (const d of disposables) d.dispose();
       renderer.dispose();
       renderer.forceContextLoss();                      // 컨텍스트까지 놓아 준다 — 서랍을 여러 번 열어도 쌓이지 않게
       if (active === handle) active = null;
     },
+    pause() {
+      if (stopped || pausedAt != null) return;
+      pausedAt = performance.now();
+      cancelAnimationFrame(raf);
+      raf = 0;
+    },
+    resume() {
+      if (stopped || pausedAt == null) return;
+      t0 += performance.now() - pausedAt;
+      pausedAt = null;
+      rot.last = null;
+      if (still) draw();
+      else raf = requestAnimationFrame(frame);
+    },
+    setRegion(r) {
+      region = r;
+      if (stopped || !fit) return;
+      fitCamera(canvas.clientWidth || 320, canvas.clientHeight || 200);
+      if (still && pausedAt == null) draw();
+    },
+    center() {
+      const rect = canvas.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + (fitted ? fitted.yc : rect.height / 2) };
+    },
+    get paused() { return pausedAt != null; },
+    get frames() { return frames; },
   };
   const frame = () => {
-    if (stopped) return;
+    if (stopped || pausedAt != null) return;
     if (!canvas.isConnected) { handle.stop(); return; }   // 서랍 내용이 바뀌었다
     draw();
     if (!still) raf = requestAnimationFrame(frame);
   };
-  onTexture = () => { if (still && !stopped) draw(); };
+
+  // 포인터 — 가로로 끌면 자전축 둘레로, 세로로 끌면 앞뒤로. 8px · 350ms 안에 떼면 탭
+  const offs = [];
+  if (interactive) {
+    const on = (type, fn) => { canvas.addEventListener(type, fn); offs.push(() => canvas.removeEventListener(type, fn)); };
+    on("pointerdown", (e) => {
+      if (rot.down || e.button > 0) return;
+      rot.down = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: e.timeStamp, samples: [{ t: e.timeStamp, x: e.clientX, y: e.clientY }], moved: false };
+      rot.vx = rot.vy = 0;
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* 무시 */ }
+    });
+    on("pointermove", (e) => {
+      const d = rot.down;
+      if (!d || e.pointerId !== d.id) return;
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      d.x = e.clientX;
+      d.y = e.clientY;
+      if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 8) d.moved = true;
+      rot.angle += dx * 0.01;
+      turn.rotation.x = THREE.MathUtils.clamp(turn.rotation.x + dy * 0.01, -0.9, 0.9);
+      d.samples.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
+      if (d.samples.length > 12) d.samples.shift();
+      if (still || pausedAt != null) draw();
+    });
+    const end = (e) => {
+      const d = rot.down;
+      if (!d || e.pointerId !== d.id) return;
+      rot.down = null;
+      rot.idleUntil = performance.now() + 2500;
+      const tap = !d.moved && e.type === "pointerup" && e.timeStamp - d.t0 <= 350;
+      const last = d.samples[d.samples.length - 1], recent = d.samples.filter((p) => last.t - p.t <= 100), first = recent[0];
+      const dt = (last.t - first.t) / 1000;
+      if (!tap && dt > 0 && !still) {                  // 마지막 속도 (rad/s)
+        rot.vx = ((last.x - first.x) * 0.01) / dt;
+        rot.vy = ((last.y - first.y) * 0.01) / dt;
+      }
+      if (tap) onTap?.();
+    };
+    on("pointerup", end);
+    on("pointercancel", end);
+  }
+
+  onTexture = () => { if ((still || pausedAt != null) && !stopped) draw(); };
   frame();
   active = handle;
   return handle;

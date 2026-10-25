@@ -8,6 +8,7 @@
 // 영화의 가르강튀아처럼 도플러 밝기 차이는 넣지 않았다. 실제 크기 · 모습이 아니라 계산으로 그린 상상도다.
 
 import { THREE } from "./scene.js";
+import { bodyPixelRatio } from "./sheet.js";
 
 export const BH_FRAG = /* glsl */ `
   uniform float uTime, uIncl, uRoll, uFade;
@@ -122,8 +123,13 @@ export class BlackHoleSprite {
   }
 }
 
-// 서랍 안 작은 화면 — 같은 계산을 따로 그린다. 서랍이 바뀌면(캔버스가 문서에서 빠지면) 멈추고 정리한다
-export function mountBlackHole(canvas, { still = false } = {}) {
+// 서랍 안 작은 화면 — 같은 계산을 따로 그린다. 서랍이 바뀌면(캔버스가 문서에서 빠지면) 멈추고 정리한다.
+// 휴대폰 · 눕힌 휴대폰에서는 무대 위 오버레이(main.js #body-stage)에 크게 — bodyview.js의 근접 뷰와 같은 옵션을 받는다.
+//   fit — 캔버스 크기를 따라가고(ResizeObserver), setRegion({ top, bottom })으로 받은 영역의 가운데에 영역 높이(또는 폭)만큼의 정사각형으로
+//   pixelBudget — 화소마다 최대 300단계의 빛 경로를 계산하므로 화소 수 예산 안으로 (최소 0.75배, sheet.js bodyPixelRatio)
+//   interactive — 세로로 끌면 원반 기울기(uIncl), 가로로 끌면 화면 안 회전(uRoll), 손을 떼면 잦아드는 관성. 8px · 350ms 안에 떼면 onTap
+// 반환: { stop, pause, resume, setRegion, center }
+export function mountBlackHole(canvas, { still = false, fit = false, pixelBudget = null, interactive = false, onTap = null } = {}) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, premultipliedAlpha: true });
@@ -135,33 +141,130 @@ export function mountBlackHole(canvas, { still = false } = {}) {
   const camera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 10);
   camera.position.z = 1;
   const material = blackHoleMaterial();
+  const u = material.uniforms;
   scene.add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material));
-  const size = () => {
-    const w = canvas.clientWidth || 320, h = canvas.clientHeight || 200;
-    renderer.setSize(w, h, false);
-    Object.assign(camera, { left: -0.5 * w / h, right: 0.5 * w / h, top: 0.5, bottom: -0.5 });   // 높이에 맞춘 정사각형
+  let region = null, yc = null;
+  // 카메라 범위만 — 시트를 끄는 동안 rAF마다 불린다(setRegion). 그리기 버퍼 크기는 캔버스 크기가 바뀔 때(size)만
+  const project = (w, h) => {
+    if (fit && region) {                              // 영역 가운데 yc에 한 변 S px의 정사각형 — 화면 위쪽이 +
+      const S = Math.max(1, Math.min(w, region.bottom - region.top));
+      yc = (region.top + region.bottom) / 2;
+      Object.assign(camera, { left: -w / (2 * S), right: w / (2 * S), top: yc / S, bottom: -(h - yc) / S });
+    } else Object.assign(camera, { left: -0.5 * w / h, right: 0.5 * w / h, top: 0.5, bottom: -0.5 });   // 높이에 맞춘 정사각형
     camera.updateProjectionMatrix();
   };
+  const size = () => {
+    const w = canvas.clientWidth || 320, h = canvas.clientHeight || 200;
+    if (pixelBudget) renderer.setPixelRatio(bodyPixelRatio({ dpr: window.devicePixelRatio || 1, w, h, budget: pixelBudget, min: 0.75 }));
+    renderer.setSize(w, h, false);
+    project(w, h);
+  };
   size();
-  const t0 = performance.now();
-  let raf = 0, done = false;
+  let t0 = performance.now();
+  let raf = 0, done = false, pausedAt = null, frames = 0;
+  const rot = { vx: 0, vy: 0, last: null, down: null };
+  const draw = () => {
+    frames++;
+    const now = performance.now();
+    if (interactive && !rot.down && !still && (rot.vx || rot.vy)) {
+      const dt = rot.last == null ? 0 : Math.min(0.1, (now - rot.last) / 1000);
+      u.uRoll.value += rot.vx * dt;
+      u.uIncl.value = THREE.MathUtils.clamp(u.uIncl.value + rot.vy * dt, -1.3, 1.3);
+      const k = Math.exp(-dt / 0.35);
+      rot.vx *= k;
+      rot.vy *= k;
+      if (Math.hypot(rot.vx, rot.vy) < 0.01) rot.vx = rot.vy = 0;
+    }
+    rot.last = now;
+    u.uTime.value = still ? 2 : (now - t0) / 1000;
+    renderer.render(scene, camera);
+  };
+  const ro = fit ? new ResizeObserver(() => { if (done) return; size(); if (still || pausedAt != null) draw(); }) : null;
+  ro?.observe(canvas);
+  const offs = [];
   // 정리할 때 컨텍스트까지 놓아 준다 — 서랍을 여러 번 열어도 WebGL 컨텍스트가 쌓이지 않게
   const stop = () => {
     if (done) return;
     done = true;
     cancelAnimationFrame(raf);
+    ro?.disconnect();
+    for (const off of offs) off();
     renderer.dispose();
     renderer.forceContextLoss();
     material.dispose();
   };
   const frame = () => {
+    if (done || pausedAt != null) return;
     if (!canvas.isConnected) { stop(); return; }
-    material.uniforms.uTime.value = still ? 2 : (performance.now() - t0) / 1000;
-    renderer.render(scene, camera);
+    draw();
     if (!still) raf = requestAnimationFrame(frame);
   };
+  if (interactive) {
+    const on = (type, fn) => { canvas.addEventListener(type, fn); offs.push(() => canvas.removeEventListener(type, fn)); };
+    on("pointerdown", (e) => {
+      if (rot.down || e.button > 0) return;
+      rot.down = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: e.timeStamp, samples: [{ t: e.timeStamp, x: e.clientX, y: e.clientY }], moved: false };
+      rot.vx = rot.vy = 0;
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* 무시 */ }
+    });
+    on("pointermove", (e) => {
+      const d = rot.down;
+      if (!d || e.pointerId !== d.id) return;
+      u.uRoll.value += (e.clientX - d.x) * 0.01;
+      u.uIncl.value = THREE.MathUtils.clamp(u.uIncl.value + (e.clientY - d.y) * 0.01, -1.3, 1.3);
+      d.x = e.clientX;
+      d.y = e.clientY;
+      if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 8) d.moved = true;
+      d.samples.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
+      if (d.samples.length > 12) d.samples.shift();
+      if (still || pausedAt != null) draw();
+    });
+    const end = (e) => {
+      const d = rot.down;
+      if (!d || e.pointerId !== d.id) return;
+      rot.down = null;
+      const tap = !d.moved && e.type === "pointerup" && e.timeStamp - d.t0 <= 350;
+      const last = d.samples[d.samples.length - 1], first = d.samples.find((p) => last.t - p.t <= 100);
+      const dt = (last.t - first.t) / 1000;
+      if (!tap && dt > 0 && !still) {
+        rot.vx = ((last.x - first.x) * 0.01) / dt;
+        rot.vy = ((last.y - first.y) * 0.01) / dt;
+      }
+      if (tap) onTap?.();
+    };
+    on("pointerup", end);
+    on("pointercancel", end);
+  }
   frame();
-  return { stop };
+  return {
+    stop,
+    pause() {
+      if (done || pausedAt != null) return;
+      pausedAt = performance.now();
+      cancelAnimationFrame(raf);
+      raf = 0;
+    },
+    resume() {
+      if (done || pausedAt == null) return;
+      t0 += performance.now() - pausedAt;
+      pausedAt = null;
+      rot.last = null;
+      if (still) draw();
+      else raf = requestAnimationFrame(frame);
+    },
+    setRegion(r) {
+      region = r;
+      if (done || !fit) return;
+      project(canvas.clientWidth || 320, canvas.clientHeight || 200);
+      if (still && pausedAt == null) draw();
+    },
+    center() {
+      const rect = canvas.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + (yc ?? rect.height / 2) };
+    },
+    get paused() { return pausedAt != null; },
+    get frames() { return frames; },
+  };
 }
 
 let listPromise;

@@ -26,6 +26,8 @@ import { UnfoldMode } from "./unfold.js";
 import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
 import { FOLD_KEY, restoreFold, serializeFold, withFold } from "./fold.js";
 import { advance, popView } from "./drawerstack.js";
+import { classifyLayout, defaultSnap, SHEET_QUERY, SPLIT_QUERY } from "./sheet.js";
+import { createSheet } from "./sheetui.js";
 import { sound } from "./sound.js";
 import { available as kakaoAvailable, feedMessage, loadKakao, sendFeed, TALL_MIN_HEIGHT } from "./kakao.js";
 import { AUDIO_CACHE_MAX, pickVoice, quotaNote, serverPause, shouldFallback, silentWav, SPEECH_PITCH, SPEECH_RATE, speechChunks,
@@ -149,6 +151,183 @@ drawerBody.addEventListener("click", (e) => {
 
 const errorText = (e) => e?.message || "처리 중 문제가 생겼습니다.";
 
+// ── 배치 — desktop(오른쪽 서랍) · sheet(폭 650px 이하, 아래 시트) · split(눕힌 휴대폰) ──────────────────
+// CSS의 @media (max-width: 650px)와 같은 판정(sheet.js)을 matchMedia로 평가해 .app[data-layout]에 적는다.
+// 새 시트 · 오버레이 CSS는 모두 [data-layout] 아래에 있어 데스크톱에는 하나도 걸리지 않는다
+const layoutQueries = { sheet: matchMedia(SHEET_QUERY), split: matchMedia(SPLIT_QUERY) };
+const layout = () => app.dataset.layout ?? "desktop";
+
+function syncLayout() {
+  const prev = app.dataset.layout ?? null;
+  const next = classifyLayout({ sheet: layoutQueries.sheet.matches, split: layoutQueries.split.matches });
+  if (prev === next) return;
+  app.dataset.layout = next;
+  onLayoutChange(prev, next);
+}
+
+// 배치가 바뀐 뒤 — 시트 상태 · 3D 자리를 새 배치에 맞춘다
+function onLayoutChange(prev, next) {
+  if (next === "sheet" && !sheet) {
+    sheet = createSheet({ drawer: $("#drawer"), body: drawerBody, grip: $("#sheet-grip"), peek: $("#sheet-peek"),
+                          onMove: onSheetMove, onSettle: onSheetSettle, onClose: closeDrawer, instant: reducedMotion,
+                          home: () => sheetHome, has3d: () => sheetHas3d });
+  } else if (next !== "sheet" && sheet) {
+    sheet.destroy();                             // 인라인 transform · 높이를 걷어 데스크톱 CSS가 그대로 걸리게
+    sheet = null;
+  }
+  // 열려 있는 천체의 3D — 새 배치의 자리(시트 배치는 무대 위 오버레이, 그 밖은 서랍 안 카드)에 다시 띄운다
+  const open = state.drawer === "item" && $("#bodyview") && state.item ? state.item : null;
+  const item = open && bodyInfo(open.id) ? open : null;
+  const bh = open && $("#blackhole canvas") ? blackHoles?.galaxies.find((g) => g.id === open.id) : null;
+  sheetHas3d = (!!item || !!bh) && next === "sheet";
+  if (state.drawer) sheetHome = defaultSnap({ kind: state.drawer, has3d: sheetHas3d });
+  if (sheet && state.drawer) {                   // 열린 서랍 그대로 시트 배치로 — 이 화면의 기본 높이로
+    renderPeek({ relayout: false });
+    sheet.open(sheetHome, { animate: false });
+  }
+  if (item) placeBodyView(item);
+  else if (bh) placeBlackHole(open, bh);
+  if (state.drawer) stage?.setInset(next !== "sheet" ? $("#drawer").offsetWidth + 32 : 0);
+  fitStageInset();
+}
+
+// ── 휴대폰 아래 시트 — 걸림 높이 (sheet.js 계산 · sheetui.js 제어). 시트 배치에서만 sheet가 있다 ──────────────────
+// 화면(view)마다 처음 열 때 한 번만 기본 높이를 건다 — 별은 '찾는 중' 화면을 연 뒤 결과 화면을 다시 열므로(openDrawer 여러 번),
+// 그사이 사람이 끈 높이를 덮지 않게. 뒤로 가기로 돌아온 화면은 떠날 때 남긴 높이(설명자의 _snap)로
+let sheet = null;
+let sheetHome = "half";                          // 지금 화면의 기본 높이 (손잡이를 full에서 누르면 여기로)
+let sheetHas3d = false;                          // 지금 화면이 3D 오버레이를 쓰는가 (태양계 천체)
+let viewSeq = 0, sheetSeq = -1, sheetUserAtOpen = 0;
+
+// 끄는 동안 — 3D 천체가 시트 위 영역의 가운데를 따라온다 (무대 시야는 정착할 때만)
+function onSheetMove(V) {
+  syncBodyStage(V);
+}
+
+function onSheetSettle(snap, V) {
+  syncBodyStage(V);
+  fitStageInset();
+}
+
+// 엿보기 머리글 — 본문의 표지(data-peek="kicker · title · line · action")에서 글자를 복사한다. 본문 DOM은 옮기지 않는다.
+// 3D가 있는 천체는 분류 · 이름 · 핵심 사실 한 줄 · 주 행동 하나(아직 담지 않았으면 본문의 '담기'를 대신 누르는 버튼, 담았으면 '설명 읽기'),
+// 그 밖은 첫 제목만
+function renderPeek({ relayout = true } = {}) {
+  const peek = $("#sheet-peek");
+  if (!sheet) return;
+  const pick = (k) => drawerBody.querySelector(`[data-peek="${k}"]`)?.textContent.replace(/\s+/g, " ").trim() ?? "";
+  const text = pick("title") || (drawerBody.querySelector("h2, .name")?.textContent.trim() ?? "");
+  let html = "";
+  if (text && sheetHas3d) {
+    const line = pick("line") || (drawerBody.querySelector(".card-meta")?.textContent.replace(/\s+/g, " ").trim() ?? "");
+    const collect = drawerBody.querySelector('[data-peek="action"] [data-collect]');
+    html = `${pick("kicker") ? `<p class="eyebrow sheet-peek-kicker">${esc(pick("kicker"))}</p>` : ""}
+      <p class="sheet-peek-title" data-peek-title tabindex="-1">${esc(text)}</p>
+      ${line ? `<p class="sheet-peek-line">${esc(line)}</p>` : ""}
+      <div class="sheet-peek-actions">${collect ? btn("이 빛을 내 세계에 담기", { variant: "primary", attrs: "data-peek-collect" })
+        : btn("설명 읽기", { variant: "secondary", icRight: "chevron-up", attrs: "data-peek-read" })}</div>`;
+  } else if (text) html = `<p class="sheet-peek-title" data-peek-title tabindex="-1">${esc(text)}</p>`;
+  const hadFocus = peek.contains(document.activeElement);   // 갈아 끼우면 포커스가 문서 처음으로 빠진다 — 머리글 안에 있었으면 새 버튼으로
+  peek.hidden = !html;
+  peek.innerHTML = html ? `<div class="sheet-peek-in">${html}</div>` : "";
+  if (hadFocus) (peek.querySelector("[data-peek-read], [data-peek-collect]") ?? $("#sheet-grip")).focus({ preventScroll: true });
+  // 대리 버튼 — 담기 처리(bindCollect)는 본문 버튼 하나뿐이라 기록이 두 번 남지 않는다
+  peek.querySelector("[data-peek-collect]")?.addEventListener("click", () => drawerBody.querySelector('[data-peek="action"] [data-collect]')?.click());
+  peek.querySelector("[data-peek-read]")?.addEventListener("click", () => sheet?.open("half"));
+  if (relayout) sheet.relayout();
+}
+
+// ── 천체 3D 오버레이 — 시트 배치에서 태양계 천체를 가까이서 본 모습을 무대 위에 크게 (bodyview.js · 설계: 서랍 카드 대신) ──────
+// 마운트할 때마다 새 캔버스 — forceContextLoss()를 부른 캔버스는 잃은 컨텍스트를 다시 돌려주어 두 번째 천체부터 그림이 나오지 않는다.
+// 떠 있는 동안 무대(Stage)는 그리기를 멈춘다(바탕이 불투명해 보이지 않는다). 컨텍스트는 무대 하나 + 근접 뷰 하나
+const bodyStage = { el: $("#body-stage"), on: false, handle: null, item: null, raf: 0 };
+
+// what — 무엇을 띄울지: 기본은 태양계 천체(bodyview.js), 은하는 중심 블랙홀(blackhole.js, placeBlackHole)
+function openBodyStage(item, { label = `${item.name}을(를) 가까이서 본 모습, 상상도`, note = "가까이서 본 모습 · 상상도",
+                               mount = (canvas) => mountBodyView(canvas, item.id, { still: reducedMotion(), fit: true, pixelBudget: 900_000, interactive: true, onTap: onBodyStageTap }) } = {}) {
+  const el = bodyStage.el;
+  bodyStage.on = true;
+  bodyStage.item = item;
+  if (el.hidden) {
+    el.hidden = false;
+    stage?.pause();
+  }
+  el.inert = false;
+  el.classList.remove("covered");
+  el.innerHTML = `<p class="body-stage-note">${esc(note)}</p>`;
+  app.classList.add("body-stage-on");
+  $("#tooltip").hidden = true;
+  // 셰이더 컴파일(100ms 안팎)이 시트가 열리는 전환과 겹치지 않게 — 두 프레임 뒤에 마운트. 그동안은 바탕 그라데이션만
+  cancelAnimationFrame(bodyStage.raf);
+  bodyStage.raf = requestAnimationFrame(() => { bodyStage.raf = requestAnimationFrame(() => {
+    if (!bodyStage.on || bodyStage.item !== item) return;
+    const canvas = document.createElement("canvas");
+    canvas.className = "body-stage-canvas";
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", label);
+    el.prepend(canvas);
+    const handle = mount(canvas);
+    if (!handle) {                               // WebGL을 만들 수 없다 — 오버레이를 걷고 설명이 보이게
+      closeBodyStage({ now: true });
+      sheetHas3d = false;
+      sheetHome = "half";
+      renderPeek();
+      sheet?.open("half");
+      return;
+    }
+    bodyStage.handle = handle;
+    syncBodyStage();
+    if (sheet?.snap === "full") coverBodyStage(true);
+  }); });
+}
+
+// 걷기 — 같은 작업 안에서 다른 천체로 다시 띄우면(서랍 내용 교체 → showBodyView) 오버레이와 무대 정지를 그대로 이어 깜빡이지 않게,
+// 숨기는 일은 마이크로태스크 뒤로 미룬다
+function closeBodyStage({ now = false } = {}) {
+  cancelAnimationFrame(bodyStage.raf);
+  bodyStage.handle?.stop();
+  bodyStage.handle = null;
+  if (!bodyStage.on) return;
+  bodyStage.on = false;
+  bodyStage.item = null;
+  bodyStage.el.querySelector("canvas")?.remove();
+  const hide = () => {
+    if (bodyStage.on) return;
+    bodyStage.el.hidden = true;
+    bodyStage.el.innerHTML = "";
+    bodyStage.el.inert = false;
+    app.classList.remove("body-stage-on");
+    stage?.resume();
+    fitStageInset();
+  };
+  if (now) hide();
+  else queueMicrotask(hide);
+}
+
+// 시트가 full이면 3D는 거의 보이지 않는다 — 그리기를 멈추고 회전을 받지 않는다
+function coverBodyStage(covered) {
+  bodyStage.el.inert = covered;
+  bodyStage.el.classList.toggle("covered", covered);
+  if (covered) bodyStage.handle?.pause();
+  else bodyStage.handle?.resume();
+}
+
+// 3D 천체를 시트에 가리지 않는 영역(크롬 머리 아래끝 ~ 시트 윗변)의 가운데로
+function syncBodyStage(V = sheet?.visible ?? 0) {
+  if (!bodyStage.on) return;
+  if (sheet && !sheet.dragging) coverBodyStage(sheet.snap === "full");
+  const h = bodyStage.handle;
+  if (!h) return;
+  const box = bodyStage.el.getBoundingClientRect(), head = $(".chrome-top");
+  const top = head.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(head).paddingBottom) || 0) - box.top;   // 아래 패딩은 그라데이션 자리
+  h.setRegion({ top: Math.max(0, top), bottom: Math.max(top, box.height - V) });
+}
+
+// 3D를 짧게 누르면 — half에서는 3D가 크게 보이게 peek으로, peek에서는 그대로
+function onBodyStageTap() {
+  if (sheet?.snap === "half") sheet.open("peek");
+}
+
 // ── 서랍 — 패널 세대 ─────────────────────────────────────────────────────
 // 서랍 내용을 바꾸는 기능마다 새 세대를 받는다. await 뒤에는 자기 세대가 아직 살아 있는지 보고,
 // 지난 세대의 응답(성공 · 오류 모두)은 화면 · state에 반영하지 않는다. (리뷰 P2 — 응답 순서 · 화면 수명)
@@ -169,9 +348,10 @@ function stopDrawerView() {
   drawerView?.stop();
   drawerView = null;
   stopBodyView();
+  closeBodyStage();                            // 무대 위 오버레이는 서랍 내용이 바뀌어도 문서에 남는다 — 여기서 정리한다
 }
 
-function openDrawer(kind, html) {
+function openDrawer(kind, html, { has3d = false } = {}) {
   if (kind !== "item") clearSelection();      // 다른 기능 서랍으로 바뀌면 선택 표시도 지운다
   stopDrawerView();
   state.drawer = kind;
@@ -179,7 +359,7 @@ function openDrawer(kind, html) {
   const hadFocus = drawerBody.contains(document.activeElement);   // 서랍 안에서 다른 화면으로 — 교체로 사라질 포커스를 새 화면 제목으로
   drawerBody.innerHTML = html;
   drawerBody.scrollTop = 0;
-  if (hadFocus) focusDrawerHeading();
+  if (hadFocus && !sheet) focusDrawerHeading();   // 시트는 높이를 정한 뒤에 (peek이면 엿보기 머리글로)
   drawerBody.classList.remove("entering");
   void drawerBody.offsetWidth;                 // 내용이 바뀔 때마다 떠오르는 연출을 다시
   drawerBody.classList.add("entering");
@@ -193,13 +373,30 @@ function openDrawer(kind, html) {
     $("#drawer-close").focus({ preventScroll: true });
   }
   drawer.setAttribute("aria-hidden", "false");
-  stage?.setInset(window.innerWidth > 650 ? drawer.offsetWidth + 32 : 0);   // 서랍(폭 + 여백 16 × 2) 만큼 시야를 비킨다 (650px 이하는 아래 시트)
+  const fresh = viewSeq !== sheetSeq;          // 이 화면을 처음 여는가 — 그때만 기본 높이를 정한다
+  if (fresh) {
+    sheetSeq = viewSeq;
+    sheetHome = defaultSnap({ kind, has3d });
+  }
+  if (fresh || sheet?.snap === "closed") sheetUserAtOpen = sheet?.userSeq ?? 0;
+  sheetHas3d = has3d;
+  if (sheet) {
+    renderPeek({ relayout: false });
+    if (fresh || sheet.snap === "closed") {
+      let want = nav.current?._snap ?? sheetHome;
+      if (want === "peek" && !has3d) want = "half";            // 떠날 때 peek이었어도 3D가 없으면 본문이 보이게
+      sheet.open(want);
+    } else sheet.relayout();                                   // 같은 화면 — 엿보기 머리글만 바뀌었을 수 있다
+    if (hadFocus) focusDrawerHeading();
+  }
+  stage?.setInset(layout() !== "sheet" ? drawer.offsetWidth + 32 : 0);   // 서랍(폭 + 여백 16 × 2) 만큼 시야를 비킨다 (시트 배치는 아래 시트)
+  fitStageInset();
   renderChrome();
 }
 
-// 새 서랍 화면의 첫 제목(h2 · .name)으로 포커스 — 제목이 없으면 닫기 버튼으로
+// 새 서랍 화면의 첫 제목(h2 · .name)으로 포커스 — 제목이 없으면 닫기 버튼으로. 시트가 peek이면 본문이 가려져 있어 엿보기 머리글의 제목으로
 function focusDrawerHeading() {
-  const head = drawerBody.querySelector("h2, .name");
+  const head = sheet?.snap === "peek" ? $("#sheet-peek [data-peek-title]") : drawerBody.querySelector("h2, .name");
   if (head) {
     head.tabIndex = -1;
     head.focus({ preventScroll: true });
@@ -212,9 +409,15 @@ function focusDrawerHeading() {
 // 뒤로 가기는 스택에서 하나 꺼내 그 설명자의 진입 함수를 다시 부른다(이때는 쌓지 않는다). 서랍을 닫으면 비운다
 let nav = { stack: [], current: null };
 let restoringView = false;
+let restoredSnap = null;                       // 뒤로 가기로 꺼낸 화면의 시트 높이 — 진입 함수가 설명자를 새로 만들어도 이어 붙인다
 
 function enterView(view) {
-  if (restoringView) nav.current = view;
+  if (nav.current && sheet && state.drawer) nav.current._snap = sheet.snap;   // 떠나는 화면의 시트 높이 — 뒤로 돌아오면 그 높이로
+  viewSeq++;
+  if (restoringView) {
+    if (restoredSnap) view._snap = restoredSnap;
+    nav.current = view;
+  }
   else nav = advance(nav, view);
   renderBack();
 }
@@ -225,6 +428,7 @@ function updateView(view) {
 
 function renderBack() {
   $("#drawer-back").hidden = !nav.stack.length;   // 첫 화면에서는 숨긴다
+  $("#drawer").classList.toggle("has-back", !!nav.stack.length);   // 시트의 엿보기 머리글이 뒤로 단추 자리를 비운다
 }
 
 function goBack() {
@@ -232,7 +436,8 @@ function goBack() {
   if (!view) return;
   nav.stack = stack;
   restoringView = true;
-  try { openView(view); } finally { restoringView = false; }   // 진입 함수의 enterView는 await 앞에서 불린다
+  restoredSnap = view._snap ?? null;
+  try { openView(view); } finally { restoringView = false; restoredSnap = null; }   // 진입 함수의 enterView는 await 앞에서 불린다
   renderBack();
   if ($("#drawer-back").hidden && document.activeElement === $("#drawer-back")) $("#drawer-close").focus({ preventScroll: true });
 }
@@ -290,7 +495,9 @@ function closeDrawer() {
   drawer.setAttribute("aria-hidden", "true");
   drawer.inert = true;                         // 숨은 서랍 안으로 포커스가 들어가지 않게
   if (inside && openDrawer.returnTo?.isConnected) openDrawer.returnTo.focus({ preventScroll: true });
+  sheet?.close();
   stage?.setInset(0);
+  fitStageInset();
   renderChrome();
 }
 
@@ -444,10 +651,11 @@ function bindCollect(root, obj) {
     state.sky?.observe(obj);                     // 하늘에 떠 있으면 빈 점선 원이 살구색 표식과 이름표로 (이름이 막 나타나는 연출)
     // 알게 되는 순간 — 그 천체가 환하게 켜진다. 자리는 지금 보기(하늘 · 펼치기 · 내 세계)의 카메라로 투영한 화면 좌표.
     // 화면에 없으면 알아간 거리가 바뀌는 리본 쪽에서 (내 세계는 지도에 없는 천체면 '나'의 자리에서 — map.js screenOf)
-    const at = stage?.mode?.screenOf?.(obj.id) ?? meterPoint();
+    const at = bodyStage.handle?.center?.() ?? stage?.mode?.screenOf?.(obj.id) ?? meterPoint();   // 3D 오버레이가 하늘을 덮고 있으면 그 천체 가운데에서
     if (at) igniteBurst(at.x, at.y, { reducedMotion: reducedMotion() });
     const d = discover(obj);
     b.closest(".collect").outerHTML = collectedHtml(`내 세계에 새로운 빛으로 담았습니다 · 알아간 빛 ${(d?.count ?? world.visited.length).toLocaleString("ko-KR")}개`);
+    renderPeek();                                // 엿보기 머리글의 대리 버튼도 '설명 읽기'로
   }));
 }
 
@@ -1006,7 +1214,7 @@ function renderWorldCard() {
   const el = $("#world-card");
   if (!el) return;
   el.hidden = state.mode !== "map" || !!state.scene;
-  if (el.hidden) { fitMapView(); return; }
+  if (el.hidden) { fitStageInset(); return; }
   const open = new Set([...el.querySelectorAll("details[open]")].map((d) => d.dataset.k));   // 다시 그려도 펼친 곳은 그대로
   if (renderWorldCard.openLog) { open.add("log"); renderWorldCard.openLog = false; }
   const byId = new Map(mapPoints().map((p) => [p.id, p]));
@@ -1038,14 +1246,14 @@ function renderWorldCard() {
         <span>${v.id === EARTH_ID ? "내가 있는 곳" : v.km ? esc(distanceText(v.km)) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}</span></li>`).join("")}</ol>
         <button type="button" class="wc-reset" id="wc-reset">기록 처음부터 다시 시작</button>` : `<div class="wc-note">아직 기록이 없습니다</div>`}</details>
     <button type="button" class="wc-journey" id="wc-journey">${icon("sparkles", 14)}<span>우주 끝까지 떠나 보기</span></button></div></div>`;
-  bindFold($("#wc-fold"), el, "world", () => { fitMapView(); syncHush(); });   // 접으면 카드가 한 줄 바가 되어 '나' 들어올림 · 이름표 숨김 구역도 줄어든다
+  bindFold($("#wc-fold"), el, "world", () => { fitStageInset(); syncHush(); });   // 접으면 카드가 한 줄 바가 되어 '나' 들어올림 · 이름표 숨김 구역도 줄어든다
   el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
     const v = world.visited.find((x) => x.id === b.dataset.open);
     if (v?.km) state.map?.select(v.id);
     selectItem(b.dataset.open, { fly: false });
   }));
   $("#wc-meet").addEventListener("click", meetFirstLight);       // 하늘로 돌아가 아직 만나지 않은 밝은 빛 하나를 연다
-  fitMapView();
+  fitStageInset();
   $("#wc-journey").addEventListener("click", startJourney);
   $("#wc-reset")?.addEventListener("click", (e) => {
     if (e.currentTarget.dataset.armed) { resetWorld(); return; }    // 한 번 더 눌러야 지운다
@@ -1054,10 +1262,17 @@ function renderWorldCard() {
   });
 }
 
-// 좁은 화면 — 요약 카드가 지도 아래쪽을 덮으므로 '나'를 카드 위로 올린다 (카드 높이의 45%만큼 시야를 위로)
-function fitMapView() {
+// 시트 배치 — 아래를 덮는 것 위의 영역 가운데로 시야를 올린다 (setInsetY(y)는 시야 중심을 y/2만큼 위로)
+//   내 세계 지도에서 시트가 열려 있으면(3D 오버레이가 무대를 덮고 있지 않을 때) 시트 높이만큼, 요약 카드가 보이면 카드 높이의 45%만큼('나'를 카드 위로)
+//   하늘 보기에는 걸지 않는다 — 가상 높이(h + y)에 화각을 맞추므로 하늘이 (h + y)/h배 확대되고, 별 · 행성 원반의 화면 크기 계산(sky.js pxPerDeg = 높이/화각)과 어긋난다
+function fitStageInset() {
   const card = $("#world-card");
-  const lift = state.mode === "map" && !card.hidden && !state.drawer && window.innerWidth <= 650 ? Math.round(card.offsetHeight * 0.45) : 0;
+  let lift = 0;
+  if (layout() === "sheet" && state.mode === "map") {
+    // full은 무대가 거의 가려진다 — half 높이까지만 올려, full ↔ half를 오갈 때 시야가 다시 크게 움직이지 않게
+    if (state.drawer) lift = sheet && sheet.snap !== "closed" && !bodyStage.on ? Math.min(sheet.visible, sheet.snaps.half ?? sheet.visible) : 0;
+    else if (!card.hidden) lift = Math.round(card.offsetHeight * 0.45);
+  }
   stage?.setInsetY(lift);
 }
 
@@ -1240,16 +1455,16 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   const source = item.sources?.[0];
   openDrawer("item", `
     <div class="head reveal" style="animation-delay:0ms">
-      <div class="eyebrow">${esc(item.group_ko)}</div>
-      <h2 class="name card-name">${esc(item.name)}</h2>
+      <div class="eyebrow" data-peek="kicker">${esc(item.group_ko)}</div>
+      <h2 class="name card-name" data-peek="title">${esc(item.name)}</h2>
       ${meta.length ? `<div class="card-meta">${meta.map((m) => `<span>${esc(m)}</span>`).join('<i aria-hidden="true">·</i>')}</div>` : ""}</div>
-    ${fact ? `<div class="reveal" style="animation-delay:150ms"><p class="hero-fact">${esc(fact.before)}<em>${esc(fact.em)}</em>${esc(fact.after)}</p>
+    ${fact ? `<div class="reveal" style="animation-delay:150ms"><p class="hero-fact" data-peek="line">${esc(fact.before)}<em>${esc(fact.em)}</em>${esc(fact.after)}</p>
       ${fact.detail ? `<p class="fact-detail">${esc(fact.detail)}</p>` : ""}</div>` : ""}
     ${note ? `<div class="reveal place-note" style="animation-delay:220ms"><p class="fact-detail">${esc(note.text)}</p>
       <p class="disclaimer">근거 · <a href="${esc(note.source.url)}" target="_blank" rel="noopener">${esc(note.source.name)}</a></p></div>` : ""}
     <div class="evidence-line reveal" style="animation-delay:300ms"><span>근거 있는 이야기 · 항목 메타데이터</span>
       ${source ? `<a href="${esc(source.url)}" target="_blank" rel="noopener">${esc(source.name)} ↗</a>` : ""}</div>
-    <div class="reveal" id="collect-slot" style="animation-delay:420ms">${collectButtonHtml(item)}</div>
+    <div class="reveal" id="collect-slot" data-peek="action" style="animation-delay:420ms">${collectButtonHtml(item)}</div>
     <button type="button" class="ask-hint reveal" id="ask-hint" style="animation-delay:480ms">궁금한 것을 물어보세요 ${icon("arrow-up-right", 13)}</button>
     <div class="more-read reveal" style="animation-delay:540ms">
       <div class="intro-clip" id="intro-clip"><div class="stack lg intro" id="intro">${statusHtml("이 천체의 이야기를 불러오는 중…")}</div></div>
@@ -1282,7 +1497,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
       <div class="row" id="clear-row" hidden>${btn("대화 지우기", { variant: "ghost", id: "clear-chat" })}<span id="clear-status"></span></div></div>
     <div class="spacer"></div>
     <div class="composer-wrap">${composerHtml("chat-form", { placeholder: `${item.name}에 대해 물어보세요` })}
-      <div class="composer-note">문서로 확인되지 않은 내용은 확인되지 않는다고 답합니다.</div></div>`);
+      <div class="composer-note">문서로 확인되지 않은 내용은 확인되지 않는다고 답합니다.</div></div>`, { has3d: layout() === "sheet" && (!!bodyInfo(item.id) || hasBlackHole(item.id)) });
 
   $("#more-btn").addEventListener("click", (e) => {
     const more = $("#more");
@@ -1338,9 +1553,32 @@ async function loadBlackHole(item, alive) {
       ${bh.quote ? `<blockquote>${esc(bh.quote)}</blockquote>` : `<p>Wikidata에 이 은하의 일부인 블랙홀로 기록되어 있습니다.</p>`}
       <p class="disclaimer">${esc(data.note)} 빛이 블랙홀 둘레에서 휘는 경로를 계산해, 원반 뒤쪽이 그림자 위아래로 보이는 모습(영화 「인터스텔라」의 가르강튀아와 같은 원리)을 그렸습니다. 출처 · ${src}</p>
     </figcaption></figure>`;
-  stopDrawerView();
-  drawerView = mountBlackHole(box.querySelector("canvas"), { still: reducedMotion() });
+  placeBlackHole(item, bh);
+  // 목록이 늦게 와서 half로 연 천체 — 3D가 있다고 확인됐다. 사람이 아직 높이를 바꾸지 않았으면 3D가 크게 보이게 peek으로
+  if (sheet && !sheetHas3d) {
+    sheetHas3d = true;
+    sheetHome = "peek";
+    renderPeek({ relayout: false });
+    if (sheet.userSeq === sheetUserAtOpen) sheet.open("peek");
+    else sheet.relayout();
+  }
 }
+
+// 블랙홀의 자리 — 시트 · 나란히 배치는 무대 위 오버레이(화소 예산 30만, 빛 경로 계산이 무겁다), 데스크톱은 서랍 안 카드
+function placeBlackHole(item, bh) {
+  stopDrawerView();
+  if (layout() !== "desktop") {
+    openBodyStage(item, { label: `${bh.black_hole ?? "중심 블랙홀"} 상상도, 블랙홀 둘레에서 휘는 빛을 계산한 그림`, note: "중심 블랙홀 · 빛의 경로를 계산한 상상도",
+      mount: (canvas) => mountBlackHole(canvas, { still: reducedMotion(), fit: true, pixelBudget: 300_000, interactive: true, onTap: onBodyStageTap }) });
+    return;
+  }
+  const canvas = freshCanvas($("#blackhole canvas"));
+  if (canvas) drawerView = mountBlackHole(canvas, { still: reducedMotion() });
+}
+
+// 블랙홀 목록 — start()에서 미리 받아 두면 천체를 열 때 3D 여부를 바로(동기로) 안다
+let blackHoles = null;
+const hasBlackHole = (id) => !!blackHoles?.galaxies.some((g) => g.id === id);
 
 // 태양계 천체를 가까이서 본 모습 — 태양 쪽 빛을 받으며 천천히 돈다 (bodyview.js). 표면은 알려진 특징을 바탕으로 한 상상도
 function showBodyView(item) {
@@ -1356,8 +1594,24 @@ function showBodyView(item) {
       <p class="body-size">${esc(sizeCaption(info))}</p>
       <p class="disclaimer">${esc(note)} 크기 출처 · NASA · 위키백과 공개 값</p>
     </figcaption></figure>`;
+  placeBodyView(item);
+}
+
+// 근접 뷰의 자리 — 시트 · 나란히 배치는 무대 위 오버레이(카드는 설명 · 출처만), 데스크톱은 서랍 안 카드의 캔버스. 배치가 바뀌면 다시 부른다
+function placeBodyView(item) {
   stopDrawerView();
-  drawerView = mountBodyView(box.querySelector("canvas"), item.id, { still: reducedMotion() });
+  if (layout() !== "desktop") { openBodyStage(item); return; }
+  const canvas = freshCanvas($("#bodyview canvas"));
+  if (canvas) drawerView = mountBodyView(canvas, item.id, { still: reducedMotion() });
+}
+
+// 서랍 카드의 캔버스를 새 요소로 갈아 끼운다 — 시트 배치를 다녀오면 정리할 때 forceContextLoss()를 부른 캔버스라,
+// 그대로 다시 넘기면 잃은 컨텍스트를 돌려받아 그림이 나오지 않는다 (오버레이가 마운트마다 새 캔버스를 만드는 것과 같은 이유)
+function freshCanvas(old) {
+  if (!old) return null;
+  const canvas = old.cloneNode(false);
+  old.replaceWith(canvas);
+  return canvas;
 }
 
 // 메시에 천체 사진 — NASA 'Hubble's Messier Catalog'의 대표 사진과 출처 표기 (web/data/messier, 없으면 비워 둔다)
@@ -2069,6 +2323,7 @@ async function showHealth() {
       `<div class="notice ${esc(n.level)}">${icon(NOTICE_ICON[n.level] ?? "info", 14)}${esc(NOTICE_COPY[n.code] ?? n.message)}</div>`).join("");
     app.classList.toggle("has-notice", shown.length > 0);
     app.style.setProperty("--notice-h", `${$("#notices").offsetHeight}px`);   // 안내가 여러 줄이어도 크롬이 가리지 않게
+    sheet?.relayout();                           // 시트의 full 높이가 알림 띠만큼 낮아진다
     status.classList.toggle("warn", shown.length > 0);
     status.querySelector(".text").textContent = h.items_indexed
       ? `항목 ${h.items_indexed.toLocaleString("ko-KR")} · 문서 ${h.docs_indexed.toLocaleString("ko-KR")} 청크` : "색인 0건";
@@ -2076,6 +2331,7 @@ async function showHealth() {
     $("#notices").innerHTML = `<div class="notice error">${icon("circle-alert", 14)}${esc(errorText(e))}</div>`;
     app.classList.add("has-notice");
     app.style.setProperty("--notice-h", `${$("#notices").offsetHeight}px`);
+    sheet?.relayout();
     status.classList.add("warn");
     status.querySelector(".text").textContent = "서버 연결 안 됨";
   }
@@ -2111,6 +2367,7 @@ function setTextLarge(on) {
   else delete document.documentElement.dataset.text;
   try { localStorage.setItem(TEXT_KEY, on ? "large" : "normal"); } catch { /* 무시 */ }
   renderTextItem();
+  if (state.drawer) renderPeek();               // 엿보기 머리글의 높이가 바뀐다
 }
 function renderTextItem() {
   const b = $("#menu-text"), on = textLarge();
@@ -2178,7 +2435,7 @@ function bindChrome() {
   });
   for (const ev of ["pointermove", "pointerdown", "keydown", "wheel"]) window.addEventListener(ev, wake, { passive: true });
   window.addEventListener("resize", syncHush, { passive: true });
-  window.addEventListener("resize", fitMapView, { passive: true });
+  window.addEventListener("resize", () => { sheet?.relayout(); fitStageInset(); }, { passive: true });
   window.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     if (!$("#menu").hidden) setMenu(false);
@@ -2198,6 +2455,9 @@ async function leaveLoading() {
 }
 
 async function start() {
+  syncLayout();
+  for (const q of Object.values(layoutQueries)) q.addEventListener("change", syncLayout);
+  loadBlackHoles().then((d) => { blackHoles = d; });   // 미리 — 은하를 열 때 블랙홀 3D가 있는지 바로 알게
   sound.init();                                 // 설정 읽기 · 첫 제스처에서 오디오 열기 (그 전에는 소리를 내지 않는다)
   bindChrome();
   renderChrome();

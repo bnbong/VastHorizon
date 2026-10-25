@@ -910,3 +910,67 @@ html[data-text="large"] .drawer .lr-title { font-size: 19px; }
   html[data-text="large"] .drawer .name.card-name { font-size: 32px; }
   html[data-text="large"] .drawer .hero-fact { font-size: 25px; }
 }
+
+/* ── 휴대폰 아래 시트 — 걸림 높이(peek · half · full)에 멈춘다 (sheet.js · sheetui.js) ─────────────────────
+   시트 배치(.app[data-layout="sheet"], 폭 650px 이하)에서만. 데스크톱에는 아래 규칙이 하나도 걸리지 않는다.
+   시트 높이는 늘 full(--sheet-full), 보이는 높이는 transform(--sheet-y = full - V)으로만 바꾼다. 위 @media (max-width: 650px)의 70vh 시트는
+   JS가 돌기 전 · 오류가 났을 때의 모습으로 남겨 두고, 선택자 우선순위로 덮는다 */
+.app:not([data-layout="sheet"]) .sheet-grip, .app:not([data-layout="sheet"]) .sheet-peek { display: none; }
+.app[data-layout="sheet"] .drawer { top: auto; height: var(--sheet-full, 92vh); padding-bottom: env(safe-area-inset-bottom, 0px);
+  transform: translate3d(0, calc(100% + 24px), 0); transition: transform 320ms var(--ease-cinematic), opacity 200ms var(--ease-out); }
+.app[data-layout="sheet"].has-notice .drawer { top: auto; }
+.app[data-layout="sheet"].drawer-open .drawer { transform: translate3d(0, var(--sheet-y, 30vh), 0); }
+.app[data-layout="sheet"] .drawer.dragging, .app[data-layout="sheet"] .drawer.dragging .sheet-peek { transition: none; }
+.app[data-layout="sheet"] .drawer-body { flex: none; height: var(--sheet-body-h, auto); padding-top: 8px; overscroll-behavior: contain; touch-action: pan-y; }
+.app[data-layout="sheet"] .drawer-body > .head { touch-action: none; }
+.app[data-layout="sheet"] .drawer-close, .app[data-layout="sheet"] .drawer-back { z-index: 2; }
+/* 손잡이 — 시트 맨 위 한 줄 전체. 가운데 짧은 막대 */
+.app[data-layout="sheet"] .sheet-grip { position: relative; flex: none; display: block; width: 100%; height: 28px; padding: 0; border: 0; background: none;
+  cursor: grab; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.app[data-layout="sheet"] .sheet-grip::before { content: ""; position: absolute; left: 50%; top: 10px; width: 40px; height: 4px; margin-left: -20px;
+  border-radius: 2px; background: var(--border-strong); }
+.app[data-layout="sheet"] .sheet-grip:focus-visible { box-shadow: inset 0 0 0 2px #8d67a1; }
+/* 엿보기 머리글 — 손잡이 아래부터 시트 아래끝까지 본문 위에 겹친다(흐름에 넣지 않아 높이가 바뀌어도 본문이 튀지 않는다). peek → half로 올리면 옅어진다 */
+.app[data-layout="sheet"] .sheet-peek { position: absolute; z-index: 1; top: 28px; left: 0; right: 0; bottom: 0; padding: 4px 72px 16px 22px; background: var(--paper-card);
+  opacity: var(--peek-o, 1); transition: opacity 320ms var(--ease-cinematic); touch-action: none; }
+.app[data-layout="sheet"] .drawer.has-back .sheet-peek { padding-right: 140px; }
+.app[data-layout="sheet"] .sheet-peek.faded { pointer-events: none; }
+.app[data-layout="sheet"] .sheet-peek-title { display: block; margin: 0; font: 400 24px/1.3 var(--font-serif); letter-spacing: -0.04em; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app[data-layout="sheet"] .sheet-peek-title:focus { outline: none; }
+.app[data-layout="sheet"] .sheet-peek-title:focus-visible { box-shadow: var(--focus-ring); }
+/* 3D가 있는 천체의 엿보기 머리글 — 분류 · 이름 · 핵심 사실 한 줄(두 줄까지) · 주 행동 하나 */
+.app[data-layout="sheet"] .sheet-peek-kicker { margin: 4px 0 8px; }
+.app[data-layout="sheet"] .sheet-peek-line { margin: 6px 0 0; font: 400 16px/1.5 var(--font-serif); letter-spacing: -0.03em; color: var(--text-secondary); word-break: keep-all;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.app[data-layout="sheet"] .sheet-peek-actions { display: flex; margin-top: 14px; }
+.app[data-layout="sheet"] .sheet-peek-actions .btn { min-height: 44px; padding: 0 18px; }
+
+/* 천체 3D 오버레이 — 무대 위, 이름표 층(1)보다 위 · 크롬(3)보다 아래. 워드마크 · 메뉴는 위에 보이고 하늘 이름표는 가려진다 (main.js openBodyStage) */
+.app[data-layout="sheet"] .body-stage { position: absolute; inset: 0; z-index: 2; overflow: hidden; touch-action: none;
+  background: radial-gradient(ellipse at 50% 38%, #2c2e66 0%, #1c1d4a 58%, #141537 100%); animation: vhFade 350ms var(--ease-out) both; }
+.app[data-layout="sheet"] .body-stage.covered { pointer-events: none; }          /* 시트가 full — 3D는 거의 보이지 않고 회전도 받지 않는다 */
+.app[data-layout="sheet"] .body-stage-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.app[data-layout="sheet"] .body-stage-note { position: absolute; left: 20px; top: 74px; margin: 0; pointer-events: none;
+  font: 400 11px/1.4 var(--font-sans); letter-spacing: .06em; color: rgba(255,250,245,.62); }
+.app[data-layout="sheet"].has-notice .body-stage-note { top: calc(74px + var(--notice-h, 38px)); }
+/* 서랍이 열려도 보이게 짜인 머리글 · 발 — 3D 위에 글자가 겹치지 않게 */
+.app[data-layout="sheet"].body-stage-on .world-heading, .app[data-layout="sheet"].body-stage-on .world-foot,
+.app[data-layout="sheet"].body-stage-on .stage-hint, .app[data-layout="sheet"].body-stage-on .chrome-bottom { visibility: hidden; }
+/* 서랍 카드는 설명 · 출처만 — 근접 뷰는 오버레이 하나에만 (한 번에 하나) */
+.app[data-layout="sheet"] .body-card .body-canvas, .app[data-layout="sheet"] .bh-card .bh-canvas { display: none; }
+/* 내 세계 지도 — 시트가 열리면 시야가 시트 위 영역 가운데로 올라가 고른 천체가 머리글과 겹친다. 머리글 · 바닥 문구를 첫 하늘 문장(.away)처럼 숨긴다 */
+.app[data-layout="sheet"].drawer-open .world-heading, .app[data-layout="sheet"].drawer-open .world-foot {
+  opacity: 0; visibility: hidden; transition: opacity 350ms var(--ease-out), visibility 0s linear 350ms; }
+
+/* ── 눕힌 휴대폰(나란히 배치, 폭 651px 이상 · 높이 500px 이하 · 터치) — 서랍은 데스크톱처럼 오른쪽, 3D만 왼쪽 무대 자리에 ──────
+   오버레이는 화면 전체를 덮고(서랍 옆 틈에 멈춘 하늘이 비치지 않게) 캔버스만 서랍 왼쪽 영역 폭으로 둔다 */
+.app[data-layout="split"] { --drawer-w: min(420px, 52vw); }
+.app[data-layout="split"] .body-stage { position: absolute; inset: 0; z-index: 2; overflow: hidden; touch-action: none;
+  background: radial-gradient(ellipse at 30% 45%, #2c2e66 0%, #1c1d4a 58%, #141537 100%); animation: vhFade 350ms var(--ease-out) both; }
+.app[data-layout="split"] .body-stage-canvas { display: block; width: calc(100% - var(--drawer-w) - 32px); height: 100%; cursor: grab; }
+.app[data-layout="split"] .body-stage-note { position: absolute; left: 16px; bottom: 14px; margin: 0; pointer-events: none;
+  font: 400 11px/1.4 var(--font-sans); letter-spacing: .06em; color: rgba(255,250,245,.62); }
+.app[data-layout="split"].body-stage-on .world-heading, .app[data-layout="split"].body-stage-on .world-foot,
+.app[data-layout="split"].body-stage-on .stage-hint, .app[data-layout="split"].body-stage-on .chrome-bottom { visibility: hidden; }
+.app[data-layout="split"] .body-card .body-canvas, .app[data-layout="split"] .bh-card .bh-canvas { display: none; }
