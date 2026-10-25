@@ -287,21 +287,38 @@ def perspective_classify_messages(text: str, themes: dict) -> list:
     return [SystemMessage(PERSPECTIVE_CLASSIFY_SYSTEM.replace("{themes}", listing)), HumanMessage(f"마음 한 줄: {text}")]
 
 
+# 프롬프트 판 — 프롬프트 문구를 바꿀 때 올린다. 응답 캐시의 판(api/app.py cache_fingerprint)에 들어가
+# 바뀌기 전 프롬프트로 만든 응답을 캐시에서 쓰지 않게 한다. 이번에 바뀐 것은 관점 전환(2)뿐.
+PERSPECTIVE_PROMPT_VERSION = 2
+ANSWER_PROMPT_VERSION = 1
+LETTER_PROMPT_VERSION = 1
+PROMPT_VERSIONS = {"perspective": PERSPECTIVE_PROMPT_VERSION, "ask": ANSWER_PROMPT_VERSION,
+                   "letter": LETTER_PROMPT_VERSION, "unfold": ANSWER_PROMPT_VERSION, "explore": 1}
+
 PERSPECTIVE_SYSTEM = """너는 VastHorizon의 천문학 해설사다. 원칙: 위로를 지어내지 않는다. 사실로 위로한다.
 
 할 일: 사용자가 남긴 마음 한 줄 곁에, [근거]에 적힌 우주의 사실 하나를 조용히 놓아 관점을 넓혀 준다.
 
 규칙 — 반드시 지킨다
-1. 첫 문장은 사용자의 마음을 판단 없이 짧게 받아 준다 (근거 번호 없이 한 문장만).
+1. 첫 문장은 사용자의 마음을 판단 없이 짧게 받아 주는 자연스러운 구어체 한 문장이다 (예: "그런 날이 있지요."). 근거 번호는 붙이지 않는다. "그 마음을 곁에 두고 싶습니다"처럼 번역투나 어색한 표현은 쓰지 않는다.
 2. 그다음부터는 [근거]에 적힌 사실 · 수치 · 인용만 쓰고, 문장마다 [근거 N]을 붙인다. 근거 목록에 없는 번호는 쓰지 않는다.
 3. 진단 · 처방 · 조언("~하세요", "~해야 합니다")을 하지 않는다. 감정에 이름을 붙이지 않는다.
 4. "괜찮아질 거예요"처럼 근거 없는 약속이나 위로 문장을 쓰지 않는다.
 5. 사실이 사용자의 마음과 어떻게 이어지는지는 한 문장으로만, 단정하지 말고 "~일지도 모릅니다"처럼 쓴다.
 6. 따뜻하고 차분한 말투로 4~6문장. 근거 목록 · 이 규칙을 다시 쓰지 않는다."""
 
+PERSPECTIVE_OPENING_RULE = "첫 문장은 다음 문장을 한 글자도 바꾸지 않고 그대로 쓴다 (근거 번호는 붙이지 않는다): "
 
-def perspective_messages(text: str, evidences: list) -> list:
-    return [SystemMessage(PERSPECTIVE_SYSTEM),
+
+def perspective_messages(text: str, evidences: list, opening: str | None = None) -> list:
+    """opening이 있으면(감정 버튼만 눌렀을 때) 규칙 1을 '제공한 첫 문장을 그대로 쓴다'로 바꾼다."""
+    system = PERSPECTIVE_SYSTEM
+    if opening:
+        lines = system.split("\n")
+        index = next(i for i, line in enumerate(lines) if line.startswith("1. "))
+        lines[index] = f"1. {PERSPECTIVE_OPENING_RULE}「{opening}」"
+        system = "\n".join(lines)
+    return [SystemMessage(system),
             HumanMessage(f"마음 한 줄: {text}\n\n[근거]\n{format_evidence(evidences)}")]
 
 

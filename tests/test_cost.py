@@ -228,6 +228,16 @@ class ModelRoutingTest(unittest.TestCase):
         self.assertEqual((len(self.fast.received), len(self.answer.received)), (1, 0))
 
 
+class FingerprintTest(unittest.TestCase):
+    def test_prompt_version_changes_fingerprint(self):
+        from vasthorizon.api import app as app_module
+        before = app_module.cache_fingerprint([], 2026)
+        bumped = {**app_module.PROMPT_VERSIONS, "perspective": app_module.PROMPT_VERSIONS["perspective"] + 1}
+        with mock.patch.object(app_module, "PROMPT_VERSIONS", bumped):
+            self.assertNotEqual(app_module.cache_fingerprint([], 2026), before)
+        self.assertEqual(app_module.cache_fingerprint([], 2026), before)
+
+
 class ResponseCacheTest(unittest.TestCase):
     def test_ttl_disk_and_memory(self):
         now = [1000.0]

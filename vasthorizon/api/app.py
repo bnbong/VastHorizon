@@ -76,6 +76,7 @@ from vasthorizon.cache import normalize_text, text_hash
 from vasthorizon.features.star_items import StarLookupError
 from vasthorizon.api.sessions import ConversationBusyError, Ticket
 from vasthorizon.config import PROJECT_ROOT
+from vasthorizon.rag.prompts import PROMPT_VERSIONS
 from vasthorizon.data.constellation_figures import LICENSES, figure_stats
 from vasthorizon.data.items.common import GROUPS
 from vasthorizon.features.constellation import FigureUnavailableError, figure_for
@@ -206,15 +207,16 @@ def sky_object(obj) -> SkyObjectOut:
 
 # 응답 캐시의 판 — 아래 값이 바뀌면 캐시 키가 달라져 예전 응답을 쓰지 않는다
 CACHE_VERSION = 1
-PROMPT_FILES = ("vasthorizon/rag/prompts.py", "vasthorizon/data/domain.py")
+PROMPT_FILES = ("vasthorizon/rag/prompts.py", "vasthorizon/data/domain.py", "vasthorizon/data/perspective_library.py")
 
 
 def cache_fingerprint(items: list[dict], ref_year: int) -> str:
-    """모델 · effort · 프롬프트 파일 · 항목 카탈로그의 해시."""
+    """모델 · effort · 프롬프트 파일 · 프롬프트 판(PROMPT_VERSIONS) · 항목 카탈로그의 해시."""
     from vasthorizon.config import get_settings
     cfg = get_settings().llm
     h = hashlib.sha256(json.dumps([CACHE_VERSION, cfg.provider, cfg.chat_model, cfg.anthropic_model, cfg.anthropic_fast_model,
-                                   cfg.answer_effort, cfg.fast_effort, ref_year]).encode())
+                                   cfg.answer_effort, cfg.fast_effort, ref_year,
+                                   PROMPT_VERSIONS]).encode())
     for name in PROMPT_FILES:
         path = PROJECT_ROOT / name
         h.update(path.read_bytes() if path.exists() else b"")

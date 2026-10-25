@@ -193,6 +193,27 @@ class PerspectiveTest(LibraryTestBase):
         self.assertTrue({ev.title for ev in result.evidences} <= set(THEMES["meaning"].titles))
         self.assertEqual([it["name"] for it in result.items], ["베텔게우스"])     # 카탈로그에 있는 항목만
 
+    def test_theme_button_instructs_llm_to_use_opening(self):
+        _, llm, _ = self.run_perspective(theme="small")
+        system, human = llm.received[0][0].content, llm.received[0][-1].content
+        self.assertIn(THEMES["small"].opening, system)
+        self.assertIn("그대로 쓴다", system)
+        self.assertIn("마음 한 줄: (버튼) 내가 작게 느껴질 때", human)
+
+    def test_typed_text_has_no_opening_instruction(self):
+        _, llm, _ = self.run_perspective("내가 너무 작게 느껴져", classify=classify_reply())
+        system = llm.received[0][0].content
+        for theme in THEMES.values():
+            self.assertNotIn(theme.opening, system)
+        self.assertNotIn("그대로 쓴다", system)
+        self.assertIn("자연스러운 구어체", system)
+
+    def test_every_theme_has_one_sentence_opening(self):
+        for theme in THEMES.values():
+            self.assertTrue(theme.opening.strip(), theme.key)
+            self.assertEqual(theme.opening.count("."), 1, theme.key)
+            self.assertTrue(theme.opening.endswith("."), theme.key)
+
     def test_unknown_theme_keys_from_llm_are_dropped(self):
         result, _, _ = self.run_perspective("외로워", classify=classify_reply(themes=("nope", "lonely", "small", "hurry")))
         self.assertEqual(result.themes, ["lonely", "small"])

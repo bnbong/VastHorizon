@@ -238,7 +238,12 @@ def perspective(text: str | None = None, theme: str | None = None, items: list[d
                                  items=related, warnings=warnings)
 
     # ⑤ 근거 사실만으로 관점 넓히기 — 질의응답과 같은 인용 검증 · 재생성
-    result = generate_validated(default_chat_model(llm), perspective_messages(text or THEMES[theme].label, evidences),
+    # 버튼만 눌렀을 때는 사용자 글이 없다 — 라벨을 마음 한 줄처럼 넘기면 첫 문장이 어색해지므로 준비한 opening을 그대로 쓰게 한다
+    if text:
+        messages = perspective_messages(text, evidences)
+    else:
+        messages = perspective_messages(f"(버튼) {THEMES[theme].label}", evidences, opening=THEMES[theme].opening)
+    result = generate_validated(default_chat_model(llm), messages,
                                 evidences, purpose="perspective.answer")
     warnings += result["notes"]                  # 언어 혼입 등 — 답은 내보내되 알린다
     if result["status"] == "rejected":
