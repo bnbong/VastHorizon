@@ -1856,29 +1856,44 @@ function showExplore({ query = "" } = {}) {
   if (query) { composer.input.value = query; composer.input.dispatchEvent(new Event("input")); run(query); }   // 뒤로 돌아온 결과
 }
 
+// 두 흐름 — 천체 편지(item_id: 그 천체의 빛)와 나이 편지(age: 나이만큼 먼 별). 나이 입력은 나이 편지에만 두고,
+// 천체 편지에서는 아래의 단추로 나이 편지를 서랍의 다음 화면으로 연다(뒤로 가기로 천체 편지에 돌아온다).
+// from: 천체 편지에서 넘어왔을 때 그 빛의 출발 맥락 { name, light_time } — 나이 편지 머리글 아래 한 줄로만 쓴다
 async function showLetter(body) {
   enterView({ kind: "letter", body: body ?? null });
   const alive = claimPanel();
+  const byItem = !!body?.item_id;
+  const from = byItem ? null : body?.from ?? null;
   // 천체를 정해 왔으면(천체 서랍 · 발견 알림) 그 이름으로 — 지금 서랍의 천체가 아니면 알아간 빛 기록에서 찾는다
-  const target = !body?.item_id ? null
+  const target = !byItem ? null
     : state.item?.id === body.item_id ? state.item.name : world.visited.find((v) => v.id === body.item_id)?.name ?? null;
-  openDrawer("letter", `
-    ${toolHead("빛의 편지", target ? `${esc(target)}의 빛이<br>출발했을 때` : body?.item_id ? "이 빛이<br>출발했을 때" : "당신이 태어난 해에<br>출발한 빛",
-      "지금 당신에게 닿은 이 빛이 출발했을 때, 지구에서는 무슨 일이 있었을까요? 나이를 넣으면 나이만큼 먼 별을 찾습니다.")}
+  openDrawer("letter", byItem ? `
+    ${toolHead("빛의 편지", target ? `${esc(target)}의 빛이<br>출발했을 때` : "이 빛이<br>출발했을 때",
+      "지금 당신에게 닿은 이 빛이 출발했을 때, 지구에서는 무슨 일이 있었을까요?")}
+    <div class="stack lg" id="letter-out"></div>
+    <div class="stack" id="letter-next" hidden>
+      <p class="sub">내가 태어날 무렵 출발한 빛은 어디서 왔을까요?</p>
+      <div class="row">${btn("내 나이로 찾아보기", { ic: "mail", id: "letter-by-age" })}</div></div>` : `
+    ${toolHead("빛의 편지", "당신이 태어난 해에<br>출발한 빛",
+      "나이를 넣으면 그 나이만큼 먼 별을 찾아, 그 빛이 출발했을 때 지구의 기록을 함께 보냅니다.")}
+    ${from?.name && from?.light_time ? `<p class="status">${icon("mail", 14)}${esc(`${from.name}의 빛은 ${from.light_time} 전에 떠났습니다`)}</p>` : ""}
     ${composerHtml("letter-form", { ic: "mail", type: "number", min: 1, max: 120, placeholder: "나이 (예: 25)" })}
     <div class="stack lg" id="letter-out"></div>`);
-  let composer;
+  let composer = null;
+  let fromHere = null;                           // 천체 편지 결과의 출발 맥락 — 나이 편지로 넘길 때
   const gate = requestGate();
   const out = $("#letter-out");
+  const next = $("#letter-next");
   const run = (req) => runLatest(gate, alive, {
     work: () => remembered(`letter:${JSON.stringify(req)}`, () => api.letter(req)),
-    onStart: () => { out.innerHTML = statusHtml("빛의 여정을 계산하고 그 해의 기록을 찾는 중…"); composer.setBusy(true); },
+    onStart: () => { out.innerHTML = statusHtml("빛의 여정을 계산하고 그 해의 기록을 찾는 중…"); composer?.setBusy(true); },
     onError: (e) => { out.innerHTML = statusHtml(errorText(e), "err"); },
-    onSettled: () => composer.setBusy(false),
+    onSettled: () => { composer?.setBusy(false); if (next) next.hidden = false; },
     onSuccess: (res) => {
       const d = res.departure;
       const km = d.light_years * LY_KM;
-      const label = res.matched_age ? `${res.matched_age}세 — ${res.item_name}의 빛` : `${res.item_name}의 빛`;
+      const label = res.matched_age ? `내가 태어날 무렵 출발한 빛 · ${res.item_name}` : `${res.item_name}의 빛`;
+      if (byItem) fromHere = { name: res.item_name, light_time: d.light_time ?? null };
       out.innerHTML = `<div class="card emphasis pad-l">
           ${measureHtml(km, { label, size: "s" })}
           <p class="sub" style="margin-top:10px">${esc(d.summary)}</p>
@@ -1897,12 +1912,17 @@ async function showLetter(body) {
       });
     },
   });
+  if (byItem) {
+    // 서랍의 다음 화면으로 — 뒤로 가기는 이 천체 편지(같은 결과는 다시 묻지 않는다)
+    $("#letter-by-age").addEventListener("click", () => showLetter(fromHere?.light_time ? { from: fromHere } : {}));
+    run({ item_id: body.item_id });
+    return;
+  }
   composer = bindComposer($("#letter-form"), (age) => {
-    updateView({ kind: "letter", body: { age: Number(age) } });
+    updateView({ kind: "letter", body: { age: Number(age), ...(from ? { from } : {}) } });
     run({ age: Number(age) });
   });
-  if (body?.item_id) run(body);
-  else if (body?.age) { composer.input.value = String(body.age); composer.input.dispatchEvent(new Event("input")); run(body); }   // 뒤로 돌아온 나이
+  if (body?.age) { composer.input.value = String(body.age); composer.input.dispatchEvent(new Event("input")); run({ age: body.age }); }   // 뒤로 돌아온 나이
 }
 
 function supportHtml(res, strong) {
