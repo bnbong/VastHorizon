@@ -24,6 +24,7 @@ import { analogies, growthText, knownAndUnknown, newlyInside } from "./worldscal
 import { entryOf, localDate, reachOf, recent, restoreVisited, serialize, todays, WORLD_KEY } from "./journal.js";
 import { UnfoldMode } from "./unfold.js";
 import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
+import { FOLD_KEY, restoreFold, serializeFold, withFold } from "./fold.js";
 import { advance, popView } from "./drawerstack.js";
 import { sound } from "./sound.js";
 import { available as kakaoAvailable, feedMessage, loadKakao, sendFeed, TALL_MIN_HEIGHT } from "./kakao.js";
@@ -914,6 +915,36 @@ function checkHeadingDay() {
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkHeadingDay(); });
 
+// 접기 — 첫 하늘 문장(first) · 내 세계 요약 카드(world)를 접어 둔다 (fold.js, localStorage "vh-fold"). 기본은 펼침
+function loadFold() {
+  try { return restoreFold(localStorage.getItem(FOLD_KEY)); } catch { return {}; }
+}
+function saveFold(key, on) {
+  try { localStorage.setItem(FOLD_KEY, serializeFold(withFold(loadFold(), key, on))); } catch { /* 저장소를 못 쓰면 이번 화면에서만 */ }
+}
+
+const foldRoots = new WeakSet();
+// 접기 단추 — root에 .folded를 붙였다 뗀다. 펼칠 때만 .unfolding으로 짧게 떠오르고, 접고 편 뒤 크기가 바뀐 자리를 다시 잰다
+function bindFold(toggle, root, key, after) {
+  const show = (folded) => {
+    root.classList.toggle("folded", folded);
+    toggle.setAttribute("aria-expanded", String(!folded));
+    toggle.innerHTML = `<span>${folded ? "펼치기" : "접기"}</span>${icon("chevron-down", 14)}`;
+  };
+  show(!!loadFold()[key]);
+  toggle.addEventListener("click", () => {
+    const folded = !root.classList.contains("folded");
+    show(folded);
+    saveFold(key, folded);
+    root.classList.remove("unfolding");
+    if (!folded) { void root.offsetWidth; root.classList.add("unfolding"); }
+    after?.();
+  });
+  if (foldRoots.has(root)) return;               // 요약 카드는 다시 그릴 때마다 단추만 새로 묶는다
+  foldRoots.add(root);
+  root.addEventListener("animationend", (e) => { if (e.target !== root) root.classList.remove("unfolding"); });
+}
+
 // 첫 하늘 — 하늘 보기에서 서랍 · 장면이 닫혀 있을 때만. 이미 알아간 빛이 있으면 다음 빛을 권한다
 function renderFirstSky() {
   const el = $("#first-sky");
@@ -988,7 +1019,9 @@ function renderWorldCard() {
   const copy = visited.length
     ? `알아간 빛 ${n(visited.length)}개가 내 세계에 남아 있어요. 아직 닿지 않은 점들도 언제든 만나볼 수 있습니다.`
     : "아직 알아간 빛이 없어요. 하늘에서 빛 하나를 만나 담으면 이 지도에 살구색 표식이 켜집니다.";
-  el.innerHTML = `<p class="wc-kicker">나의 가장 먼 빛</p>
+  el.innerHTML = `<div class="wc-head"><p class="wc-kicker">나의 가장 먼 빛</p>
+    <button type="button" class="fold-toggle" id="wc-fold" aria-expanded="true" aria-controls="wc-body"></button></div>
+    <div class="wc-body" id="wc-body">
     <p class="wc-far"><span class="wc-far-value">${esc(far.value)}</span><span class="wc-far-unit">${esc(far.unit)}</span></p>
     <hr class="wc-rule">
     <p class="wc-name">${esc(world.name)}</p>
@@ -1004,7 +1037,8 @@ function renderWorldCard() {
       ${visited.length ? `<ol class="wc-log">${recent(visited).map((v) => `<li><button type="button" data-open="${esc(v.id)}">${markHtml(true)}${esc(v.name)}</button>
         <span>${v.id === EARTH_ID ? "내가 있는 곳" : v.km ? esc(distanceText(v.km)) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}</span></li>`).join("")}</ol>
         <button type="button" class="wc-reset" id="wc-reset">기록 처음부터 다시 시작</button>` : `<div class="wc-note">아직 기록이 없습니다</div>`}</details>
-    <button type="button" class="wc-journey" id="wc-journey">${icon("sparkles", 14)}<span>우주 끝까지 떠나 보기</span></button></div>`;
+    <button type="button" class="wc-journey" id="wc-journey">${icon("sparkles", 14)}<span>우주 끝까지 떠나 보기</span></button></div></div>`;
+  bindFold($("#wc-fold"), el, "world", () => { fitMapView(); syncHush(); });   // 접으면 카드가 한 줄 바가 되어 '나' 들어올림 · 이름표 숨김 구역도 줄어든다
   el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
     const v = world.visited.find((x) => x.id === b.dataset.open);
     if (v?.km) state.map?.select(v.id);
@@ -2115,6 +2149,7 @@ function bindChrome() {
   $("#menu-letters").innerHTML = `${icon("mail", 16)}<span>받은 편지</span>`;
   $("#menu-letters").addEventListener("click", () => (state.drawer === "letters" ? closeDrawer() : showLetters()));
   $("#first-light").addEventListener("click", () => { sound.tick(); meetFirstLight(); });
+  bindFold($("#first-fold"), $("#first-sky"), "first", syncHush);   // 접으면 킥커 한 줄만 남고, 별자리 이름 숨김 구역도 그만큼
   $("#first-prologue").innerHTML = `${icon("play", 14)}<span>프롤로그 다시 보기</span>`;
   $("#first-prologue").addEventListener("click", () => { closeScene(); closeDrawer(); startPrologue(); });
   $("#first-mind").innerHTML = `${icon("moon-star", 14)}<span>오늘 마음 한 줄 남기기</span>`;

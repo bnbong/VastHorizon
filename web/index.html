@@ -105,13 +105,15 @@
 
       <!-- 첫 하늘 — 문장 하나와 주 행동 하나 (하늘 보기 · 서랍이 닫혀 있을 때만) -->
       <section class="first-sky" id="first-sky" aria-labelledby="first-sky-title">
-        <p class="first-kicker"><span class="kicker-line" aria-hidden="true"></span>오늘 밤, 여기서 보이는 빛</p>
+        <p class="first-kicker"><span class="kicker-line" aria-hidden="true"></span>오늘 밤, 여기서 보이는 빛<button class="fold-toggle" id="first-fold" type="button" aria-expanded="true" aria-controls="first-body"></button></p>
+        <div class="first-body" id="first-body">
         <h1 class="first-title" id="first-sky-title"></h1>
         <p class="first-copy">마음이 머무는 곳에서 시작하세요.<br>별 하나를 알아갈 때, 내 세계도 조금 넓어집니다.</p>
         <div class="first-actions">
           <button class="primary-button" id="first-light" type="button"></button>
           <button class="quiet-link" id="first-prologue" type="button"></button>
           <button class="quiet-link" id="first-mind" type="button"></button>
+        </div>
         </div>
       </section>
       <!-- 내 세계 — 지도 위의 머리글 · 범례 · 바닥 문구 (지도 보기에서만) -->

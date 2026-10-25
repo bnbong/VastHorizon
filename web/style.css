@@ -117,6 +117,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .quiet-link:hover, .quiet-link:focus-visible { color: rgba(255,250,245,1); text-decoration: underline; }
 .quiet-link .icon { stroke-width: 1.6; }
 
+/* 접기 단추 — 첫 하늘 킥커 줄 · 요약 카드 머리 줄 끝 (main.js bindFold). 펼쳐져 있으면 셰브론이 위(접기)를, 접혀 있으면 아래(펼치기)를 본다 */
+.fold-toggle { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; margin-left: 14px; padding: 4px 6px; border: 0; border-radius: var(--radius-sm);
+  background: none; cursor: pointer; vertical-align: middle; font: 400 12px/1 var(--font-sans); letter-spacing: .04em; color: rgba(255,250,245,.7);
+  transition: color var(--dur-fast); }
+.fold-toggle:hover, .fold-toggle:focus-visible { color: rgba(255,250,245,1); }
+.fold-toggle .icon { stroke-width: 1.6; transition: transform var(--dur-fast) var(--ease-out); }
+.fold-toggle[aria-expanded="true"] .icon { transform: rotate(180deg); }
+/* 접힌 첫 하늘 — 킥커 한 줄만 남는다. 펼칠 때만 본문이 짧게 떠오른다(.unfolding) */
+.first-sky.folded .first-body { display: none; }
+.first-sky.folded .first-kicker { margin-bottom: 0; }
+.first-sky.unfolding .first-body { animation: vhFade 250ms var(--ease-out) both; }
+
 /* 하늘 안내 — 오른쪽 아래, 리본 위 */
 .stage-hint { position: absolute; right: 7%; bottom: calc(var(--ribbon-h) + 26px); margin: 0; max-width: 360px; text-align: right;
   font: 400 12px/1.6 var(--font-sans); letter-spacing: .03em; color: rgba(255,250,245,.85); text-shadow: 0 1px 8px rgba(28,29,74,.6);
@@ -483,6 +495,7 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
   /* 로고 — 그리기 없이 완성된 모습 그대로, 반짝임도 없이 (기본 상태가 완성된 로고다) */
   .loading .logo *, .mini-logo * { animation: none !important; }
   .intro-clip.clipped, .intro-clip.clipped::after { transition: none; }
+  .fold-toggle .icon, .first-sky.unfolding .first-body, .world-card.unfolding .wc-body { transition: none; animation: none; }
 }
 
 /* ── 좁은 화면 — 서랍은 아래 시트 ─────────────────── */
@@ -543,6 +556,7 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
   .primary-button { min-width: 210px; padding: 15px; }
   .first-actions { flex-direction: column; align-items: flex-start; gap: 6px; }
   .quiet-link { min-height: 44px; padding: 0 2px; }
+  .fold-toggle { min-height: 36px; padding: 6px 8px; }
   .ribbon { display: block; position: relative; padding: 18px 7%; }
   .world-meter { display: block; }
   .meter-label { display: block; }
@@ -764,6 +778,15 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
 .wc-journey .icon { color: #8d67a1; }
 .wc-journey:hover { color: var(--paper-ink); }
 .world-card :focus-visible { box-shadow: 0 0 0 2px #fff9f2, 0 0 0 4px #8d67a1; outline: none; }
+/* 요약 카드 접기 — 접으면 "나의 가장 먼 빛"과 단추만 남은 한 줄 바 */
+.wc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+.wc-head .wc-kicker { margin: 0; }
+.world-card .fold-toggle { margin: -4px -6px -4px 0; color: #6b4c80; }
+.world-card .fold-toggle:hover { color: #4f3766; }
+.world-card.folded { padding: 10px 18px 10px 26px; overflow: visible; }
+.world-card.folded .wc-head { margin: 0; }
+.world-card.folded .wc-body { display: none; }
+.world-card.unfolding .wc-body { animation: vhFade 250ms var(--ease-out) both; }
 
 @media (max-width: 1000px) {
   .world-heading { left: 6%; max-width: 52%; }
@@ -784,6 +807,7 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
   .wc-rule { margin: 13px 0; }
   .wc-name { font-size: 17px; margin-bottom: 8px; }
   .wc-copy { margin-bottom: 12px; }
+  .world-card.folded { padding: 6px 14px 6px 22px; }
   .unknown-mark { width: 13px; height: 13px; }
   .world-star .known-mark { width: 20px; height: 20px; left: -10px; top: -10px; font-size: 12px; }
   .world-star .star-name { left: 18px; padding: 4px 6px; }
