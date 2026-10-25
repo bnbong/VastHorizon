@@ -100,3 +100,16 @@ days = 180                # 공유 링크 보관 기간 — 지나면 시작할 
 public_base = "https://vasthorizon.bnbong.com"
 per_ip_per_minute = 20    # 공유 링크 만들기 한도 (AI 호출 한도 · 하루 예산과 별도)
 max_records = 20000       # 보관하는 공유 기록 상한 — 넘치면 새 공유는 503 share_unavailable
+
+# 편지 읽어 주기 (vasthorizon/tts.py) — 공유한 편지를 Google Cloud Text-to-Speech로 읽은 MP3 (/api/l/<id>/audio.mp3)
+# 키는 환경변수 GOOGLE_TTS_API_KEY에만 둔다. 키가 없거나 한도를 다 쓰면 화면은 기기 음성(speechSynthesis)으로 읽는다
+[tts]
+enabled = false
+voice = "ko-KR-Chirp3-HD-Aoede"
+speaking_rate = 0.95
+dir = "data/cache/tts"
+days = 30                 # 만든 오디오 보관 기간 — 지나면 시작할 때와 하루 한 번 지운다
+monthly_chars = 900000    # 이달(한국 시각) 합성 글자 수 상한 — Google 무료 100만 자 아래로 여유를 둔다
+daily_chars = 60000       # 오늘(한국 시각) 합성 글자 수 상한
+per_ip_per_minute = 10    # 합성 요청 한도 (캐시 적중은 세지 않는다)
+timeout = 20              # Google 호출 하나의 제한 시간(초)

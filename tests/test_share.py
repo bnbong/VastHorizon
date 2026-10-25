@@ -28,6 +28,7 @@ from vasthorizon.api.services import Services
 from vasthorizon.cache import ResponseCache, text_hash
 from vasthorizon.config import CacheConfig, ShareConfig, get_settings
 from vasthorizon.share import DAY, ShareStore, ShareUnavailableError, content_hash, echoes, share_id
+from vasthorizon.tts import TtsError, TtsQuotaError, TtsService
 
 BASE = "https://vh.example.com"
 HEIGHT_PX = sharecard.HEIGHT
@@ -360,6 +361,194 @@ class ShareApiTest(unittest.TestCase):
         self.now[0] += 200 * DAY
         ShareStore(Path(self.tmp.name) / "share", days=180, clock=lambda: self.now[0])
         self.assertFalse((Path(self.tmp.name) / "share" / f"{sid}.json").exists())
+
+
+class ShareAudioTest(unittest.TestCase):
+    """GET /api/l/<id>/audio.mp3 — 가짜 합성기를 넣은 TtsService (Google을 부르지 않는다)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.store = ShareStore(Path(self.tmp.name) / "share", days=180)
+        self.cache = ResponseCache(None)
+        self.items = [*ITEMS, STAR]
+        self.calls: list[str] = []
+        self.error: Exception | None = None
+
+        def synth(text: str) -> bytes:
+            self.calls.append(text)
+            if self.error is not None:
+                raise self.error
+            return b"ID3" + text.encode("utf-8")
+        self.synth = synth
+
+    def client(self, tts: TtsService | None, per_minute: int = 10) -> TestClient:
+        s = dataclasses.replace(get_settings(), cache=CacheConfig(enabled=True),
+                                share=ShareConfig(public_base=BASE, per_ip_per_minute=20),
+                                tts=dataclasses.replace(get_settings().tts, per_ip_per_minute=per_minute))
+        with mock.patch.object(config_module, "get_settings", return_value=s):
+            app = app_module.create_app(Services(items=self.items, ask=FakeAsk(), health=healthy, cache=self.cache,
+                                                 share=self.store, tts=tts), web_dir=None)
+        c = TestClient(app, raise_server_exceptions=False)
+        fingerprint = app_module.cache_fingerprint(self.items, 2026)
+        self.cache.put("letter", [fingerprint, ["Q3415"]], LETTER, 7)
+        return c
+
+    def tts(self, **kw) -> TtsService:
+        kw.setdefault("api_key", "k")
+        return TtsService(Path(self.tmp.name) / "tts", synth=self.synth, **kw)
+
+    def share(self, c: TestClient) -> dict:
+        r = c.post("/api/share", json={"kind": "letter", "item_id": "Q3415"})
+        self.assertIn(r.status_code, (200, 201))
+        return r.json()
+
+    def test_audio_200_and_cached(self):
+        c = self.client(self.tts())
+        body = self.share(c)
+        self.assertEqual(body["audio_url"], f"{BASE}/api/l/{body['id']}/audio.mp3")
+        r = c.get(f"/api/l/{body['id']}/audio.mp3")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers["content-type"], "audio/mpeg")
+        self.assertTrue(r.content.startswith(b"ID3"))
+        self.assertIn("public, max-age=", r.headers["cache-control"])
+        self.assertLessEqual(int(r.headers["cache-control"].rsplit("=", 1)[1]), 86400)
+        self.assertEqual(r.headers["x-robots-tag"], "noindex, nofollow")
+        # 카드처럼 제목 다음 본문 — [근거 N]은 읽지 않는다
+        self.assertEqual(len(self.calls), 1)
+        self.assertTrue(self.calls[0].startswith("베가에서 온 빛의 편지. 안녕, 지구의 친구야."), self.calls[0])
+        self.assertNotIn("근거", self.calls[0])
+        again = c.get(f"/api/l/{body['id']}/audio.mp3")
+        head = c.head(f"/api/l/{body['id']}/audio.mp3")
+        self.assertEqual((again.status_code, head.status_code), (200, 200))
+        self.assertEqual(again.content, r.content)
+        self.assertEqual(head.headers["content-type"], "audio/mpeg")
+        self.assertEqual(head.headers["content-length"], str(len(r.content)))      # GET과 같은 헤더
+        self.assertEqual(head.headers["cache-control"], r.headers["cache-control"])
+        self.assertEqual(head.content, b"")
+        self.assertEqual(len(self.calls), 1)                                  # 두 번째부터는 캐시
+
+    def test_head_miss_is_202_without_synthesis(self):
+        c = self.client(self.tts(), per_minute=1)
+        sid = self.share(c)["id"]
+        for _ in range(3):                                                    # IP 한도도 세지 않는다
+            r = c.head(f"/api/l/{sid}/audio.mp3")
+            self.assertEqual(r.status_code, 202)
+            self.assertEqual(r.headers["cache-control"], "no-store")
+            self.assertEqual(r.content, b"")
+        self.assertEqual(self.calls, [])
+        self.assertFalse((Path(self.tmp.name) / "tts" / "ledger.json").exists())     # 원장도 그대로
+        self.assertEqual(c.get(f"/api/l/{sid}/audio.mp3").status_code, 200)
+        self.assertEqual(c.head(f"/api/l/{sid}/audio.mp3").status_code, 200)
+
+    def test_broken_ledger_is_unavailable(self):
+        c = self.client(self.tts())
+        sid = self.share(c)["id"]
+        ledger = Path(self.tmp.name) / "tts" / "ledger.json"
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        ledger.write_text("{not json", encoding="utf-8")
+        with self.assertLogs("vasthorizon.tts", "WARNING"):
+            r = c.get(f"/api/l/{sid}/audio.mp3")
+        self.assertEqual((r.status_code, r.json()["code"]), (503, "tts_unavailable"))
+        self.assertEqual(r.headers["cache-control"], "no-store")
+        self.assertEqual(self.calls, [])
+        self.assertEqual(ledger.read_text(encoding="utf-8"), "{not json")             # 지우거나 덮어쓰지 않는다
+        with self.assertLogs("vasthorizon.tts", "WARNING"):
+            self.assertFalse(c.get("/api/health").json()["tts"]["ledger_ok"])
+
+    def test_unwritable_ledger_is_unavailable(self):
+        c = self.client(self.tts())
+        sid = self.share(c)["id"]
+        with mock.patch("vasthorizon.tts.atomic_write_text", side_effect=PermissionError("read-only")), \
+                self.assertLogs("vasthorizon.tts", "WARNING"):
+            r = c.get(f"/api/l/{sid}/audio.mp3")
+        self.assertEqual((r.status_code, r.json()["code"]), (503, "tts_unavailable"))
+        self.assertEqual(self.calls, [])
+
+    def test_missing_share_is_404(self):
+        c = self.client(self.tts())
+        r = c.get("/api/l/0123456789abcdef/audio.mp3")
+        self.assertEqual(r.status_code, 404)
+        self.assertEqual(r.json()["code"], "share_not_found")
+        self.assertEqual(self.calls, [])
+
+    def test_unavailable_without_service_or_key(self):
+        for tts in (None, self.tts(api_key="")):
+            c = self.client(tts)
+            body = self.share(c)
+            self.assertIsNone(body["audio_url"])
+            r = c.get(f"/api/l/{body['id']}/audio.mp3")
+            self.assertEqual(r.status_code, 503)
+            self.assertEqual(r.json()["code"], "tts_unavailable")
+            self.assertEqual(r.headers["cache-control"], "no-store")
+        self.assertEqual(self.calls, [])
+
+    def test_quota_is_503_with_retry_after(self):
+        c = self.client(self.tts(daily_chars=10))                             # 편지 한 통은 10자를 넘는다
+        sid = self.share(c)["id"]
+        r = c.get(f"/api/l/{sid}/audio.mp3")
+        self.assertEqual(r.status_code, 503)
+        self.assertEqual(r.json(), {"code": "tts_quota", "reason": "day", "message": app_module.TTS_QUOTA_MESSAGES["day"]})
+        self.assertIn("오늘", r.json()["message"])
+        self.assertEqual(r.headers["cache-control"], "no-store")
+        self.assertGreater(int(r.headers["retry-after"]), 0)
+        self.assertEqual(self.calls, [])
+
+    def test_google_quota_then_cooldown(self):
+        tts = self.tts()
+        c = self.client(tts)
+        sid = self.share(c)["id"]
+        self.error = TtsQuotaError("google 429", 600)
+        with self.assertLogs("vasthorizon.tts", "WARNING"):
+            r = c.get(f"/api/l/{sid}/audio.mp3")
+        self.assertEqual((r.status_code, r.json()["code"], r.json()["reason"]), (503, "tts_quota", "cooldown"))
+        self.assertEqual(r.json()["message"], app_module.TTS_QUOTA_MESSAGES["cooldown"])
+        self.assertEqual(int(r.headers["retry-after"]), 600)
+        self.assertTrue(c.get("/api/health").json()["tts"]["cooldown"])
+        self.error = None
+        r = c.get(f"/api/l/{sid}/audio.mp3")                                   # 쉬는 동안은 부르지 않는다
+        self.assertEqual(r.json()["code"], "tts_quota")
+        self.assertEqual(len(self.calls), 1)
+
+    def test_google_failure_is_502(self):
+        c = self.client(self.tts())
+        sid = self.share(c)["id"]
+        self.error = TtsError("google 500")
+        with self.assertLogs("vasthorizon.tts", "WARNING"):
+            r = c.get(f"/api/l/{sid}/audio.mp3")
+        self.assertEqual((r.status_code, r.json()["code"]), (502, "tts_failed"))
+        self.assertEqual(r.headers["cache-control"], "no-store")
+
+    def test_rate_limit_counts_only_synthesis(self):
+        c = self.client(self.tts(), per_minute=1)
+        sid = self.share(c)["id"]
+        self.assertEqual(c.get(f"/api/l/{sid}/audio.mp3").status_code, 200)
+        for _ in range(3):                                                    # 캐시 적중은 세지 않는다
+            self.assertEqual(c.get(f"/api/l/{sid}/audio.mp3").status_code, 200)
+        self.put_perspective()
+        other = c.post("/api/share", json={"kind": "perspective", "theme": "persistence"}).json()["id"]
+        r = c.get(f"/api/l/{other}/audio.mp3")
+        self.assertEqual(r.status_code, 429)
+        self.assertEqual(r.json()["code"], "rate_limited")
+        self.assertEqual(r.json()["message"], "잠시 뒤 다시 시도해 주세요.")
+        self.assertIn("Retry-After", r.headers)
+        self.assertEqual(r.headers["cache-control"], "no-store")
+
+    def put_perspective(self):
+        fingerprint = app_module.cache_fingerprint(self.items, 2026)
+        self.cache.put("perspective", [fingerprint, [None, "persistence"]], PERSPECTIVE, 7)
+
+    def test_health_reports_tts_without_key(self):
+        c = self.client(self.tts(api_key="secret-tts-key"))
+        sid = self.share(c)["id"]
+        c.get(f"/api/l/{sid}/audio.mp3")
+        r = c.get("/api/health")
+        tts = r.json()["tts"]
+        self.assertEqual(set(tts), {"available", "month_chars", "monthly_chars", "day_chars", "cooldown", "ledger_ok"})
+        self.assertTrue(tts["available"] and tts["ledger_ok"])
+        self.assertEqual(tts["month_chars"], len(self.calls[0]))
+        self.assertNotIn("secret-tts-key", r.text)
+        self.assertIsNone(self.client(None).get("/api/health").json()["tts"])
 
 
 class ShareUnitTest(unittest.TestCase):

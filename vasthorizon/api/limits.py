@@ -26,7 +26,7 @@ DAY = 86400.0
 class Verdict:
     allowed: bool
     retry_after: int = 0       # 초
-    reason: str = ""           # "minute" | "day" | "global" | "budget" (하루 예산 — app.py의 spend_ai) | "share" (공유 링크 만들기)
+    reason: str = ""           # "minute" | "day" | "global" | "budget" (하루 예산 — app.py의 spend_ai) | "share" (공유 링크 만들기) · "tts" (읽어 주기 합성)
 
 
 class RateLimitedError(RuntimeError):
@@ -75,7 +75,7 @@ def client_key(request) -> str:
 
 def message(v: Verdict) -> str:
     minutes = max(1, round(v.retry_after / 60))
-    if v.reason == "share":
+    if v.reason in ("share", "tts"):
         return "잠시 뒤 다시 시도해 주세요."
     if v.reason == "minute":
         return "질문이 너무 빠르게 이어지고 있습니다. 1분쯤 뒤에 다시 물어봐 주세요."

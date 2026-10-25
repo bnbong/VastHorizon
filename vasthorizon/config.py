@@ -106,6 +106,20 @@ class ShareConfig:
 
 
 @dataclass(frozen=True)
+class TtsConfig:
+    """편지 읽어 주기 (tts.py) — Google Cloud Text-to-Speech. 키는 환경변수 GOOGLE_TTS_API_KEY에만 둔다 (설정 파일에 두지 않는다)."""
+    enabled: bool = False                            # 켜도 키가 없으면 쓰지 않는다 — 화면은 기기 음성(speechSynthesis)으로 읽는다
+    voice: str = "ko-KR-Chirp3-HD-Aoede"
+    speaking_rate: float = 0.95
+    dir: Path | None = None                          # 없으면 cache_dir/tts — 오디오 캐시(<키>.mp3)와 글자 수 원장(ledger.json)
+    days: float = 30                                 # 만든 오디오 보관 기간 — 지나면 정리(sweep)한다
+    monthly_chars: int = 900000                      # 이달(한국 시각) 합성 글자 수 상한 — Google 무료 100만 자 아래로 여유를 둔다
+    daily_chars: int = 60000                         # 오늘(한국 시각) 합성 글자 수 상한
+    per_ip_per_minute: int = 10                      # 합성 요청 한도 (캐시 적중은 세지 않는다)
+    timeout: float = 20                              # Google 호출 하나의 제한 시간(초)
+
+
+@dataclass(frozen=True)
 class ServerConfig:
     cors_origins: tuple[str, ...] = ()   # 프런트엔드를 다른 주소(Cloudflare Pages 등)에 둘 때 허용할 출처
 
@@ -172,6 +186,7 @@ class Settings:
     usage: UsageConfig = UsageConfig()
     cache: CacheConfig = CacheConfig()
     share: ShareConfig = ShareConfig()
+    tts: TtsConfig = TtsConfig()
 
 
 def _resolve(path: str) -> Path:
@@ -215,6 +230,9 @@ def get_settings() -> Settings:
     base = os.environ.get("VH_PUBLIC_BASE", "").strip() or share_raw.get("public_base") or DEFAULT_PUBLIC_BASE
     share_raw["public_base"] = base.rstrip("/")
     share_raw["kakao_js_key"] = os.environ.get("KAKAO_JS_KEY", "").strip() or str(share_raw.get("kakao_js_key") or "").strip()
+    tts_raw = dict(raw.get("tts", {}))
+    if tts_raw.get("dir"):
+        tts_raw["dir"] = _resolve(tts_raw["dir"])
     server = raw.get("server", {})
     cors = os.environ.get("VH_CORS_ORIGINS")          # 배포 환경에서 파일을 고치지 않고 바꿀 수 있게
     origins = tuple(o.strip() for o in (cors.split(",") if cors is not None else server.get("cors_origins", [])) if o.strip())
@@ -233,6 +251,7 @@ def get_settings() -> Settings:
         usage=UsageConfig(**usage_raw, prices=prices),
         cache=CacheConfig(**cache_raw),
         share=ShareConfig(**share_raw),
+        tts=TtsConfig(**tts_raw),
     )
 
 
@@ -247,6 +266,13 @@ def get_claude_key() -> str | None:
     """Claude API 키 (배포용). CLAUDE_API_KEY, 없으면 ANTHROPIC_API_KEY. 값은 어디에도 출력하지 않는다."""
     load_dotenv(PROJECT_ROOT / ".env")
     key = (os.environ.get("CLAUDE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+    return key or None
+
+
+def get_tts_key() -> str | None:
+    """Google Cloud Text-to-Speech API 키 (GOOGLE_TTS_API_KEY). 값은 어디에도 출력하지 않는다."""
+    load_dotenv(PROJECT_ROOT / ".env")
+    key = os.environ.get("GOOGLE_TTS_API_KEY", "").strip()
     return key or None
 
 

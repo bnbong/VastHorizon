@@ -6,9 +6,11 @@
 |-----------------------|------------------------------------------------------------------------|
 | ts · day              | 기록 시각 (한국 시각, ISO) · 집계 날짜                                   |
 | kind                  | llm (모델 호출) · cache (서버 응답 캐시 적중 — LLM을 부르지 않았다)        |
+|                       | tts (편지 읽어 주기 — Google TTS 합성, 비용 0 · 무료 구간 안에서만 쓴다)    |
 | feature · purpose     | 요청 기능 (ask · explore · letter …) · 호출 용도 (ask.query · ask.select …) |
 | model                 | 모델 이름                                                               |
 | input · output        | 입력 토큰 (캐시 읽기 · 쓰기 포함) · 출력 토큰 (추론 포함)                   |
+| chars                 | tts만 — 합성한 글자 수 (Google이 과금하는 입력 문자 수)                    |
 | reasoning             | 출력 토큰 가운데 추론(thinking) 토큰                                      |
 | cache_read · cache_write | Anthropic 프롬프트 캐시 읽기 · 쓰기 토큰. prompt_cache_hit은 읽기가 있었는가 |
 | seconds · cost_usd    | 소요 시간 · 설정 가격표로 계산한 추정 비용                                |
@@ -76,10 +78,14 @@ class DayTotals:
     cache_read_tokens: int = 0
     cost_usd: float = 0.0
     cache_hits: int = 0             # 서버 응답 캐시 적중 (LLM 호출 없음)
+    tts_chars: int = 0              # 편지 읽어 주기로 합성한 글자 수 (LLM 호출 · 비용에 넣지 않는다)
 
     def add(self, row: dict) -> None:
         if row.get("kind") == "cache":
             self.cache_hits += 1
+            return
+        if row.get("kind") == "tts":
+            self.tts_chars += int(row.get("chars") or 0)
             return
         self.calls += 1
         self.errors += 1 if row.get("error") else 0
@@ -176,6 +182,15 @@ class UsageLog:
 
     def record_cache_hit(self, namespace: str) -> dict:
         row = {**self._base("cache"), "purpose": namespace}
+        self._write(row)
+        return row
+
+    def record_tts(self, chars: int, seconds: float = 0.0, error: str | None = None, voice: str | None = None) -> dict:
+        """편지 읽어 주기 합성 한 번 — 글자 수 · 소요 시간. 비용은 0 (무료 구간 안에서만 쓴다)."""
+        row = {**self._base("tts"), "purpose": "tts", "model": voice, "chars": int(chars), "seconds": round(seconds, 3),
+               "cost_usd": 0.0}
+        if error:
+            row["error"] = error
         self._write(row)
         return row
 

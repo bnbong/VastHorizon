@@ -30,7 +30,10 @@ pip install -r requirements-deploy.txt # requirements.txt + Claude, 로컬 임�
 ```bash
 CLAUDE_API_KEY=sk-ant-...          # 필수 (ANTHROPIC_API_KEY도 받습니다)
 WIKI_CONTACT=you@example.com       # 권장: 외부 API User-Agent 연락처
+GOOGLE_TTS_API_KEY=...             # 선택: 편지 읽어 주기에 쓰는 Google Cloud Text-to-Speech 키
 ```
+
+`GOOGLE_TTS_API_KEY`는 환경변수로만 받으며, 설정 파일에는 넣지 않습니다. 키가 없으면 `[tts] enabled = true`여도 서버 읽어 주기를 쓰지 않고, 화면은 브라우저의 기기 음성으로 편지를 읽습니다. 키는 Google Cloud 콘솔에서 Text-to-Speech API만 부를 수 있도록 제한해 두는 편이 안전합니다.
 
 이 구성은 설정 파일 `config.deploy.toml`을 씁니다. 아래 명령은 모두 `VH_CONFIG`가 지정된 셸에서 실행합니다.
 
@@ -111,7 +114,8 @@ python -m scripts.index_docs --stats                                            
 | `POST /api/constellations/{id}/unfold` | 별자리 펼치기 설명 |
 | `POST /api/sky` | 오늘 밤 나의 하늘 (`guide: false`이면 계산만 하고 LLM을 부르지 않습니다) |
 | `GET /api/perspective/themes`, `POST /api/perspective` | 관점 전환 감정 버튼 목록, 마음 한 줄에 대한 답 |
-| `POST /api/share` | 캐시에 있는 편지를 공유 링크로 만듭니다. 응답의 `image_url`은 1200×630 미리보기 이미지이고, `tall_image_url`과 `tall_image_height`는 편지 전체를 담은 세로형 카드(폭 1080, 높이 1620~1920)의 주소와 높이입니다 |
+| `POST /api/share` | 캐시에 있는 편지를 공유 링크로 만듭니다. 응답의 `image_url`은 1200×630 미리보기 이미지이고, `tall_image_url`과 `tall_image_height`는 편지 전체를 담은 세로형 카드(폭 1080, 높이 1620~1920)의 주소와 높이입니다. 서버 읽어 주기를 쓸 수 있으면 `audio_url`에 편지를 읽은 MP3 주소가 들어갑니다 |
+| `GET /api/l/{id}/audio.mp3` | 공유한 편지의 제목과 본문을 Google Cloud Text-to-Speech로 읽은 MP3입니다. 처음 요청할 때 합성해 디스크에 두고, 그다음부터는 저장한 파일을 돌려줍니다. `HEAD` 요청은 합성하지 않으며, 저장한 파일이 있으면 200을, 없으면 202를 돌려줍니다 |
 
 ```bash
 curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: application/json" \
@@ -125,6 +129,7 @@ curl -N -X POST http://localhost:8000/api/ask/stream -H "Content-Type: applicati
 | `item_not_found` (404), `invalid_request` (422) | 잘못된 항목이나 요청입니다 |
 | `conversation_busy` (409) | 같은 대화(세션 + 항목)에서 앞 질문을 처리하고 있습니다 |
 | `rate_limited` (429) | 호출 한도를 넘었습니다 (배포 설정에서만) |
+| `tts_unavailable` (503), `tts_quota` (503), `tts_failed` (502) | 서버 읽어 주기가 꺼져 있거나 키가 없습니다. 글자 수 원장을 읽거나 쓸 수 없을 때도 `tts_unavailable`입니다. 또는 이달이나 오늘의 글자 수 한도를 다 썼거나 합성을 잠시 멈춘 상태이거나(`reason`에 `month`, `day`, `cooldown` 가운데 하나를 넣고 `Retry-After`를 함께 보냅니다), 합성에 실패했습니다. 화면은 이때 기기 음성으로 읽습니다 |
 | `internal` (500) | 그 밖의 오류입니다. 자세한 내용은 서버 로그에만 남습니다 |
 
 대화 기록은 서버 메모리에 (세션, 항목)별로 보관하므로 서버를 다시 시작하면 지워집니다. 알아간 빛의 기록(내 세계)은 브라우저에만 저장합니다.
@@ -165,9 +170,13 @@ node --test tests/js/*.test.mjs          # 화면의 천문 계산
 | `cache` | `explore_days` / `letter_days` | 7 / 7 | 조건 탐색 결과와 빛의 편지(항목별)의 보관 일수 |
 | `cache` | `unfold_days` / `perspective_days` | 30 / 1 | 별자리 펼치기 설명과 마음 한 줄(문장 해시가 키)의 보관 일수 |
 | `cache` | `ask_days` / `ask_live_days` | 7 / 1 | 질의응답 답변(대화 기록이 없는 첫 질문만)과, 오늘 기준 실시간 위치나 거리가 근거에 들어간 답변의 보관 일수 |
+| `tts` | `enabled` / `voice` / `speaking_rate` | `false` (배포 설정은 `true`) / `ko-KR-Chirp3-HD-Aoede` / 0.95 | 서버 읽어 주기의 사용 여부, Google Cloud Text-to-Speech 음성 이름, 말하기 속도입니다 |
+| `tts` | `dir` / `days` | `data/cache/tts` / 30 | 합성한 MP3와 글자 수 원장(`ledger.json`)을 두는 폴더, MP3를 보관하는 일수입니다 |
+| `tts` | `monthly_chars` / `daily_chars` | 900000 / 60000 | 이달과 오늘(한국 시각) 합성할 수 있는 글자 수 상한입니다. 이번 요청의 글자 수를 더했을 때 상한을 넘으면 Google을 부르지 않고 503 `tts_quota`로 답합니다. Google이 한도나 결제 오류(429, 403)를 돌려주면 10분 동안 서버 합성을 멈춥니다 |
+| `tts` | `per_ip_per_minute` / `timeout` | 10 / 20 | 주소마다 1분에 합성을 요청할 수 있는 횟수(저장한 MP3를 돌려주는 요청은 세지 않습니다), Google 호출 하나의 제한 시간(초)입니다 |
 | `share` | `kakao_js_key` | 없음 | 카카오톡 공유에 쓰는 JavaScript 키입니다. `.env`의 `KAKAO_JS_KEY`가 있으면 그 값을 먼저 씁니다. 서버가 `index.html`을 내보낼 때 이 키를 `vh-kakao-key` meta에 넣고, 키가 없으면 "카카오톡으로 보내기" 버튼을 숨깁니다 |
 
-`GET /api/health`의 `usage` 필드에는 오늘(한국 시각)의 LLM 사용량과 추정 비용이 나옵니다. 사용량 기록이 꺼져 있으면 이 필드는 비어 있습니다. 질의응답, 조건 탐색, 편지, 별자리 펼치기, 마음 한 줄 응답의 `cached` 필드가 `true`이면 캐시에서 꺼낸 응답이라는 뜻이며, 이때는 LLM을 부르지 않습니다.
+`GET /api/health`의 `usage` 필드에는 오늘(한국 시각)의 LLM 사용량과 추정 비용이 나옵니다. `tts` 필드에는 서버 읽어 주기를 쓸 수 있는지(`available`)와 이달과 오늘 합성한 글자 수, 이달 상한, 합성을 멈춘 상태인지(`cooldown`), 글자 수 원장을 읽고 쓸 수 있는지(`ledger_ok`)가 나옵니다. 원장 파일이 깨졌으면 서버는 파일을 지우지 않고 합성을 멈추므로, 관리자가 파일을 확인한 뒤 지워야 합니다. 사용량 기록이 꺼져 있으면 이 필드는 비어 있습니다. 질의응답, 조건 탐색, 편지, 별자리 펼치기, 마음 한 줄 응답의 `cached` 필드가 `true`이면 캐시에서 꺼낸 응답이라는 뜻이며, 이때는 LLM을 부르지 않습니다.
 
 ### 다른 OpenAI 호환 API를 쓸 때
 

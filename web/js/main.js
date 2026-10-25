@@ -27,7 +27,8 @@ import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
 import { advance, popView } from "./drawerstack.js";
 import { sound } from "./sound.js";
 import { available as kakaoAvailable, feedMessage, loadKakao, sendFeed, TALL_MIN_HEIGHT } from "./kakao.js";
-import { pickVoice, SPEECH_PITCH, SPEECH_RATE, speechChunks, VOICE_HINT } from "./tts.js";
+import { AUDIO_CACHE_MAX, pickVoice, quotaNote, serverPause, shouldFallback, silentWav, SPEECH_PITCH, SPEECH_RATE, speechChunks,
+         VOICE_HINT } from "./tts.js";
 import { addLetter, findLetter, firstSentence, letterDate, letterItemIds, LETTERS_KEY, makeEntry, plainText, removeLetter, restoreLetters,
          sameLetter, serializeLetters, setShare, sharedView } from "./letters.js";
 
@@ -527,13 +528,23 @@ function keptShare(kept, shareId = kept?.shareId) {
            tall_image_url: (own && kept.imageUrl) || shareTallUrl(shareId), tall_image_height: (own && kept.imageHeight) || null };
 }
 
-// 읽어 주기 — 브라우저 음성 합성(ko-KR). 지원하지 않으면 버튼을 내지 않는다
-// 음성은 tts.js의 pickVoice(Yuna > Sora > Google 한국의 > Microsoft SunHi · Heami > 그 밖의 한국어) — 목록이 늦게 오면 voiceschanged 뒤에 다시.
-// 글은 문장마다 발화 하나로 나눠 연속으로 큐에 넣는다 (문장 사이 짧은 쉼, 긴 발화가 중간에 끊기지 않게)
+// 읽어 주기 — 서버 음성(Google TTS, GET /api/l/<id>/audio.mp3)을 먼저, 못 쓰면 같은 클릭에서 브라우저 음성 합성(ko-KR)으로.
+// 서버 경로: 공유 ID 확보(이미지 저장과 같은 ensure) → MP3 받기 → <audio> 재생. 공유할 수 없는 글 · 503 · 502 · 429 · 네트워크 오류 ·
+//   재생 오류(디코딩 실패 포함)면 기기 음성으로. 이달 한도(tts_quota)면 버튼 아래에 한 줄 안내하고, Retry-After 동안 서버를 다시 부르지 않는다.
+// 기기 음성: tts.js의 pickVoice(Yuna > Sora > Google 한국의 > Microsoft SunHi · Heami > 그 밖의 한국어) — 목록이 늦게 오면 voiceschanged 뒤에 다시.
+//   글은 문장마다 발화 하나로 나눠 연속으로 큐에 넣는다 (문장 사이 짧은 쉼, 긴 발화가 중간에 끊기지 않게)
+// 버튼: 기기 음성이 있거나 서버 읽어 주기를 쓸 수 있을 때(/api/health의 tts.available) 낸다
 const speech = typeof window.speechSynthesis !== "undefined" && typeof window.SpeechSynthesisUtterance !== "undefined" ? window.speechSynthesis : null;
 let speakingButton = null;
-let speakGen = 0;                              // 멈춘 뒤 늦게 오는 지난 발화의 end · error가 새 읽기를 건드리지 않게
+let speakGen = 0;                              // 멈춘 뒤 늦게 오는 지난 발화 · 오디오의 end · error가 새 읽기를 건드리지 않게
 let voice = null;
+let serverTts = null;                          // /api/health의 tts.available — 모르면(점검 전 · 실패) null이고 서버를 먼저 시도한다
+let serverPausedUntil = 0;                     // 이 시각(ms)까지 서버 읽어 주기를 부르지 않는다 (한도 · 쓸 수 없음)
+const audioBlobs = new Map();                  // 공유 ID → 서버 MP3 (세션 안에서 다시 쓴다, 최대 AUDIO_CACHE_MAX개)
+let player = null;                             // 서버 오디오를 재생하는 <audio> 하나
+let playerUrl = null;
+let silentUrl = null;
+const canSpeak = () => !!speech || serverTts === true;
 
 function refreshVoice() {
   try { voice = pickVoice(speech.getVoices()); } catch { voice = null; }
@@ -542,35 +553,145 @@ if (speech) {
   refreshVoice();
   if (typeof speech.addEventListener === "function") speech.addEventListener("voiceschanged", refreshVoice);
   else speech.onvoiceschanged = refreshVoice;
-  window.addEventListener("pagehide", () => stopSpeaking());
+}
+window.addEventListener("pagehide", () => stopSpeaking());
+
+// mode: false(읽어 주기) · "busy"(서버 음성 준비 중) · true(멈추기)
+function drawSpeakButton(b, mode) {
+  const label = mode === "busy" ? "준비 중…" : mode ? "멈추기" : "읽어 주기";
+  b.innerHTML = `${icon(mode === true ? "square" : "volume", 15)}<span class="label-text">${label}</span>`;
+  if (mode === "busy") b.setAttribute("aria-busy", "true");
+  else b.removeAttribute("aria-busy");
 }
 
-function drawSpeakButton(b, on) {
-  b.innerHTML = `${icon(on ? "square" : "volume", 15)}<span class="label-text">${on ? "멈추기" : "읽어 주기"}</span>`;
+function releasePlayer() {
+  if (!player) return;
+  player.onended = player.onerror = null;
+  try { player.pause(); player.currentTime = 0; } catch { /* 아직 불러오지 않은 오디오 */ }
+  if (playerUrl) { URL.revokeObjectURL(playerUrl); playerUrl = null; }
+  player.removeAttribute("src");
+  try { player.load(); } catch { /* 무시 */ }
+}
+
+// iOS Safari는 클릭 안에서 재생을 한 번 시작한 audio 요소만 await 뒤에 재생하게 한다 — 클릭하자마자 무음을 한 번 튼다.
+// 재생이 실제로 시작된(play()가 resolve된) 뒤에만 열린 것으로 본다 — 거부되면 다음 클릭에서 다시
+function unlockPlayer() {
+  player ??= new Audio();
+  if (player.dataset.unlocked) return;
+  const el = player;
+  try {
+    silentUrl ??= URL.createObjectURL(new Blob([silentWav()], { type: "audio/wav" }));
+    el.src = silentUrl;
+    const started = el.play();
+    if (started?.then) started.then(() => { el.dataset.unlocked = "1"; }, () => {});
+    else el.dataset.unlocked = "1";            // Promise를 돌려주지 않는 오래된 브라우저
+  } catch { /* 재생을 못 열어도 서버 오디오 재생에서 다시 본다 */ }
 }
 
 function stopSpeaking() {
-  if (!speech) return;
   speakGen += 1;
   const b = speakingButton;
   speakingButton = null;
   if (b?.isConnected) drawSpeakButton(b, false);
-  if (speech.speaking || speech.pending) speech.cancel();
+  releasePlayer();
+  if (speech && (speech.speaking || speech.pending)) speech.cancel();
 }
 
-function toggleSpeak(text, b) {
+// 서버 MP3 — { status, code, retryAfter, blob }. status 0은 네트워크 오류
+async function serverAudio(s) {
+  const kept = audioBlobs.get(s.id);
+  if (kept) return { status: 200, blob: kept };
+  let res;
+  try { res = await fetch(s.audio_url || absoluteUrl(`/api/l/${encodeURIComponent(s.id)}/audio.mp3`)); } catch { return { status: 0 }; }
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    return { status: res.status, code: body?.code ?? "", reason: body?.reason ?? "", message: body?.message ?? "",
+             retryAfter: res.headers.get("Retry-After") };
+  }
+  const blob = await res.blob().catch(() => null);
+  if (!blob?.size) return { status: 0 };
+  audioBlobs.delete(s.id);
+  audioBlobs.set(s.id, blob);
+  if (audioBlobs.size > AUDIO_CACHE_MAX) audioBlobs.delete(audioBlobs.keys().next().value);
+  return { status: res.status, blob };
+}
+
+// 서버 오디오 재생 — 재생을 못 열거나(자동 재생 정책 · 디코딩 실패) 도중에 오류가 나면 fallback 한 번
+async function playServer(id, blob, b, gen, fallback) {
+  const live = () => gen === speakGen && speakingButton === b;
+  let failed = false;
+  const fail = () => {
+    if (failed || !live()) return;
+    failed = true;
+    audioBlobs.delete(id);
+    releasePlayer();
+    fallback();
+  };
+  releasePlayer();
+  player ??= new Audio();
+  playerUrl = URL.createObjectURL(blob);
+  player.onended = () => {
+    if (!live()) return;
+    speakingButton = null;
+    releasePlayer();
+    if (b.isConnected) drawSpeakButton(b, false);
+  };
+  player.onerror = fail;
+  player.src = playerUrl;
+  try {
+    await player.play();
+  } catch {
+    fail();
+    return;
+  }
+  if (live() && !failed) drawSpeakButton(b, true);
+}
+
+// ensure: 공유 ID를 확보하는 함수(공유할 수 없는 글이면 null — 바로 기기 음성) · slot: 버튼 아래 안내 자리
+async function toggleSpeak(text, b, { ensure = null, slot = null } = {}) {
   if (speakingButton === b) { stopSpeaking(); return; }
   stopSpeaking();
-  const chunks = speechChunks(text);
-  if (!chunks.length) return;
-  if (!voice) refreshVoice();
   const gen = speakGen;
+  const live = () => gen === speakGen && speakingButton === b;
+  speakingButton = b;
+  if (ensure && serverTts !== false && Date.now() >= serverPausedUntil) {
+    unlockPlayer();
+    drawSpeakButton(b, "busy");
+    let got;
+    let id = null;
+    try {
+      const s = await ensure();
+      id = s.id;
+      got = await serverAudio(s);
+    } catch {
+      got = { status: 0 };                     // 공유 실패 (캐시 만료 · 한도 등) — 기기 음성으로
+    }
+    if (!live()) return;
+    if (got.blob && !shouldFallback(got.status, got.code)) {
+      playServer(id, got.blob, b, gen, () => speakDevice(text, b, gen, slot));
+      return;
+    }
+    const pause = serverPause(got.status, got.code, got.retryAfter);
+    if (pause) serverPausedUntil = Date.now() + pause;
+    if (got.code === "tts_quota" && slot?.isConnected) slot.innerHTML = statusHtml(quotaNote(got.reason, got.message), "note");
+  }
+  speakDevice(text, b, gen, slot);
+}
+
+function speakDevice(text, b, gen, slot) {
+  if (gen !== speakGen || speakingButton !== b) return;
+  const chunks = speech ? speechChunks(text) : [];
   const done = () => {
     if (gen !== speakGen || speakingButton !== b) return;
     speakingButton = null;
     if (b.isConnected) drawSpeakButton(b, false);
   };
-  speakingButton = b;
+  if (!chunks.length) {
+    done();
+    if (!speech && slot?.isConnected) slot.innerHTML = statusHtml("지금은 읽어 드릴 수 없습니다. 잠시 뒤 다시 눌러 주세요.", "warn");
+    return;
+  }
+  if (!voice) refreshVoice();
   drawSpeakButton(b, true);
   chunks.forEach((chunk, i) => {
     const u = new SpeechSynthesisUtterance(chunk);
@@ -590,7 +711,7 @@ function shareBarHtml({ note = "", shareable = true } = {}) {
     <div class="row">${shareable ? btn("링크 복사", { ic: "link", attrs: 'data-act="copy"' })
       + (kakaoAvailable ? btn("카카오톡으로 보내기", { ic: "message-circle", attrs: 'data-act="kakao"' }) : "")
       + btn("이미지로 저장", { ic: "download", attrs: 'data-act="image"' }) : ""}
-      ${speech ? `<button type="button" class="btn btn-ghost btn-sm" data-act="speak" title="${esc(VOICE_HINT)}">${icon("volume", 15)}<span class="label-text">읽어 주기</span></button>` : ""}</div>
+      ${canSpeak() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="speak" title="${esc(VOICE_HINT)}">${icon("volume", 15)}<span class="label-text">읽어 주기</span></button>` : ""}</div>
     ${note ? `<p class="disclaimer">${esc(note)}</p>` : ""}
     <div class="share-slot" data-share-slot></div></div>`;
 }
@@ -615,7 +736,8 @@ function bindShareBar(bar, { body = null, share = null, text = "", keepKey = nul
     if (current) return Promise.resolve(current);
     pending ??= api.share(body).then((res) => {
       current = { id: res.id, url: absoluteUrl(res.url), image_url: absoluteUrl(res.image_url ?? `/api/l/${res.id}.png`),
-                  tall_image_url: absoluteUrl(res.tall_image_url ?? `/api/l/${res.id}/tall.png`), tall_image_height: res.tall_image_height ?? null };
+                  tall_image_url: absoluteUrl(res.tall_image_url ?? `/api/l/${res.id}/tall.png`), tall_image_height: res.tall_image_height ?? null,
+                  audio_url: res.audio_url ? absoluteUrl(res.audio_url) : null };
       if (keepKey) keepShare(keepKey, { id: current.id, url: current.url, imageUrl: current.tall_image_url, imageHeight: current.tall_image_height });
       return current;
     }).finally(() => { pending = null; });
@@ -624,7 +746,7 @@ function bindShareBar(bar, { body = null, share = null, text = "", keepKey = nul
   bar.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-act]");
     if (!b) return;
-    if (b.dataset.act === "speak") { toggleSpeak(text, b); return; }
+    if (b.dataset.act === "speak") { toggleSpeak(text, b, { ensure: current || body ? ensure : null, slot }); return; }
     if (b.dataset.busy) return;                // disabled 대신 — 누른 버튼에서 키보드 포커스가 빠지지 않게
     b.dataset.busy = "1";
     b.setAttribute("aria-busy", "true");
@@ -1907,6 +2029,7 @@ async function showHealth() {
   const status = $("#index-status");
   try {
     const h = await api.health();
+    serverTts = Boolean(h.tts?.available);       // 읽어 주기 — 서버 음성을 쓸 수 있는가 (없으면 기기 음성만)
     const shown = h.notices.filter((n) => n.level !== "info");
     $("#notices").innerHTML = shown.map((n) =>
       `<div class="notice ${esc(n.level)}">${icon(NOTICE_ICON[n.level] ?? "info", 14)}${esc(NOTICE_COPY[n.code] ?? n.message)}</div>`).join("");

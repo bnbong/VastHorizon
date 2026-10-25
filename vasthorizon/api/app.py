@@ -26,6 +26,7 @@
 | GET  /api/l/{id}                      | 공유 링크 — 미리보기(OG) 태그가 있는 HTML         |
 | GET  /api/l/{id}.json · .png          | 공유 기록 그대로 · 1200×630 미리보기 이미지       |
 | GET  /api/l/{id}/tall.png             | 편지 전체를 담은 세로형 카드 (1080×1620~1920)    |
+| GET  /api/l/{id}/audio.mp3            | 편지를 읽은 MP3 (Google TTS) — 못 쓰면 503 · 502, 화면은 기기 음성으로 |
 | GET  / · /index.html                  | 화면 — [share] kakao_js_key가 있으면 vh-kakao-key meta에 넣어서 |
 
 오류 응답은 {"code", "message"} 형식이다. 스택 트레이스 · 키 · 프롬프트는 내보내지 않는다.
@@ -67,7 +68,7 @@ from vasthorizon.api.schemas import (
     IntroResponse, IntroSection,
     ItemDetail, ItemSummary, LetterRequest, LetterResponse, PerspectiveRequest, PerspectiveResponse,
     RelatedItem, ShareInfo, ShareRequest, ShareResponse, SkyObjectOut, SkyRequest, SkyResponse, SourceRef,
-    StageInfo, SupportLine, ThemeOut, UnfoldResponse,
+    StageInfo, SupportLine, ThemeOut, TtsInfo, UnfoldResponse,
 )
 from vasthorizon.api.services import ItemNotFoundError, Services, default_services
 from vasthorizon import usage as usage_log
@@ -90,6 +91,7 @@ from vasthorizon.share import (
     ShareNotReadyError, ShareRefusedError, ShareUnavailableError, echoes, letter_record, perspective_record,
 )
 from vasthorizon.store.chroma import EmbeddingMismatchError
+from vasthorizon.tts import TtsError, TtsQuotaError, TtsUnavailableError, record_text
 from vasthorizon.webmeta import inject_kakao_key, valid_kakao_key
 
 log = logging.getLogger(__name__)
@@ -112,6 +114,16 @@ KEEPALIVE_SECONDS = 15.0
 # 공유 링크 만들기의 하루 한도 — 분당 한도([share] per_ip_per_minute)가 주된 제한이고, 이 값은 메모리 상한용
 SHARE_PER_IP_PER_DAY = 2000
 SHARE_GLOBAL_PER_DAY = 50000
+# 읽어 주기 합성의 하루 한도 — 분당 한도([tts] per_ip_per_minute)와 글자 수 원장([tts] daily_chars)이 주된 제한, 이 값은 메모리 상한용
+TTS_PER_IP_PER_DAY = 500
+TTS_GLOBAL_PER_DAY = 20000
+TTS_QUOTA_MESSAGES = {                          # TtsQuotaError.reason → 안내
+    "month": "이달 읽어 주기 한도를 다 썼어요 — 기기 음성으로 읽어 드립니다",
+    "day": "오늘 읽어 주기 한도를 다 썼어요 — 기기 음성으로 읽어 드립니다",
+    "cooldown": "서버 읽어 주기를 잠시 쉬고 있어요 — 기기 음성으로 읽어 드립니다",
+}
+TTS_QUOTA_MESSAGE = TTS_QUOTA_MESSAGES["month"]
+TTS_UNAVAILABLE_MESSAGE = "지금은 서버 읽어 주기를 쓸 수 없어요 — 기기 음성으로 읽어 드립니다"
 
 
 # ── 오류 → 안내 ───────────────────────────────────────────
@@ -269,7 +281,7 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         return JSONResponse(status_code=422, content=ErrorResponse(
             code="invalid_request", message=f"요청 형식이 올바르지 않습니다: {', '.join(fields)}").model_dump())
 
-    errors = {status: {"model": ErrorResponse} for status in (404, 409, 422, 429, 500, 503)}
+    errors = {status: {"model": ErrorResponse} for status in (404, 409, 422, 429, 500, 502, 503)}
 
     # 공개 배포 — AI(LLM)를 실제로 부르는 처리기만 예산을 쓴다 (spend_ai). 경로 · 메서드로 세지 않는다:
     # 하늘 계산(guide=false) · 조회는 예산과 무관하게 늘 된다. 다른 주소의 프런트엔드(Cloudflare Pages 등)에는 CORS
@@ -318,7 +330,7 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
 
     @app.exception_handler(RateLimitedError)
     async def handle_limited(request, error: RateLimitedError):
-        return JSONResponse(status_code=429, headers={"Retry-After": str(error.verdict.retry_after)},
+        return JSONResponse(status_code=429, headers={"Retry-After": str(error.verdict.retry_after), "Cache-Control": "no-store"},
                             content=ErrorResponse(code="rate_limited", message=str(error)).model_dump())
     if settings.server.cors_origins:
         from fastapi.middleware.cors import CORSMiddleware
@@ -331,6 +343,8 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         report = services.health()
         if services.share is not None:
             report = report.model_copy(update={"share": ShareInfo(count=services.share.count())})
+        if services.tts is not None:
+            report = report.model_copy(update={"tts": TtsInfo(**services.tts.status())})
         return report
 
     @app.get("/api/items", response_model=list[ItemSummary])
@@ -627,6 +641,9 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
     share_limiter = RateLimiter(LimitsConfig(enabled=True, per_ip_per_minute=settings.share.per_ip_per_minute,
                                              per_ip_per_day=SHARE_PER_IP_PER_DAY, global_per_day=SHARE_GLOBAL_PER_DAY))
     app.state.share_limiter = share_limiter
+    tts_limiter = RateLimiter(LimitsConfig(enabled=True, per_ip_per_minute=settings.tts.per_ip_per_minute,
+                                           per_ip_per_day=TTS_PER_IP_PER_DAY, global_per_day=TTS_GLOBAL_PER_DAY))
+    app.state.tts_limiter = tts_limiter
     public_base = settings.share.public_base
 
     def cached_response(namespace: str, parts) -> dict:
@@ -641,7 +658,13 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
         sid = record["id"]
         return ShareResponse(id=sid, url=f"{public_base}/api/l/{sid}", image_url=f"{public_base}/api/l/{sid}.png",
                              tall_image_url=f"{public_base}/api/l/{sid}/tall.png",
-                             tall_image_height=sharecard.tall_height(record), created=record["created"])
+                             tall_image_height=sharecard.tall_height(record),
+                             audio_url=f"{public_base}/api/l/{sid}/audio.mp3" if tts_ready() else None,
+                             created=record["created"])
+
+    def tts_ready() -> bool:
+        tts = svc().tts
+        return tts is not None and tts.available
 
     @app.post("/api/share", status_code=201, response_model=ShareResponse, responses=errors,
               description="캐시에 있는 빛의 편지(item_id 또는 age) · 마음 한 줄(text · theme)을 공유 링크로. "
@@ -710,6 +733,43 @@ def create_app(services: Services | None = None, web_dir: Path | None = WEB_DIR)
                                "처음 요청할 때 그려 디스크에 둔다")
     def share_tall_png(share_id: str):
         return share_image_response(share_id, "tall", sharecard.share_tall_image)
+
+    @app.api_route("/api/l/{share_id}/audio.mp3", methods=["GET", "HEAD"], responses=errors,
+                   description="편지(제목 · 본문)를 Google Cloud TTS로 읽은 MP3. 처음 요청할 때 합성해 디스크에 둔다. "
+                               "못 쓰면 503 tts_unavailable, 한도를 다 썼으면 503 tts_quota(reason · Retry-After), 합성 실패는 502 tts_failed "
+                               "— 화면은 기기 음성(speechSynthesis)으로 읽는다. HEAD는 합성하지 않는다: 만들어 둔 MP3가 있으면 200, 없으면 202")
+    def share_audio(share_id: str, request: Request):
+        record = share_record(share_id)
+        if record is None:
+            return share_missing()
+        tts = svc().tts
+        if tts is None or not tts.available:
+            return tts_error(503, "tts_unavailable", TTS_UNAVAILABLE_MESSAGE)
+        text = record_text(record)
+        data = tts.cached(text)
+        if data is None and request.method == "HEAD":   # HEAD는 합성 · 한도를 건드리지 않는다 — 아직 없음
+            return Response(status_code=202, headers={"Cache-Control": "no-store"})
+        if data is None:                                # 캐시 적중은 한도에 세지 않는다
+            verdict = tts_limiter.check(client_key(request))
+            if not verdict.allowed:
+                raise RateLimitedError(Verdict(False, verdict.retry_after, "tts"))
+            try:
+                with usage_log.feature("tts"):
+                    data = tts.audio(text)
+            except TtsQuotaError as e:
+                return tts_error(503, "tts_quota", TTS_QUOTA_MESSAGES.get(e.reason, TTS_QUOTA_MESSAGE),
+                                 {"Retry-After": str(e.retry_after)}, reason=e.reason)
+            except TtsUnavailableError:                 # 꺼짐 · 읽을 글 없음 · 원장을 믿을 수 없음
+                return tts_error(503, "tts_unavailable", TTS_UNAVAILABLE_MESSAGE)
+            except TtsError:
+                return tts_error(502, "tts_failed", "읽어 주기 음성을 만들지 못했어요 — 기기 음성으로 읽어 드립니다")
+        return Response(data, media_type="audio/mpeg", headers=share_headers(record, 86400))
+
+    def tts_error(status: int, code: str, message: str, headers: dict | None = None, reason: str | None = None) -> JSONResponse:
+        content = ErrorResponse(code=code, message=message).model_dump()
+        if reason:                                      # tts_quota — month · day · cooldown
+            content["reason"] = reason
+        return JSONResponse(status_code=status, headers={"Cache-Control": "no-store", **(headers or {})}, content=content)
 
     def share_image_response(share_id: str, variant: str, draw) -> Response:
         record = share_record(share_id)

@@ -38,6 +38,15 @@ class ShareInfo(BaseModel):
     count: int = Field(description="보관 중인 공유 링크 수")
 
 
+class TtsInfo(BaseModel):
+    available: bool = Field(description="서버 읽어 주기(Google TTS)를 쓸 수 있는가 — 켜져 있고 키가 있다 (키 값은 내보내지 않는다)")
+    month_chars: int = Field(description="이달(한국 시각) 합성한 글자 수")
+    monthly_chars: int = Field(description="이달 글자 수 상한")
+    day_chars: int = Field(description="오늘(한국 시각) 합성한 글자 수")
+    cooldown: bool = Field(description="Google 한도 · 결제 오류 뒤 서버 합성을 쉬는 중인가")
+    ledger_ok: bool = Field(description="글자 수 원장을 읽고 쓸 수 있는가 — 아니면 한도를 셀 수 없어 합성하지 않는다")
+
+
 class HealthResponse(BaseModel):
     ready: bool = Field(description="질문을 받을 수 있는 상태인가 (키 설정 + 항목 색인 있음)")
     gms_key: bool = Field(description="LLM 키(GMS_KEY 또는 CLAUDE_API_KEY)가 설정됐는가 (값은 노출하지 않는다, 필드 이름은 호환을 위해 유지)")
@@ -47,6 +56,7 @@ class HealthResponse(BaseModel):
     notices: list[Notice] = []
     usage: UsageToday | None = Field(None, description="오늘(한국 시각) LLM 사용량 · 추정 비용 — 기록이 꺼져 있으면 없음")
     share: ShareInfo | None = Field(None, description="편지 공유 — 공유 저장소가 없으면 없음")
+    tts: TtsInfo | None = Field(None, description="편지 읽어 주기 — [tts] enabled가 아니면 없음")
 
 
 # ── 항목 ──────────────────────────────────────────────────────────────────
@@ -332,6 +342,7 @@ class ShareResponse(BaseModel):
     image_url: str = Field(description="미리보기 이미지 1200×630 PNG")
     tall_image_url: str = Field(description="편지 전체를 담은 세로형 카드 PNG (이미지로 저장 · 카카오톡 피드)")
     tall_image_height: int = Field(description="세로형 카드의 높이 px (폭 1080, 높이 1620~1920)")
+    audio_url: str | None = Field(None, description="편지를 읽은 MP3 (서버 읽어 주기를 쓸 수 있을 때만)")
     created: str = Field(description="처음 공유한 시각 (UTC, ISO 8601)")
 
 

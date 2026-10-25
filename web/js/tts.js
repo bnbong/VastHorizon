@@ -5,6 +5,8 @@
 //   목록은 늦게 채워지기도 한다 (Chrome) — voiceschanged 뒤에 다시 고른다
 // - speechChunks: 문장 단위로 나눈 발화 — [근거 N] · **굵게** 표시는 걷어 낸다. 너무 긴 문장은 쉼표에서 한 번 더 나눈다
 //   (Chrome은 긴 발화를 15초쯤에서 끊는다). 문장마다 SpeechSynthesisUtterance 하나 — 연속 큐가 문장 사이에 짧게 쉰다
+// - 서버 읽어 주기(GET /api/l/<id>/audio.mp3, Google TTS)를 먼저 쓰고, 못 쓰면 같은 클릭에서 위의 기기 음성으로 읽는다.
+//   shouldFallback: 서버 응답(상태 · 오류 코드)이 기기 음성으로 넘어갈 경우인가 · serverPause: 이 세션에서 서버를 다시 부르지 않을 시간
 
 export const SPEECH_RATE = 0.92;
 export const SPEECH_PITCH = 0.95;
@@ -75,4 +77,51 @@ export function speechChunks(text, max = CHUNK_MAX) {
     .map((s) => s.replace(/\s+/g, " ").trim())
     .filter((s) => /[\p{L}\p{N}]/u.test(s))
     .flatMap((s) => splitLong(s, max));
+}
+
+// ── 서버 읽어 주기 (Google TTS) ─────────────────────────────────────────────
+
+export const AUDIO_CACHE_MAX = 8;          // 세션 안에서 다시 쓰는 서버 오디오(blob) 수 — 공유 ID별
+export const QUOTA_NOTE = "이달 서버 읽어 주기 한도를 다 써서 기기 음성으로 읽어 드려요";
+// 503 tts_quota의 reason → 안내 (서버가 message를 주면 그 문구를 그대로 쓴다)
+export const QUOTA_NOTES = {
+  month: QUOTA_NOTE,
+  day: "오늘 서버 읽어 주기 한도를 다 써서 기기 음성으로 읽어 드려요",
+  cooldown: "서버 읽어 주기를 잠시 쉬고 있어서 기기 음성으로 읽어 드려요",
+};
+
+// 한도 안내 한 줄 — 서버 message > reason별 문구 > 이달 한도 문구
+export function quotaNote(reason, message) {
+  const own = typeof message === "string" ? message.trim() : "";
+  return own || QUOTA_NOTES[reason] || QUOTA_NOTE;
+}
+
+// 서버 오디오 응답이 실패인가 — 성공(2xx)이 아니거나 오류 코드가 있으면 기기 음성으로 (status 0: 네트워크 오류 · 공유 실패)
+// 503 tts_unavailable · tts_quota, 502 tts_failed, 429 rate_limited, 404 share_not_found …
+export function shouldFallback(status, code) {
+  const s = Number(status);
+  return !(s >= 200 && s < 300) || Boolean(code);
+}
+
+// 이 세션에서 서버 읽어 주기를 쉬는 시간(ms) — 쓸 수 없음이면 끝까지, 한도면 Retry-After(없으면 10분)만큼, 그 밖에는 쉬지 않는다
+export function serverPause(status, code, retryAfter) {
+  if (code === "tts_unavailable") return Infinity;
+  if (code === "tts_quota") {
+    const s = Number(retryAfter);
+    return (Number.isFinite(s) && s > 0 ? s : 600) * 1000;
+  }
+  return 0;
+}
+
+// 아주 짧은 무음 WAV(8kHz · 8비트 · 1채널) — iOS Safari는 클릭 안에서 한 번 재생한 audio 요소만 나중에(await 뒤) 재생을 허락한다
+export function silentWav(samples = 80) {
+  const bytes = new Uint8Array(44 + samples);
+  const view = new DataView(bytes.buffer);
+  const text = (at, s) => { for (let i = 0; i < s.length; i += 1) bytes[at + i] = s.charCodeAt(i); };
+  text(0, "RIFF"); view.setUint32(4, 36 + samples, true); text(8, "WAVE");
+  text(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, 8000, true); view.setUint32(28, 8000, true); view.setUint16(32, 1, true); view.setUint16(34, 8, true);
+  text(36, "data"); view.setUint32(40, samples, true);
+  bytes.fill(128, 44);                     // 8비트 PCM의 0(무음)은 128
+  return bytes;
 }
