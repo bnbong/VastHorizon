@@ -49,6 +49,17 @@ class FakeResp:
 
 
 class ChunkTest(unittest.TestCase):
+    def test_thousands_commas_removed(self):
+        self.assertEqual(speakable_text("3,780만 년"), "3780만 년")
+        self.assertEqual(speakable_text("1,234,567"), "1234567")
+        self.assertEqual(speakable_text("299,792.458"), "299792.458")
+        self.assertEqual(speakable_text("3，780만"), "3780만")
+        self.assertEqual(speakable_text("1,2는 그대로"), "1,2는 그대로")
+        self.assertEqual(speakable_text("1,2345"), "1,2345")
+
+    def test_sentence_comma_not_split_by_number(self):
+        self.assertEqual(sentences("3,780만 년 전, 빛이 출발했어."), ["3780만 년 전, 빛이 출발했어."])
+
     def test_same_rules_as_web_tts(self):
         self.assertEqual(speakable_text("**베가**의 빛이 [근거 1, 2] 출발했어."), "베가의 빛이 출발했어.")
         self.assertEqual(sentences(LETTER), ["안녕, 지구의 친구야.", "나는 베가야.", "내 빛은 25년 전에 출발했어!", "잘 지내?", "고마워"])

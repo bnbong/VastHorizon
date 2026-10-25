@@ -5,6 +5,7 @@
 //   목록은 늦게 채워지기도 한다 (Chrome) — voiceschanged 뒤에 다시 고른다
 // - speechChunks: 문장 단위로 나눈 발화 — [근거 N] · **굵게** 표시는 걷어 낸다. 너무 긴 문장은 쉼표에서 한 번 더 나눈다
 //   (Chrome은 긴 발화를 15초쯤에서 끊는다). 문장마다 SpeechSynthesisUtterance 하나 — 연속 큐가 문장 사이에 짧게 쉰다
+// - speakableText: 숫자 사이 천 단위 쉼표("3,780만")도 지운다 — 쉼표 뒤가 정확히 세 자리일 때만 (그 밖의 "1,2"는 문장 쉼표). 전각 "，"도 같다
 // - 서버 읽어 주기(GET /api/l/<id>/audio.mp3, Google TTS)를 먼저 쓰고, 못 쓰면 같은 클릭에서 위의 기기 음성으로 읽는다.
 //   shouldFallback: 서버 응답(상태 · 오류 코드)이 기기 음성으로 넘어갈 경우인가 · serverPause: 이 세션에서 서버를 다시 부르지 않을 시간
 
@@ -47,11 +48,12 @@ export function pickVoice(voices) {
   return bestScore >= 0 ? best : null;
 }
 
-// 화면 표시용 기호를 걷어 낸 글 — [근거 1, 2] · **굵게**
+// 화면 표시용 기호를 걷어 낸 글 — [근거 1, 2] · **굵게** · 숫자 사이 천 단위 쉼표
 export function speakableText(text) {
   return String(text ?? "")
     .replace(/\s*\[근거\s*[\d,，\s]+\]/g, "")
     .replace(/\*\*/g, "")
+    .replace(/(?<=\d)[,，](?=\d{3}(?!\d))/g, "")
     .replace(/[ \t]+/g, " ")
     .trim();
 }

@@ -46,6 +46,17 @@ test("lang 표기 — ko-KR · ko_KR · ko", () => {
   assert.equal(pickVoice([v("x", "kok-IN")]), null);
 });
 
+test("발화 — 숫자 사이 천 단위 쉼표는 지운다", () => {
+  assert.equal(speakableText("3,780만 년"), "3780만 년");
+  assert.equal(speakableText("1,234,567"), "1234567");
+  assert.equal(speakableText("299,792.458"), "299792.458");
+  assert.equal(speakableText("3，780만"), "3780만");
+  assert.equal(speakableText("1,2는 그대로"), "1,2는 그대로");
+  assert.equal(speakableText("1,2345"), "1,2345");
+  assert.deepEqual(speechChunks("3,780만 년 전, 빛이 출발했어."), ["3780만 년 전, 빛이 출발했어."]);
+  assert.deepEqual(speechChunks("3,780만 년 전, 빛이 출발했어.", 8), ["3780만 년 전,", "빛이 출발했어."]);   // 긴 문장은 문장 쉼표에서만 나뉜다
+});
+
 test("발화 — [근거 N] · ** 를 걷어 내고 문장 단위로", () => {
   assert.equal(speakableText("**베가**의 빛이 [근거 1, 2] 출발했어."), "베가의 빛이 출발했어.");
   assert.deepEqual(speechChunks("안녕, 지구의 친구야. 나는 **베가**야 [근거 1]. 내 빛은 25년 전에 출발했어!\n\n잘 지내?  고마워"),

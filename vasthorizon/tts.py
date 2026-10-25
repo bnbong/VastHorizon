@@ -7,6 +7,7 @@
     응답 audioContent(base64). 요청 하나의 입력은 5,000바이트(UTF-8)까지라 문장 단위로 나눠 4,500바이트 안에 묶고
     차례로 합성해 MP3 바이트를 그대로 잇는다 (같은 인코딩 설정이라 이어서 재생된다).
     글은 web/js/tts.js(speakableText · speechChunks)와 같은 규칙으로 정리한다 — [근거 N] · **굵게** 를 걷어 내고 문장 단위로.
+    숫자 사이 천 단위 쉼표("3,780만")는 지운다 — 쉼표 뒤가 정확히 세 자리일 때만 (그 밖의 "1,2"는 문장 쉼표). 전각 "，"도 같다.
 
 키: 환경변수 GOOGLE_TTS_API_KEY만 (설정 파일에 두지 않는다). 없으면 [tts] enabled여도 쓰지 않는다 (available=False).
     키는 로그 · 오류 응답에 내보내지 않는다 — 오류는 종류(HTTP 상태 · 예외 이름)만 남긴다.
@@ -81,12 +82,14 @@ class TtsQuotaError(TtsError):
 _CITE = re.compile(r"\s*\[근거\s*[\d,，\s]+\]")
 _SENTENCE = re.compile(r"(?<=[.!?。？！…])\s+|\n+")
 _COMMA = re.compile(r"(?<=[,，])\s+")
+_THOUSANDS = re.compile(r"(?<=\d)[,，](?=\d{3}(?!\d))")   # 3,780만 → 3780만 (합성이 "삼, 칠백팔십"으로 끊어 읽지 않게)
 _WORD = re.compile(r"[^\W_]")                     # 글자 · 숫자가 하나라도 있는 조각만
 
 
 def speakable_text(text: str | None) -> str:
-    """화면 표시용 기호를 걷어 낸 글 — [근거 1, 2] · **굵게**."""
-    return re.sub(r"[ \t]+", " ", _CITE.sub("", str(text or "")).replace("**", "")).strip()
+    """화면 표시용 기호를 걷어 낸 글 — [근거 1, 2] · **굵게** · 숫자 사이 천 단위 쉼표."""
+    text = _CITE.sub("", str(text or "")).replace("**", "")
+    return re.sub(r"[ \t]+", " ", _THOUSANDS.sub("", text)).strip()
 
 
 def sentences(text: str | None) -> list[str]:
