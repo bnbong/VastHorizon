@@ -214,6 +214,35 @@ class PerspectiveTest(LibraryTestBase):
             self.assertEqual(theme.opening.count("."), 1, theme.key)
             self.assertTrue(theme.opening.endswith("."), theme.key)
 
+    def test_every_theme_has_bridge(self):
+        for theme in THEMES.values():
+            self.assertTrue(theme.bridge.strip(), theme.key)
+
+    def test_theme_button_passes_its_bridge(self):
+        _, llm, _ = self.run_perspective(theme="setback")
+        human = llm.received[0][-1].content
+        self.assertIn(f"이 주제에서 이어 주는 결: {THEMES['setback'].bridge}", human)
+
+    def test_typed_text_passes_first_classified_theme_bridge(self):
+        _, llm, _ = self.run_perspective("혼자인 것 같아", classify=classify_reply(themes=("lonely", "small")))
+        human = llm.received[0][-1].content
+        self.assertIn(f"이 주제에서 이어 주는 결: {THEMES['lonely'].bridge}", human)
+        self.assertNotIn(THEMES["small"].bridge, human)
+
+    def test_no_bridge_when_no_theme(self):
+        reply = json.dumps({"crisis": False, "themes": [], "query": "별"})
+        _, llm, _ = self.run_perspective("음", classify=reply)
+        self.assertNotIn("이어 주는 결", llm.received[0][-1].content)
+
+    def test_uncited_bridge_and_closing_sentences_pass(self):
+        # 근거 번호는 사실 문장에만 — 이어 주는 문장 · 닫는 문장에 번호가 없어도 답 전체가 인용 규칙을 지키면 통과
+        answer = ("그런 날이 있지요. 보이저 1호가 찍은 지구는 작은 점이었습니다 [근거 1]. "
+                  "작다는 느낌이 혼자라는 뜻은 아닐지도 모릅니다. 그 점 안에 모두가 함께 있었다는 생각이 듭니다. "
+                  "오늘 밤에도 같은 하늘 아래에 있습니다.")
+        result, llm, _ = self.run_perspective(theme="small", answer=answer)
+        self.assertEqual((result.status, result.attempts, len(llm.received)), ("cited", 1, 1))
+        self.assertEqual(result.answer, answer)
+
     def test_unknown_theme_keys_from_llm_are_dropped(self):
         result, _, _ = self.run_perspective("외로워", classify=classify_reply(themes=("nope", "lonely", "small", "hurry")))
         self.assertEqual(result.themes, ["lonely", "small"])
