@@ -890,6 +890,35 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
 /* 내 세계 지도 — 빛의 편지를 받은 천체 (map.js setLetters) */
 .world-star.has-letter .known-mark::after { content: "✉"; position: absolute; right: -10px; top: -10px; width: 15px; height: 15px; display: grid; place-items: center;
   border-radius: 50%; background: #fff9f3; color: #664f85; font: 400 9px/1 var(--font-sans); box-shadow: 0 0 0 1px rgba(102,79,133,.35); }
+/* 읽지 않은 편지가 있으면 ✉을 살구색으로 또렷하게, 모두 읽었으면 흐리게 (map.js setLetters의 unread) */
+.world-star.has-letter:not(.unread) .known-mark::after { opacity: .5; }
+.world-star.has-letter.unread .known-mark::after { background: var(--peach); color: var(--night); box-shadow: 0 0 0 1px rgba(34,36,84,.6), 0 0 10px rgba(243,218,213,.95); }
+
+/* ── 도착한 편지 — 열지 않은 채 보관함에 들어온 편지 (main.js deliverLetter · syncLetterBadges) ── */
+/* 메뉴 '받은 편지'의 읽지 않은 수 — 살구 바탕 남보라 글자, 0이면 숨긴다 */
+.menu-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-grid; place-items: center;
+  background: var(--peach); color: var(--night); font: 600 11px/1 var(--font-sans); font-variant-numeric: tabular-nums; box-shadow: inset 0 0 0 1px rgba(34,36,84,.12); }
+.menu-item.on .menu-badge { background: var(--night); color: var(--peach); }       /* 켜진 항목은 바탕이 살구색 */
+/* 읽지 않음 점 — 천체 서랍의 편지 카드 머리글 · 보관함 목록 */
+.unread-dot { display: inline-block; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--peach); box-shadow: 0 0 0 1.5px var(--night); }
+.lr-meta .unread-dot { margin-right: 7px; vertical-align: .08em; }
+.letter-card.arrived .letter-head .unread-dot { margin-left: 2px; }
+.letter-card.arrived .letter-body { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+/* 천체 서랍 제목 아래의 한 줄 · 휴대폰 엿보기 머리글의 같은 줄 */
+.letter-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0; padding: 9px 14px; background: var(--peach); color: var(--night);
+  font: 500 13px/1.4 var(--font-sans); }
+.letter-banner .icon { color: var(--night); }
+.letter-banner-read { padding: 2px 0; border: 0; background: none; cursor: pointer; font: 600 13px/1.4 var(--font-sans); color: var(--night);
+  text-decoration: underline; text-underline-offset: 3px; }
+.letter-banner-read:hover { color: var(--paper-accent); }
+.letter-banner-read:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.app[data-layout="sheet"] .sheet-peek-letter { margin: 8px 0 0; padding: 6px 10px; }
+/* 상단 알림 — 발견 알림(.growth)과 같은 종이 카드를 한 줄로: ✉ · {천체}에서 편지가 도착했습니다 · 읽기 */
+.growth.letter-arrive { flex-direction: row; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; }
+.letter-arrive .arrive-mark { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--peach); color: var(--night); }
+.letter-arrive .arrive-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font: 400 15px/1.45 var(--font-sans); color: #282345; }
+.letter-arrive .arrive-text small { font: 400 12px/1.4 var(--font-sans); color: #686274; }
+.letter-arrive .btn { flex: none; margin-left: auto; }
 
 /* 글자 크게 — 서랍 본문 15 → 17px, 핵심 사실 · 제목 · 편지 본문도 같은 비율(약 1.13배)로 (메뉴 '글자 크게', localStorage "vh-text") */
 html[data-text="large"] .drawer { --fs-body: 17px; --fs-small: 15px; --fs-caption: 13px;

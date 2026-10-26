@@ -3,8 +3,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  addLetter, djb2, excerptOf, findLetter, firstSentence, letterDate, letterItemIds, letterKey, LETTERS_KEY, LETTERS_MAX, makeEntry,
-  plainText, removeLetter, restoreLetters, serializeLetters, setShare, sharedView, sortLetters,
+  addLetter, djb2, excerptOf, findLetter, firstSentence, firstSentences, letterDate, letterDay, letterFor, letterItemIds, letterKey, LETTERS_KEY,
+  LETTERS_MAX, makeEntry, markRead, plainText, removeLetter, restoreLetters, serializeLetters, setShare, sharedView, sortLetters, unreadCount,
+  unreadFor, unreadItemIds,
 } from "../../web/js/letters.js";
 
 const letter = (id, text, at) => makeEntry({ kind: "letter", item_id: id, item_name: id, title: `${id}의 빛`, text, req: { item_id: id } }, at);
@@ -148,4 +149,60 @@ test("편지를 받은 천체 · 첫 문장 · 날짜", () => {
   assert.equal(firstSentence("마침표 없는 문장"), "마침표 없는 문장");
   assert.equal(letterDate(new Date(2026, 9, 5, 23, 0).toISOString()), "2026.10.05");
   assert.equal(letterDate("엉망"), "");
+});
+
+test("읽음 — 직접 받은 편지는 읽음, 열지 않은 채 도착한 편지만 읽지 않음", () => {
+  assert.equal(makeEntry({ kind: "letter", text: "a" }).read, false);             // 기본은 읽지 않음(도착)
+  assert.equal(makeEntry({ kind: "letter", text: "a", read: true }).read, true);
+  const arrived = makeEntry({ kind: "letter", item_id: "Q1", item_name: "베가", text: "도착한 편지입니다. 둘째 문장. 셋째." }, "2026-10-24T00:00:00Z");
+  const opened = { ...letter("Q2", "직접 받은 편지.", "2026-10-25T00:00:00Z"), read: true };
+  const mind = makeEntry({ kind: "perspective", item_id: "Q1", text: "마음 한 줄 답." }, "2026-10-23T00:00:00Z");
+  let list = addLetter(addLetter(addLetter([], arrived), opened), mind);
+  assert.equal(unreadCount(list), 2);                                            // 빛의 편지 · 마음 한 줄 모두
+  assert.equal(unreadFor(list, "Q1"), 1);                                        // 그 천체의 빛의 편지만
+  assert.equal(unreadFor(list, "Q2"), 0);
+  assert.deepEqual([...unreadItemIds(list)], ["Q1"]);
+  // markRead — 새 배열, 이미 읽었거나 없는 열쇠면 같은 배열 그대로
+  const before = list;
+  list = markRead(list, arrived.key);
+  assert.notEqual(list, before);
+  assert.equal(findLetter(before, arrived.key).read, false);
+  assert.equal(findLetter(list, arrived.key).read, true);
+  assert.equal(markRead(list, arrived.key), list);
+  assert.equal(markRead(list, "없음"), list);
+  assert.equal(unreadFor(list, "Q1"), 0);
+  assert.equal(unreadCount(list), 1);
+  // 도착한 편지를 다시 받아 읽으면(addLetter, read: true) 읽음으로 — 읽은 편지가 다시 '읽지 않음'이 되지는 않는다
+  const again = addLetter(before, { ...arrived, read: true });
+  assert.equal(findLetter(again, arrived.key).read, true);
+  assert.equal(findLetter(addLetter(again, { ...arrived, read: false }), arrived.key).read, true);
+});
+
+test("읽음 되살리기 — 예전 기록(read 없음)은 읽은 것으로, 저장한 값은 그대로", () => {
+  const unread = makeEntry({ kind: "letter", item_id: "Q1", text: "하나." }, "2026-10-24T00:00:00Z");
+  const old = { ...letter("Q2", "예전 편지.", "2026-10-01T00:00:00Z") };
+  delete old.read;
+  const restored = restoreLetters({ v: 1, letters: [unread, old, { ...letter("Q3", "엉망.", "2026-10-02T00:00:00Z"), read: "no" }] });
+  assert.deepEqual(restored.map((e) => [e.item_id, e.read]), [["Q1", false], ["Q3", true], ["Q2", true]]);
+  assert.deepEqual(restoreLetters(serializeLetters(restored)), restored);
+});
+
+test("그 천체의 편지 · 앞 두 문장 · 짧은 날짜", () => {
+  const a = { ...letter("Q1", "오래된 편지.", "2026-10-01T00:00:00Z"), read: true };
+  const b = { ...letter("Q1", "새 편지.", "2026-10-20T00:00:00Z"), read: true };
+  const c = letter("Q1", "도착한 편지.", "2026-10-10T00:00:00Z");                 // 읽지 않음
+  const list = [b, a].reduce((l, e) => addLetter(l, e), []);
+  assert.equal(letterFor(list, "Q1").text, "새 편지.");                          // 모두 읽었으면 가장 최근 것
+  assert.equal(letterFor(addLetter(list, c), "Q1").text, "도착한 편지.");          // 읽지 않은 것이 먼저
+  assert.equal(letterFor(list, "Q9"), null);
+  assert.equal(letterFor(list, null), null);
+  assert.equal(letterFor([makeEntry({ kind: "perspective", item_id: "Q1", text: "x" })], "Q1"), null);   // 마음 한 줄은 천체 편지가 아니다
+  assert.equal(firstSentences("**베가**의 빛이 [근거 1] 출발했습니다. 그해 지구에서는! 셋째 문장."), "베가의 빛이 출발했습니다. 그해 지구에서는!");
+  assert.equal(firstSentences("하나. 둘. 셋.", 1), "하나.");
+  assert.equal(firstSentences("마침표 없는 문장"), "마침표 없는 문장");
+  assert.equal(firstSentences("하나. 둘째는 잘려…"), "하나.");
+  const now = new Date(2026, 9, 26);
+  assert.equal(letterDay(new Date(2026, 9, 25, 9).toISOString(), now), "10.25");
+  assert.equal(letterDay(new Date(2025, 0, 3, 9).toISOString(), now), "2025.01.03");
+  assert.equal(letterDay("엉망", now), "");
 });

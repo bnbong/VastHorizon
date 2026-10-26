@@ -32,8 +32,9 @@ import { sound } from "./sound.js";
 import { available as kakaoAvailable, feedMessage, loadKakao, sendFeed, TALL_MIN_HEIGHT } from "./kakao.js";
 import { AUDIO_CACHE_MAX, pickVoice, quotaNote, serverPause, shouldFallback, silentWav, SPEECH_PITCH, SPEECH_RATE, speechChunks,
          VOICE_HINT } from "./tts.js";
-import { addLetter, findLetter, firstSentence, letterDate, letterItemIds, LETTERS_KEY, makeEntry, plainText, removeLetter, restoreLetters,
-         sameLetter, serializeLetters, setShare, sharedView } from "./letters.js";
+import { addLetter, findLetter, firstSentence, firstSentences, letterDate, letterDay, letterFor, letterItemIds, LETTERS_KEY, makeEntry, markRead,
+         plainText, removeLetter, restoreLetters, sameLetter, serializeLetters, setShare, sharedView, unreadCount, unreadFor,
+         unreadItemIds } from "./letters.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $("#app");
@@ -217,16 +218,21 @@ function renderPeek({ relayout = true } = {}) {
   if (!sheet) return;
   const pick = (k) => drawerBody.querySelector(`[data-peek="${k}"]`)?.textContent.replace(/\s+/g, " ").trim() ?? "";
   const text = pick("title") || (drawerBody.querySelector("h2, .name")?.textContent.trim() ?? "");
+  // 읽지 않은 편지가 도착한 천체 — 본문 배너(data-peek="letter")와 같은 한 줄을 제목 아래에 (읽기는 본문 배너의 버튼을 대신 누른다)
+  const letterLine = drawerBody.querySelector('[data-peek="letter"]:not([hidden])')
+    ? `<p class="letter-banner sheet-peek-letter">${icon("mail", 14)}<span>이 빛의 편지가 도착해 있습니다</span><span aria-hidden="true">·</span>
+        <button type="button" class="letter-banner-read" data-peek-letter>읽기</button></p>` : "";
   let html = "";
   if (text && sheetHas3d) {
     const line = pick("line") || (drawerBody.querySelector(".card-meta")?.textContent.replace(/\s+/g, " ").trim() ?? "");
     const collect = drawerBody.querySelector('[data-peek="action"] [data-collect]');
     html = `${pick("kicker") ? `<p class="eyebrow sheet-peek-kicker">${esc(pick("kicker"))}</p>` : ""}
       <p class="sheet-peek-title" data-peek-title tabindex="-1">${esc(text)}</p>
+      ${letterLine}
       ${line ? `<p class="sheet-peek-line">${esc(line)}</p>` : ""}
       <div class="sheet-peek-actions">${collect ? btn("이 빛을 내 세계에 담기", { variant: "primary", attrs: "data-peek-collect" })
         : btn("설명 읽기", { variant: "secondary", icRight: "chevron-up", attrs: "data-peek-read" })}</div>`;
-  } else if (text) html = `<p class="sheet-peek-title" data-peek-title tabindex="-1">${esc(text)}</p>`;
+  } else if (text) html = `<p class="sheet-peek-title" data-peek-title tabindex="-1">${esc(text)}</p>${letterLine}`;
   const hadFocus = peek.contains(document.activeElement);   // 갈아 끼우면 포커스가 문서 처음으로 빠진다 — 머리글 안에 있었으면 새 버튼으로
   peek.hidden = !html;
   peek.innerHTML = html ? `<div class="sheet-peek-in">${html}</div>` : "";
@@ -234,6 +240,7 @@ function renderPeek({ relayout = true } = {}) {
   // 대리 버튼 — 담기 처리(bindCollect)는 본문 버튼 하나뿐이라 기록이 두 번 남지 않는다
   peek.querySelector("[data-peek-collect]")?.addEventListener("click", () => drawerBody.querySelector('[data-peek="action"] [data-collect]')?.click());
   peek.querySelector("[data-peek-read]")?.addEventListener("click", () => sheet?.open("half"));
+  peek.querySelector("[data-peek-letter]")?.addEventListener("click", () => drawerBody.querySelector('[data-peek="letter"] [data-letter-read]')?.click());
   if (relayout) sheet.relayout();
 }
 
@@ -709,15 +716,127 @@ function loadLetters() {
 
 function saveLetters() {
   try { localStorage.setItem(LETTERS_KEY, serializeLetters(letters)); } catch { /* 저장소를 못 쓰면 이번 화면에서만 */ }
-  state.map?.setLetters(letterItemIds(letters));       // 내 세계 지도의 ✉ 표식
+  syncLetterBadges();
 }
 
-// 받은 편지 하나를 남긴다 — 이미 있으면 그 기록(공유 정보가 채워졌을 수 있다)을 돌려준다
+// 받은 편지 하나를 남긴다 — 이미 있으면 그 기록(공유 정보가 채워졌을 수 있다)을 돌려준다.
+// read: 사람이 직접 받아 본 편지면 true, 열지 않은 채 도착한 편지(deliverLetter)만 false
 function keepLetter(fields) {
   const entry = makeEntry(fields);
   letters = addLetter(letters, entry);
   saveLetters();
   return letters.find((e) => sameLetter(e, entry)) ?? entry;
+}
+
+// ── 도착한 편지 — 열지 않은 채 보관함에 들어온 편지(read: false)를 알린다 ─────────────
+// 보관함이 바뀔 때마다 한곳에서: 메뉴 '받은 편지'의 배지 · 내 세계 지도의 ✉(읽지 않았으면 또렷하게) · 열린 천체 서랍의 배너와 편지 카드
+function syncLetterBadges() {
+  const n = unreadCount(letters);
+  const item = $("#menu-letters");
+  const badge = item?.querySelector(".menu-badge");
+  if (badge) {
+    badge.hidden = !n;
+    badge.textContent = n > 99 ? "99+" : String(n);
+  }
+  if (n) item?.setAttribute("aria-label", `받은 편지 · 읽지 않은 편지 ${n}통`);
+  else item?.removeAttribute("aria-label");
+  state.map?.setLetters(letterItemIds(letters), unreadItemIds(letters));
+  syncItemLetter();
+}
+
+// 천체 서랍 맨 위의 한 줄 — 그 천체의 읽지 않은 빛의 편지가 있을 때만
+function letterBannerHtml(itemId) {
+  if (!unreadFor(letters, itemId)) return "";
+  return `<p class="letter-banner">${icon("mail", 14)}<span>이 빛의 편지가 도착해 있습니다</span><span aria-hidden="true">·</span>
+    <button type="button" class="letter-banner-read" data-letter-read>읽기</button></p>`;
+}
+
+// 천체 서랍의 편지 카드 — 보관함에 그 천체의 빛의 편지가 있으면 '도착한 편지'(날짜 · 앞 두 문장 · 편지 읽기),
+// 없으면 빛이 출발한 해의 카드(별 · 메시에 천체만). 둘 다 아니면 빈 문자열
+function letterCardHtml(item, departs) {
+  const kept = letterFor(letters, item.id);
+  if (kept) {
+    const dot = kept.read ? "" : `<span class="unread-dot" role="img" aria-label="읽지 않음"></span>`;
+    return `<div class="card emphasis letter-card arrived">
+      <div class="letter-head">${icon("mail", 14)}<span>도착한 편지 · ${esc(letterDay(kept.at))}</span>${dot}</div>
+      <div class="letter-body">${esc(firstSentences(kept.text))}</div>
+      <div class="row">${btn("편지 읽기", { variant: "ghost", icRight: "arrow-right", attrs: 'data-letter-read style="padding-left:0"' })}</div></div>`;
+  }
+  if (!departs) return "";
+  return `<div class="card emphasis letter-card">
+      <div class="letter-head">${icon("mail", 14)}빛의 편지</div>
+      <div class="letter-body">지금 보이는 이 빛은 <em class="kw">${esc(departs)}</em>에 출발해, 오늘 당신의 눈에 닿아 여정을 마쳤습니다.</div>
+      <div class="letter-note">카탈로그 거리(${esc(distanceText(item.distance_km))})로 계산한 출발 시점입니다.</div>
+      <div class="row">${btn("그 해 지구의 기록 보기", { variant: "ghost", icRight: "arrow-right", id: "act-letter", attrs: 'style="padding-left:0"' })}</div></div>`;
+}
+
+// 열린 천체 서랍의 배너 · 편지 카드를 지금 보관함에 맞춘다 (읽으면 배너가 사라지고, 서랍을 연 채 편지가 도착하면 나타난다)
+let itemLetter = null;                         // 지금 천체 서랍의 { item, departs } — selectItem이 정한다
+function syncItemLetter() {
+  const banner = $("#letter-banner"), slot = $("#letter-slot");
+  if (state.drawer !== "item" || !itemLetter || !banner || !slot) return;
+  const b = letterBannerHtml(itemLetter.item.id), c = letterCardHtml(itemLetter.item, itemLetter.departs);
+  if (banner.dataset.sig === b && slot.dataset.sig === c) return;   // 공유 정보만 바뀐 저장 — 다시 그리지 않는다 (포커스 · 연출 그대로)
+  banner.dataset.sig = b;
+  slot.dataset.sig = c;
+  banner.innerHTML = b;
+  banner.hidden = !b;
+  slot.innerHTML = c;
+  slot.hidden = !c;
+  renderPeek();                                // 엿보기 머리글의 한 줄도
+}
+
+// 그 천체의 편지를 보관함에서 연다 (읽지 않은 것이 먼저) — 여는 순간 읽음으로 (showKept)
+function openItemLetter(itemId) {
+  const entry = letterFor(letters, itemId);
+  if (entry) showKept({ key: entry.key });
+}
+
+// 열지 않은 채 도착한 편지 — 보관함에 읽지 않음으로 남기고, 지금 화면(하늘 · 내 세계) 위에 알린다.
+// 같은 편지를 이미 읽었으면(보관함에 읽음으로 있으면) 알리지 않는다
+function deliverLetter(fields) {
+  const kept = keepLetter({ ...fields, read: false });
+  if (kept.read) return kept;
+  markLetterNoticed();                         // 이번 세션에는 이것으로 — 내 세계에 들어갈 때 다시 알리지 않는다
+  notifyLetter(kept);
+  return kept;
+}
+
+// 상단 알림 — ✉ {천체}에서 편지가 도착했습니다 · 읽기 (발견 알림 .growth와 같은 종이 카드, 5초 뒤 사라진다)
+function notifyLetter(entry) {
+  const el = $("#letter-arrive");
+  const n = unreadCount(letters);
+  const from = entry.item_name ? `<em class="kw plain">${esc(entry.item_name)}</em>에서 편지가 도착했습니다` : "편지가 도착했습니다";
+  el.innerHTML = `<span class="arrive-mark" aria-hidden="true">${icon("mail", 16)}</span>
+    <span class="arrive-text"><span>${from}</span>${n > 1 ? `<small>읽지 않은 편지 ${n.toLocaleString("ko-KR")}통</small>` : ""}</span>
+    <button type="button" class="btn btn-horizon btn-sm" data-arrive-read><span>읽기</span></button>`;
+  el.hidden = false;
+  el.classList.remove("show");
+  void el.offsetWidth;
+  el.classList.add("show");
+  clearTimeout(notifyLetter.timer);
+  notifyLetter.timer = setTimeout(() => { el.hidden = true; }, 5000);
+  el.querySelector("[data-arrive-read]").addEventListener("click", () => {
+    el.hidden = true;
+    showKept({ key: entry.key });
+  });
+}
+
+// 앱을 다시 열었을 때 — 읽지 않은 편지가 있으면 내 세계에 들어갈 때 한 번만 같은 알림을 (세션마다 한 번, sessionStorage)
+const LETTER_NOTICE_KEY = "vh-letter-notice";
+function markLetterNoticed() {
+  try { sessionStorage.setItem(LETTER_NOTICE_KEY, "1"); } catch { /* 무시 */ }
+}
+
+function noticeUnreadOnce() {
+  try { if (sessionStorage.getItem(LETTER_NOTICE_KEY)) return; } catch { return; }
+  const first = letters.find((e) => !e.read);
+  if (!first) return;
+  markLetterNoticed();
+  setTimeout(() => {                           // 지도가 자리를 잡은 뒤에 조용히 (소리 없이)
+    const still = findLetter(letters, first.key);
+    if (state.mode === "map" && still && !still.read) notifyLetter(still);
+  }, 900);
 }
 
 function keepShare(key, share) {
@@ -1453,11 +1572,15 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   const note = placeNote(item);                // 지구에만 — 지금 서 있는 곳에서 고개를 들면 (facts.js)
   const meta = [code, item.kind, item.distance_km ? `${surface ? "지표면 위 " : ""}${distanceText(item.distance_km)}` : null].filter(Boolean);
   const source = item.sources?.[0];
+  // 받은 편지 — 읽지 않은 편지가 있으면 제목 아래 배너, 보관함에 이 천체의 편지가 있으면 편지 카드가 '도착한 편지'로 (syncItemLetter가 이어서 맞춘다)
+  itemLetter = { item, departs };
+  const banner = letterBannerHtml(item.id), letterCard = letterCardHtml(item, departs);
   openDrawer("item", `
     <div class="head reveal" style="animation-delay:0ms">
       <div class="eyebrow" data-peek="kicker">${esc(item.group_ko)}</div>
       <h2 class="name card-name" data-peek="title">${esc(item.name)}</h2>
       ${meta.length ? `<div class="card-meta">${meta.map((m) => `<span>${esc(m)}</span>`).join('<i aria-hidden="true">·</i>')}</div>` : ""}</div>
+    <div class="reveal" id="letter-banner" data-peek="letter" data-sig="${esc(banner)}" style="animation-delay:80ms" ${banner ? "" : "hidden"}>${banner}</div>
     ${fact ? `<div class="reveal" style="animation-delay:150ms"><p class="hero-fact" data-peek="line">${esc(fact.before)}<em>${esc(fact.em)}</em>${esc(fact.after)}</p>
       ${fact.detail ? `<p class="fact-detail">${esc(fact.detail)}</p>` : ""}</div>` : ""}
     ${note ? `<div class="reveal place-note" style="animation-delay:220ms"><p class="fact-detail">${esc(note.text)}</p>
@@ -1473,11 +1596,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
     <div class="reveal" id="photo" style="animation-delay:600ms"></div>
     <div class="reveal" id="bodyview" style="animation-delay:600ms"></div>
     <div class="reveal" id="blackhole" style="animation-delay:620ms"></div>
-    ${departs ? `<div class="card emphasis letter-card reveal" style="animation-delay:660ms">
-      <div class="letter-head">${icon("mail", 14)}빛의 편지</div>
-      <div class="letter-body">지금 보이는 이 빛은 <em class="kw">${esc(departs)}</em>에 출발해, 오늘 당신의 눈에 닿아 여정을 마쳤습니다.</div>
-      <div class="letter-note">카탈로그 거리(${esc(distanceText(item.distance_km))})로 계산한 출발 시점입니다.</div>
-      <div class="row">${btn("그 해 지구의 기록 보기", { variant: "ghost", icRight: "arrow-right", id: "act-letter", attrs: 'style="padding-left:0"' })}</div></div>` : ""}
+    <div class="reveal" id="letter-slot" data-sig="${esc(letterCard)}" style="animation-delay:660ms" ${letterCard ? "" : "hidden"}>${letterCard}</div>
     <div class="stack reveal" style="animation-delay:720ms">
       <button type="button" class="disclosure" id="more-btn" aria-expanded="false"><span class="eyebrow">자세한 정보</span>${icon("chevron-down", 14)}</button>
       <div id="more" hidden>
@@ -1506,7 +1625,13 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
     e.currentTarget.lastElementChild.outerHTML = icon(more.hidden ? "chevron-down" : "chevron-up", 14);
   });
   $("#ask-hint").addEventListener("click", () => $("#chat-form input")?.focus());
-  $("#act-letter")?.addEventListener("click", () => showLetter({ item_id: item.id }));
+  // 편지 카드 · 배너는 보관함이 바뀌면 다시 그려진다 — 감싼 자리에서 받는다
+  const onLetter = (e) => {
+    if (e.target.closest("[data-letter-read]")) openItemLetter(item.id);
+    else if (e.target.closest("#act-letter")) showLetter({ item_id: item.id });
+  };
+  $("#letter-banner").addEventListener("click", onLetter);
+  $("#letter-slot").addEventListener("click", onLetter);
   $("#act-letter2")?.addEventListener("click", () => showLetter({ item_id: item.id }));
   $("#act-unfold")?.addEventListener("click", () => setMode("unfold", item.id));
   $("#act-find")?.addEventListener("click", () => { setMode("sky"); state.sky.lookAt(item.id); });
@@ -1885,7 +2010,13 @@ async function showLetter(body) {
   const out = $("#letter-out");
   const next = $("#letter-next");
   const run = (req) => runLatest(gate, alive, {
-    work: () => remembered(`letter:${JSON.stringify(req)}`, () => api.letter(req)),
+    // 천체 편지를 기다리는 사이 서랍을 떠났으면(닫기 · 다른 화면) 그 편지는 '도착한 편지'로 — 보관함에 읽지 않음으로 남기고 알린다
+    work: () => remembered(`letter:${JSON.stringify(req)}`, () => api.letter(req)).then((res) => {
+      if (byItem && !alive() && res?.letter && res.status !== "rejected") {
+        deliverLetter({ kind: "letter", item_id: res.item_id, item_name: res.item_name, title: `${res.item_name}의 빛`, text: res.letter, req });
+      }
+      return res;
+    }),
     onStart: () => { out.innerHTML = statusHtml("빛의 여정을 계산하고 그 해의 기록을 찾는 중…"); composer?.setBusy(true); },
     onError: (e) => { out.innerHTML = statusHtml(errorText(e), "err"); },
     onSettled: () => { composer?.setBusy(false); if (next) next.hidden = false; },
@@ -1905,7 +2036,7 @@ async function showLetter(body) {
         <div id="letter-collect">${collectButtonHtml({ id: res.item_id, name: res.item_name, distance_km: km, kindWord: "별" })}</div>`;
       bindCollect($("#letter-collect"), { id: res.item_id, name: res.item_name, distance_km: km });
       if (res.status === "rejected") return;    // 거절된 응답은 보관 · 공유하지 않는다
-      const kept = keepLetter({ kind: "letter", item_id: res.item_id, item_name: res.item_name, title: label, text: res.letter, req });
+      const kept = keepLetter({ kind: "letter", item_id: res.item_id, item_name: res.item_name, title: label, text: res.letter, req, read: true });
       bindShareBar(out.querySelector("[data-share-bar]"), {
         body: { kind: "letter", ...req }, text: `${label}. ${plainText(res.letter)}`, keepKey: kept.key, letter: { title: label, text: res.letter },
         share: keptShare(kept),
@@ -1961,7 +2092,7 @@ async function showPerspective({ req: startReq = null } = {}) {
         if (shareable) {
           // 보관함에는 사람이 적은 문장을 남기지 않는다 — 다시 받을 수 있게 고른 감정만
           const kept = keepLetter({ kind: "perspective", item_id: res.items[0]?.id ?? null, item_name: res.items[0]?.name ?? null,
-                                    title: "마음 한 줄 곁의 사실", text: res.answer, req: req.theme ? { theme: req.theme } : null });
+                                    title: "마음 한 줄 곁의 사실", text: res.answer, req: req.theme ? { theme: req.theme } : null, read: true });
           bindShareBar(out.querySelector("[data-share-bar]"), {
             body: { kind: "perspective", ...req }, text: plainText(res.answer), keepKey: kept.key,
             letter: { title: "마음 한 줄 곁의 사실", text: res.answer },
@@ -2104,7 +2235,7 @@ function showLetters() {
   const draw = () => {
     out.innerHTML = letters.length ? `<ol class="letter-list">${letters.map((e) => `<li>
         <button type="button" class="letter-row" data-open="${esc(e.key)}">
-          <span class="lr-meta">${esc(letterDate(e.at))} · ${esc(e.item_name || kindLabel(e.kind))}${e.shareId ? ` · <span class="lr-shared">공유함</span>` : ""}</span>
+          <span class="lr-meta">${e.read ? "" : `<span class="unread-dot" role="img" aria-label="읽지 않음"></span>`}${esc(letterDate(e.at))} · ${esc(e.item_name || kindLabel(e.kind))}${e.shareId ? ` · <span class="lr-shared">공유함</span>` : ""}</span>
           <span class="lr-title">${esc(e.title || kindLabel(e.kind))}</span>
           <span class="lr-first">${esc(firstSentence(e.text))}</span></button>
         <button type="button" class="letter-del" data-del="${esc(e.key)}" aria-label="${esc(`${letterDate(e.at)} ${e.title || kindLabel(e.kind)} 삭제`)}">${icon("x", 14)}</button></li>`).join("")}</ol>`
@@ -2139,6 +2270,10 @@ async function showKept({ key = null, share = null } = {}) {
   enterView(share ? { kind: "kept", share } : { kind: "kept", key });
   const alive = claimPanel();
   const entry = key ? findLetter(letters, key) : null;
+  if (entry && !entry.read) {                  // 보관함 · 천체 서랍 · 도착 알림에서 펼쳐 보는 순간 읽음으로 (배지 · ✉ · 배너가 함께 바뀐다)
+    letters = markRead(letters, entry.key);
+    saveLetters();
+  }
   const shareId = share ?? entry?.shareId ?? null;
   if (!shareId) {
     if (entry) drawKeptLocal(entry);
@@ -2160,7 +2295,8 @@ async function showKept({ key = null, share = null } = {}) {
   if (!alive()) return;
   const view = sharedView(rec);
   const kept = keepLetter({ kind: view.kind, item_id: view.item_id, item_name: view.item_name,
-                            title: view.title, text: view.text, shareId, url: entry?.url ?? shareCardUrl(shareId), req: entry?.req ?? null });
+                            title: view.title, text: view.text, shareId, url: entry?.url ?? shareCardUrl(shareId), req: entry?.req ?? null,
+                            read: true });      // 딥링크(?letter=<id>)로 연 편지도 읽음 — 보관함에 읽지 않음으로 있던 같은 편지까지
   drawShared(view, kept, shareId);
 }
 
@@ -2233,6 +2369,7 @@ function setMode(mode, conId, { journey = false, keepView = false } = {}) {
     stage.setMode(state.map);
     if (journey) state.map.journey(() => toast(`여기까지가 지금 당신의 세상입니다 · <em class="kw plain">${esc(world.name)}</em>`), journeyEnd);
     else if (state.item && !keepView) state.map.select(state.item.id);
+    if (!journey) noticeUnreadOnce();               // 읽지 않은 편지가 있으면 세션마다 한 번 조용히
   } else if (mode === "sky") {
     stage.setMode(state.sky);
     refreshSky();
@@ -2423,7 +2560,8 @@ function bindChrome() {
   $("#menu-sound").addEventListener("click", () => { sound.unlock(); sound.enabled = !sound.enabled; renderSoundItem(); });
   renderTextItem();
   $("#menu-text").addEventListener("click", () => setTextLarge(!textLarge()));
-  $("#menu-letters").innerHTML = `${icon("mail", 16)}<span>받은 편지</span>`;
+  $("#menu-letters").innerHTML = `${icon("mail", 16)}<span>받은 편지</span><span class="menu-badge" aria-hidden="true" hidden></span>`;   // 읽지 않은 편지 수 (syncLetterBadges)
+  syncLetterBadges();
   $("#menu-letters").addEventListener("click", () => (state.drawer === "letters" ? closeDrawer() : showLetters()));
   $("#first-light").addEventListener("click", () => { sound.tick(); meetFirstLight(); });
   bindFold($("#first-fold"), $("#first-sky"), "first", syncHush);   // 접으면 킥커 한 줄만 남고, 별자리 이름 숨김 구역도 그만큼
@@ -2493,7 +2631,7 @@ async function start() {
     state.sky = new SkyMode(state.constellations, map.points.filter((p) => p.placement === "sky"),
                             map.points.filter((p) => p.group === "solar_system"));
     state.sky.setObserved(world.visited);
-    state.map.setLetters(letterItemIds(letters));
+    syncLetterBadges();                                     // 지도의 ✉ 표식 · 메뉴 배지
     bindStage();
     await leaveLoading();
     // 바로 가기 주소 — ?mode=sky · ?mode=unfold&con=Q8860 · ?item=Q48469 · ?mode=map&journey=end · ?panel=catalog|explore|letter|mind|tonight|letters (시연 · 공유용)
@@ -2529,7 +2667,7 @@ async function start() {
 
 if (new URLSearchParams(location.search).get("debug") === "1") {
   window.__vh = { state, world, selectItem, setMode, discover, openWorld, startJourney, resetWorld, showExplore, showPerspective, showSkyGuide, showCatalog, closeDrawer,
-                  showLetter, showLetters, showKept, get letters() { return letters; },
+                  showLetter, showLetters, showKept, deliverLetter, get letters() { return letters; },
                   refreshSky, get stage() { return stage; } };
 }
 
