@@ -7,7 +7,7 @@
 //   회전: Z-X'-Y'' 순서 — R = Rz(α) · Rx(β) · Ry(γ), R의 열이 기기 x · y · z 축을 ENU로 나타낸 벡터
 // 가리키는 방향은 휴대폰 뒷면이 향하는 쪽(기기 −z) — 화면을 보면서 휴대폰을 하늘로 들어 올리는 자세
 
-import { lightTime } from "./astro.js";
+import { compass, lightTime } from "./astro.js";
 
 const DEG = Math.PI / 180;
 export const ALIGN_ENTER = 8, ALIGN_EXIT = 12, ALIGN_DWELL_MS = 500, SMOOTH_TAU_MS = 150, VFOV = 60;
@@ -76,6 +76,36 @@ export function smoothBasis(prev, next, dtMs, tauMs = SMOOTH_TAU_MS) {
   return { right: cross(forward, up), up, forward };
 }
 
+// 방위 보정 — 모든 축을 위쪽(ENU z) 둘레로 돌려 방위만 deg만큼 더한다 (나침반 기준 · 자기 편각 · 나침반 맞추기)
+//   방위 az → az + deg. 고도는 그대로다. { right, up, forward } · { x, y, z } 어느 쪽이든 같은 열쇠로 돌려준다
+export function rotateAz(basis, deg) {
+  if (!deg) return basis;
+  const c = Math.cos(deg * DEG), s = Math.sin(deg * DEG);
+  const rot = ([e, n, u]) => [e * c + n * s, -e * s + n * c, u];
+  return Object.fromEntries(Object.entries(basis).map(([k, v]) => [k, rot(v)]));
+}
+
+// 이벤트의 방위 출처 — ios(webkitCompassHeading, 자북 기준) · absolute(deviceorientationabsolute 또는 absolute: true) · relative(기준 없음)
+export function compassSource(e) {
+  const h = e?.webkitCompassHeading;
+  if (Number.isFinite(h) && h >= 0) {
+    const acc = e.webkitCompassAccuracy;
+    return { kind: "ios", heading: h, accuracy: Number.isFinite(acc) && acc >= 0 ? acc : null };
+  }
+  if (e?.type === "deviceorientationabsolute" || e?.absolute === true) return { kind: "absolute", heading: null, accuracy: null };
+  return { kind: "relative", heading: null, accuracy: null };
+}
+
+// 글 안내 — "남서쪽(225°)을 바라보고, 팔을 쭉 뻗은 주먹 4개 높이(약 40°)를 올려다보세요."
+export function lookText(alt, az) {
+  const dir = `${compass(az)}쪽(${Math.round(((az % 360) + 360) % 360)}°)`;
+  if (alt < 0) return `${dir} 지평선 아래에 있어 지금은 보이지 않아요.`;
+  if (alt >= 75) return `${dir}에서 거의 머리 위(약 ${Math.round(alt)}°)를 올려다보세요.`;
+  const fists = fistsText(alt);
+  return fists === "지평선 바로 위" ? `${dir}을 바라보고, 지평선 바로 위(약 ${Math.round(alt)}°)를 살펴보세요.`
+    : `${dir}을 바라보고, 팔을 쭉 뻗은 ${fists} 높이(약 ${Math.round(alt / 10) * 10}°)를 올려다보세요.`;
+}
+
 // 목표까지 — 각거리 sep(도), 화면 화살표 각도 angle(도, 오른쪽 0 · 위 90), 등 뒤에 있는가
 export function guide(basis, targetEnu) {
   const tx = dot(targetEnu, basis.right), ty = dot(targetEnu, basis.up), tz = dot(targetEnu, basis.forward);
@@ -102,17 +132,21 @@ export function project(basis, v, { width, height, vfov = VFOV }) {
   return x < 0 || x > width || y < 0 || y > height ? null : { x, y };
 }
 
-// 정렬 판정 (이력 현상) — 8° 안에 들어와 500ms 머물면 aligned, 12° 밖으로 나가야 far로 돌아간다.
+// 정렬 판정 (이력 현상) — 8° 안에 들어오면 near, 8° 안에 이어서 500ms 머물면 aligned. 12° 밖으로 나가야 far로 돌아간다.
+// near 동안 8°~12°로 벗어나면 머무름 시간을 다시 센다(since: null) — 8° 안에 있던 시간만 센다.
 // fired는 aligned로 바뀐 그 한 번만 true (소리 · 진동 · 연출을 한 번만)
 export function alignStep(state, sep, nowMs) {
-  const s = state ?? { phase: "far", since: nowMs, fired: false };
-  if (sep > ALIGN_EXIT) return { phase: "far", since: s.phase === "far" ? s.since : nowMs, fired: false };
+  const s = state ?? { phase: "far", since: null, fired: false };
+  if (sep > ALIGN_EXIT) return { phase: "far", since: null, fired: false };
   if (s.phase === "aligned") return { phase: "aligned", since: s.since, fired: false };
+  const inside = sep <= ALIGN_ENTER;
   if (s.phase === "near") {
-    if (nowMs - s.since >= ALIGN_DWELL_MS) return { phase: "aligned", since: nowMs, fired: true };
-    return { phase: "near", since: s.since, fired: false };
+    if (!inside) return { phase: "near", since: null, fired: false };
+    const since = s.since ?? nowMs;
+    if (nowMs - since >= ALIGN_DWELL_MS) return { phase: "aligned", since: nowMs, fired: true };
+    return { phase: "near", since, fired: false };
   }
-  return sep <= ALIGN_ENTER ? { phase: "near", since: nowMs, fired: false } : { phase: "far", since: s.since, fired: false };
+  return inside ? { phase: "near", since: nowMs, fired: false } : { phase: "far", since: null, fired: false };
 }
 
 // 자기 편각 (도, 동편 +) — 한국 · 일본 주변(위도 30~46°, 경도 122~146°)만 격자 값을 쌍선형 보간한다. 밖이면 null

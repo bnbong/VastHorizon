@@ -68,16 +68,39 @@ function nextCrossing(fromMs, hours, f, threshold, dir) {
   return null;
 }
 
-// 오늘 밤의 범위 — 이미 밤이면 [지금, 다음 새벽], 낮이면 [오늘 저녁, 다음 새벽]. sunset: 오늘의 일몰(이미 졌으면 지난 일몰)
-export function nightWindow(nowMs, place, limitDeg) {
+// 관측 밤 하나 — 해가 진 동안(일몰~일출). 지금이 밤이면 그 밤(새벽이면 남은 시간), 낮이면 다가오는 밤.
+// 모든 박명 기준 · 일몰 · 일출을 이 밤 하나에 묶는다 (새벽에 밝은 빛은 '지금 새벽', 어두운 빛은 '다음 저녁'으로 섞이지 않게)
+//   { start, end(일출), sunset(이 밤의 일몰 — 이미 졌으면 지난 일몰), daytimeNow(해가 떠 있음), dawn(밤의 후반 · 해가 올라오는 중) } · 해가 지지 않으면 null
+export function observingNight(nowMs, place) {
   const sun = (d) => sunAltDeg(d, place.lat, place.lon);
   const alt = sun(new Date(nowMs));
-  const daytimeNow = alt >= limitDeg;
-  const start = daytimeNow ? nextCrossing(nowMs, SCAN_HOURS, sun, limitDeg, "down") : nowMs;
-  const end = start == null ? null : nextCrossing(start, SCAN_HOURS, sun, limitDeg, "up") ?? start + SCAN_HOURS * 3600_000;
-  const sunset = alt >= SUNSET_DEG ? nextCrossing(nowMs, SCAN_HOURS, sun, SUNSET_DEG, "down")
-    : nextCrossing(nowMs - 24 * 3600_000, 24, sun, SUNSET_DEG, "down");
-  return { start, end, sunset, daytimeNow };
+  const dark = alt < SUNSET_DEG;
+  const start = dark ? nowMs : nextCrossing(nowMs, SCAN_HOURS, sun, SUNSET_DEG, "down");
+  if (start == null) return null;
+  const end = nextCrossing(start, SCAN_HOURS, sun, SUNSET_DEG, "up") ?? start + 24 * 3600_000;
+  const sunset = dark ? nextCrossing(nowMs - 24 * 3600_000, 24, sun, SUNSET_DEG, "down") : start;
+  const dawn = dark && sun(new Date(nowMs + STEP_MIN * MIN_MS)) > alt;
+  return { start, end, sunset, daytimeNow: !dark, dawn };
+}
+
+// 관측 밤 안에서 태양이 기준(limitDeg)보다 낮은 구간 — { start, end, sunset, sunrise, daytimeNow, dawn }.
+// 이 밤에 그만큼 어두워지지 않으면(이미 새벽이 밝아 오는 중) start · end가 null
+export function nightWindow(nowMs, place, limitDeg, obs = observingNight(nowMs, place)) {
+  if (!obs) return { start: null, end: null, sunset: null, sunrise: null, daytimeNow: true, dawn: false };
+  const sun = (d) => sunAltDeg(d, place.lat, place.lon);
+  const hours = (from) => (obs.end - from) / 3600_000 + STEP_MIN / 60;
+  let start = sun(new Date(obs.start)) < limitDeg ? obs.start : nextCrossing(obs.start, hours(obs.start), sun, limitDeg, "down");
+  if (start != null && start >= obs.end) start = null;
+  const end = start == null ? null : Math.min(obs.end, nextCrossing(start, hours(start), sun, limitDeg, "up") ?? obs.end);
+  return { start, end, sunset: obs.sunset, sunrise: obs.end, daytimeNow: obs.daytimeNow, dawn: obs.dawn };
+}
+
+// 위치의 시간대 — 기본 위치(서울)는 Asia/Seoul, 받은 위치('내 위치')는 이 기기의 시간대. place.timeZone이 있으면 그것
+export const SEOUL_TZ = "Asia/Seoul";
+export function zoneOf(place) {
+  if (place?.timeZone) return place.timeZone;
+  if (!place || place.name === "서울") return SEOUL_TZ;
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || SEOUL_TZ; } catch { return SEOUL_TZ; }
 }
 
 // ── 대상 ─────────────────────────────────────────────────────────────────
@@ -89,9 +112,10 @@ export function tierOf({ group, mag }) {
   return m <= lim.eye ? "eye" : m <= lim.darkEye ? "dark-eye" : m <= lim.binocular ? "binocular" : "telescope";
 }
 
-// 하늘이 얼마나 어두워야 하는가 — 달 · 행성 · 1.5등급보다 밝은 별은 시민박명, 나머지 맨눈은 항해박명, 그 밖은 천문박명
+// 하늘이 얼마나 어두워야 하는가 — 달 · 밝은 행성(수성~토성) · 1.5등급보다 밝은 별은 시민박명, 나머지 맨눈은 항해박명, 그 밖은 천문박명
+const BRIGHT_BODIES = new Set(["moon", "mercury", "venus", "mars", "jupiter", "saturn"]);   // 천왕성 · 해왕성은 등급대로
 export function sunLimitOf(target) {
-  if (target.kind === "body") return "bright";
+  if (target.kind === "body" && !target.parent && BRIGHT_BODIES.has(target.body)) return "bright";
   if (target.mag != null && target.mag <= BRIGHT_MAG && target.tier === "eye") return "bright";
   return target.tier === "eye" ? "normal" : "faint";
 }
@@ -207,7 +231,7 @@ function clockOf(ms, timeZone) {
   return { h: get("hour") % 24, m: get("minute") };
 }
 
-// "21시" · "21시 30분" — 기기의 현지 시각 (시험에서는 timeZone을 고정한다)
+// "21시" · "21시 30분" — 그 위치의 시간대(zoneOf)로. timeZone이 없으면 이 기기의 시간대
 export function hourText(ms, { timeZone } = {}) {
   const { h, m } = clockOf(ms, timeZone);
   return m ? `${h}시 ${m}분` : `${h}시`;
@@ -271,7 +295,9 @@ export function plan(target, place, nowMs, opts = {}) {
   }
   const seen = samples.filter((p) => p.up);
   const nextMonth = place.lat >= 0 ? monthOf(target, nowDate, cache) : null;
-  if (!seen.length) return { later: true, nextMonth, now, sunLimit: limitKey };
+  // brightening: 이 밤에 이 대상이 바라는 만큼 어두워지지 않는다 (새벽이 밝아 오는 중)
+  if (!seen.length) return { later: true, nextMonth, now, sunLimit: limitKey, brightening: night.start == null && !night.daytimeNow,
+                                  setForNight: !!night.dawn };   // 새벽 — 이번 밤에는 이미 졌다 (다음 저녁은 새 관측 밤)
 
   // 가장 높이 뜨는 표본 (같으면 이른 것) · 그 표본을 포함하는 연속 구간과 앞뒤 1시간의 교집합
   const best = seen.reduce((a, b) => (b.alt > a.alt ? b : a));
@@ -322,22 +348,23 @@ function monthOf(target, date, cache) {
 // 오늘 밤 내 빛 — { place, now, night, items, later, hard, firstUp, count }
 //   items: 오늘 밤 볼 수 있는 빛 (지금 보이는 것부터 고도순, 나머지는 처음 떠오르는 순)
 //   later: 오늘 밤에는 볼 수 없는 빛 (다시 만날 달) · hard: 망원경이 있어야 보이거나 아직 안내하지 못하는 빛
-export function tonightList({ visited, place, now, points, figures, starMag, earthId = "Q2", step = STEP_MIN, timeZone } = {}) {
+export function tonightList({ visited, place, now, points, figures, starMag, earthId = "Q2", step = STEP_MIN, timeZone = zoneOf(place) } = {}) {
   const nowMs = now instanceof Date ? now.getTime() : Number(now);
-  const nights = Object.fromEntries(Object.entries(SUN_LIMIT).map(([k, v]) => [k, nightWindow(nowMs, place, v)]));
+  const obs = observingNight(nowMs, place);
+  const nights = Object.fromEntries(Object.entries(SUN_LIMIT).map(([k, v]) => [k, nightWindow(nowMs, place, v, obs)]));
   const cache = new Map();
   const items = [], later = [], hard = [];
   for (const t of targetsOf(visited, { points, figures, starMag, earthId })) {
-    const head = { id: t.id, name: t.name, group: t.group, tier: t.tier, mag: t.mag, km: t.km };
+    const head = { id: t.id, name: t.name, group: t.group, tier: t.tier, mag: t.mag, km: t.km, timeZone };   // 문구 함수가 같은 시간대로 적게
     if (!COUNTED_TIERS.includes(t.tier)) { hard.push({ ...head, reason: t.reason ?? null }); continue; }
     const p = plan(t, place, nowMs, { step, cache, nights, timeZone });
-    if (p.later) later.push({ ...head, nextMonth: p.nextMonth });
+    if (p.later) later.push({ ...head, nextMonth: p.nextMonth, brightening: p.brightening, setForNight: p.setForNight });
     else items.push({ ...head, ...p });
   }
   const up = items.filter((x) => x.now.up).sort((a, b) => b.now.alt - a.now.alt);
   const rest = items.filter((x) => !x.now.up).sort((a, b) => a.firstUp - b.firstUp);
   const first = rest[0] ? { id: rest[0].id, name: rest[0].name, at: rest[0].firstUp } : null;
-  return { place, now: nowMs, night: nights.normal, items: [...up, ...rest], later, hard, firstUp: first, count: items.length };
+  return { place, timeZone, now: nowMs, night: nights.normal, items: [...up, ...rest], later, hard, firstUp: first, count: items.length };
 }
 
 // ── 문구 ─────────────────────────────────────────────────────────────────
@@ -346,34 +373,37 @@ export function tonightList({ visited, place, now, points, figures, starMag, ear
 const shownPos = (item) => (item.now?.up ? item.now : item.best);
 
 // 언제 — "21시~22시가 가장 좋아요" · "밤새 같은 자리"
-export function whenText(item, { timeZone } = {}) {
+export function whenText(item, { timeZone = item?.timeZone } = {}) {
   if (item.steady) return "밤새 같은 자리";
   const range = rangeText(item.best.from, item.best.to, { timeZone });
   return `${range}${range.endsWith("분") ? "이" : "가"} 가장 좋아요`;      // "21시~22시가" · "2시 30분~4시 30분이"
 }
 
 // 저녁 보조 문구 — "자정 전에는 23시 50분 무렵 동쪽 낮게"
-export function eveningText(item, { timeZone } = {}) {
+export function eveningText(item, { timeZone = item?.timeZone } = {}) {
   const e = item.evening;
   if (!e) return "";
   return `자정 전에는 ${hourText(e.at, { timeZone })} 무렵 ${directionWord(e.az, e.alt)}${e.alt < 40 ? " 낮게" : ""}`;
 }
 
 // 한 줄 — "베가 · 서쪽 · 고도 41° · 21시~22시가 가장 좋아요"
-export function itemLine(item, { timeZone } = {}) {
+export function itemLine(item, { timeZone = item?.timeZone } = {}) {
   const p = shownPos(item);
   return `${item.name} · ${directionWord(p.az, p.alt)} · 고도 ${Math.round(p.alt)}° · ${whenText(item, { timeZone })}`;
 }
 
 // 빈 상태와 낮 안내 — { key, text } (보여 줄 것이 없으면 key: null)
 //   nothing: 담은 빛이 지구뿐 · all-hard: 모두 망원경 · none-tonight: 오늘 밤 내내 못 봄 · daytime: 낮에 열었음 · none-now: 지금은 지평선 아래
-export function emptyState(result, { timeZone } = {}) {
+export function emptyState(result, { timeZone = result?.timeZone } = {}) {
   const { items = [], later = [], hard = [], night = {} } = result ?? {};
   if (!items.length && !later.length && !hard.length) {
     return { key: "nothing", text: "아직 담은 빛이 없어요. 하늘에서 빛 하나를 담으면 오늘 밤 어디를 보면 되는지 알려 드릴게요." };
   }
   if (!items.length && !later.length) return { key: "all-hard", text: "담은 빛이 모두 망원경이 있어야 보이는 빛이에요" };
-  if (!items.length) return { key: "none-tonight", text: "오늘 밤에는 담은 빛이 지평선 아래나 낮 하늘에 있어요" };
+  if (!items.length) {
+    return { key: "none-tonight", text: night.dawn ? "새벽이 밝아 오고 있어 이번 밤에는 담은 빛을 보기 어려워요"
+      : "오늘 밤에는 담은 빛이 지평선 아래나 낮 하늘에 있어요" };
+  }
   if (night.daytimeNow) {
     const parts = [night.sunset ? `오늘 일몰 ${hourText(night.sunset, { timeZone })}` : null,
                    night.start ? `${hourText(ceil10(night.start), { timeZone })}부터 별이 보이기 시작해요` : null].filter(Boolean);
@@ -388,6 +418,8 @@ export function emptyState(result, { timeZone } = {}) {
 
 // 다시 만날 달 안내 — "안타레스는 7월 무렵 저녁 하늘에서 다시 만날 수 있어요" (남반구 · 움직이는 천체는 빈 문자열)
 export function laterText(entry) {
+  if (entry.brightening) return "하늘이 밝아지기 시작해 이번 밤에는 보기 어려워요";
+  if (entry.setForNight) return "이번 밤에는 이미 졌어요 · 오늘 저녁에 다시 살펴보세요";
   return entry.nextMonth ? `${entry.nextMonth}월 무렵 저녁 하늘에서 다시 만날 수 있어요` : "";
 }
 

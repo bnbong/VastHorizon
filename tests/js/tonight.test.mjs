@@ -8,7 +8,7 @@ import test from "node:test";
 import { solarSystem } from "../../web/js/ephemeris.js";
 import { altAz, localSiderealDeg } from "../../web/js/astro.js";
 import { COUNTED_TIERS, crossing, directionWord, emptyState, eveningMonth, eveningText, hourText, itemLine, laterText, nightWindow,
-         plan, rangeText, SUN_LIMIT, sunAltDeg, sunLimitOf, targetsOf, tierOf, tonightList } from "../../web/js/tonight.js";
+         plan, rangeText, SUN_LIMIT, sunAltDeg, sunLimitOf, targetsOf, tierOf, tonightList, whenText } from "../../web/js/tonight.js";
 
 const TZ = "Asia/Seoul";
 const PLACE = { lat: 37.5665, lon: 126.978 };
@@ -212,4 +212,49 @@ test("등급 규칙 · 박명 기준", () => {
   const [io, titan] = targetsOf([{ id: "Q3123", name: "이오 (위성)", group: "solar_system" }, { id: "Q2565", name: "타이탄 (위성)", group: "solar_system" }]);
   assert.equal(io.tier, "binocular");
   assert.equal(titan.tier, "telescope");
+});
+
+test("시간대 — 위치의 시간대로 계산 · 표기한다 (서울은 Asia/Seoul, 기기 시간대와 무관)", async () => {
+  const { zoneOf } = await import("../../web/js/tonight.js");
+  const seoul = { ...PLACE, name: "서울" };
+  assert.equal(zoneOf(seoul), "Asia/Seoul");
+  assert.equal(zoneOf({ ...PLACE, name: "내 위치", timeZone: "America/New_York" }), "America/New_York");
+  const r = tonightList({ visited: [V.earth, V.vega, V.betelgeuse], place: seoul, now: NOW, points, figures });   // timeZone을 넘기지 않는다
+  assert.equal(r.timeZone, "Asia/Seoul");
+  const vega = r.items.find((x) => x.name === "베가");
+  assert.equal(whenText(vega), "21시~22시가 가장 좋아요");
+  assert.equal(itemLine(vega), "베가 · 서쪽 · 고도 41° · 21시~22시가 가장 좋아요");
+  assert.equal(eveningText(r.items.find((x) => x.name === "베텔게우스")), "자정 전에는 23시 50분 무렵 동쪽 낮게");
+  // 같은 순간을 뉴욕 시간대로 적으면 시각만 바뀐다 (계산은 같다)
+  assert.equal(whenText(vega, { timeZone: "America/New_York" }), "8시~9시가 가장 좋아요");
+});
+
+test("관측 밤 하나 — 10-28 05:30 새벽에는 모든 빛을 지금 새벽에 묶고, 다음 저녁을 섞지 않는다", () => {
+  const dawn = new Date("2026-10-28T05:30:00+09:00");
+  const r = list([V.earth, V.vega, V.betelgeuse, V.m31, V.saturn, V.jupiter, V.polaris], dawn);
+  const sunrise = at("06:51", "2026-10-28");
+  assert.equal(r.night.daytimeNow, false);
+  assert.equal(r.night.dawn, true);
+  assert.ok(r.items.length >= 2);
+  for (const x of r.items) assert.ok(x.firstUp <= sunrise && x.best.at <= sunrise, `${x.name} ${new Date(x.best.at).toISOString()}`);
+  assert.deepEqual(r.items.map((x) => x.name).sort(), ["목성", "베텔게우스", "폴라리스"].sort());
+  const m31 = r.later.find((x) => x.name === "안드로메다 은하");                 // 천문박명(05:22)이 지나 어두워지지 않는다
+  assert.equal(laterText(m31), "하늘이 밝아지기 시작해 이번 밤에는 보기 어려워요");
+  assert.equal(laterText(r.later.find((x) => x.name === "베가")), "이번 밤에는 이미 졌어요 · 오늘 저녁에 다시 살펴보세요");
+  assert.notEqual(emptyState(r).key, "daytime");                                // 지난 일몰을 '오늘 일몰'로 적지 않는다
+  // 새벽 항해박명(05:54)이 지나도 아직 해가 지기 전 밤 — 낮 안내(지난 일몰)를 하지 않는다
+  assert.notEqual(emptyState(list([V.earth, V.jupiter], new Date("2026-10-28T06:05:00+09:00"))).key, "daytime");
+  // 낮(14시)에는 다가오는 밤 — 일몰은 오늘 저녁
+  nearMin(list([V.earth, V.vega], new Date(at("14:00"))).night.sunset, at("17:39"), 2, "오늘 저녁 일몰");
+});
+
+test("희미한 행성 — 천왕성 · 해왕성은 등급대로 어두운 하늘을 기다린다", () => {
+  const [uranus, neptune, mars, io] = targetsOf([{ id: "Q324", name: "천왕성", group: "solar_system" }, { id: "Q332", name: "해왕성", group: "solar_system" },
+    { id: "Q111", name: "화성", group: "solar_system" }, { id: "Q3123", name: "이오 (위성)", group: "solar_system" }]);
+  assert.equal(uranus.tier, "dark-eye");
+  assert.equal(uranus.sunLimit, "faint");
+  assert.equal(neptune.tier, "binocular");
+  assert.equal(neptune.sunLimit, "faint");
+  assert.equal(mars.sunLimit, "bright");
+  assert.equal(io.sunLimit, "faint");
 });

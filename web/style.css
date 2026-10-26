@@ -1068,3 +1068,61 @@ html[data-text="large"] .drawer .lr-title { font-size: 19px; }
   .first-tonight-chip { min-height: 36px; }
   .ml-actions .chip.sm { height: 36px; padding: 0 12px; }
 }
+
+/* ── 하늘 가리키기 — 전체 화면 오버레이 (web/js/pointerview.js). 토스트(5) · 장면(7) · 담기 빛무리(40) 위, 프롤로그(50) 아래 ──
+   거의 검은 남색 단색 · 낮춘 글자 밝기 — 눈이 어둠에 적응하도록 */
+.pointer { position: fixed; inset: 0; z-index: 45; overflow: hidden; background: #05060f; color: rgba(255,250,245,.7); touch-action: none;
+  font: 400 14px/1.5 var(--font-sans); --pt-ink: rgba(255,250,245,.7); --pt-dim: rgba(255,250,245,.5); }
+.pointer .pt-sky { position: absolute; inset: 0; display: block; }
+.pt-reticle { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 1px solid rgba(255,250,245,.32);
+  pointer-events: none; transition: border-color var(--dur-base), box-shadow var(--dur-base); }
+.pointer.near .pt-reticle { border-color: rgba(243,218,213,.75); }
+.pointer.aligned .pt-reticle { border-color: var(--eyes-gold); box-shadow: 0 0 0 3px rgba(242,207,140,.18), 0 0 30px rgba(242,207,140,.35); }
+.pointer.text-mode .pt-reticle { display: none; }
+.pt-arrow { position: absolute; left: 0; top: 0; width: 34px; height: 34px; color: var(--peach); pointer-events: none; filter: drop-shadow(0 0 6px rgba(243,218,213,.5)); }
+.pt-head { position: absolute; left: 20px; right: 20px; top: calc(20px + env(safe-area-inset-top)); pointer-events: none; }
+.pt-name { margin: 0; font: 400 26px/1.25 var(--font-serif); letter-spacing: -0.03em; color: rgba(255,250,245,.85); }
+.pt-meta { margin: 4px 0 0; font-size: 13px; color: var(--pt-ink); }
+.pt-place { margin: 2px 0 0; font-size: 12px; color: var(--pt-dim); }
+.pt-hint { position: absolute; left: 20px; right: 20px; bottom: calc(86px + env(safe-area-inset-bottom)); margin: 0; text-align: center;
+  font: 400 16px/1.5 var(--font-sans); color: rgba(255,250,245,.8); text-shadow: 0 1px 6px #05060f; }
+.pt-hint:empty { display: none; }
+.pt-foot { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 4px 18px; flex-wrap: wrap;
+  padding: 10px 20px calc(14px + env(safe-area-inset-bottom)); }
+.pt-acc { flex: 1 1 100%; font-size: 11px; color: var(--pt-dim); }
+.pt-acc:empty { display: none; }
+.pointer .quiet-link { min-height: 44px; color: var(--pt-ink); }
+.pt-foot [data-close] { margin-left: auto; }
+.pt-found, .pt-calib, .pt-text { position: absolute; left: 16px; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom)); padding: 18px 18px 14px;
+  background: rgba(20,21,48,.88); border: 1px solid rgba(255,250,245,.14); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+.pt-found.rise { animation: vhIn var(--dur-slow) var(--ease-cinematic); }
+.pt-found-name { margin: 0; font: 400 24px/1.3 var(--font-serif); color: rgba(255,250,245,.9); }
+.pt-found-line { margin: 6px 0 14px; font: 400 16px/1.6 var(--font-serif); color: var(--eyes-gold); word-break: keep-all; }
+.pt-found-actions, .pt-calib-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.pointer .primary-button { min-width: 0; padding: 14px 18px; }
+.pointer .primary-button:disabled { opacity: .75; cursor: default; }
+.pt-calib-line { margin: 0 0 12px; color: rgba(255,250,245,.8); word-break: keep-all; }
+.pt-text { top: auto; }
+.pt-text-row { display: flex; align-items: center; gap: 14px; }
+.pt-text-line { margin: 0; font: 400 16px/1.6 var(--font-serif); color: rgba(255,250,245,.88); word-break: keep-all; }
+.pt-text-when { margin: 6px 0 0; font-size: 13px; color: var(--pt-ink); }
+.pt-text-when:empty { display: none; }
+.pt-text-note { margin: 12px 0 0; font-size: 12px; color: var(--eyes-gold); word-break: keep-all; }
+.pt-dial { flex: none; color: rgba(255,250,245,.75); font: 400 9px var(--font-sans); }
+.pt-dial text { fill: currentColor; }
+.pt-dial-target { fill: var(--peach); }
+@media (prefers-reduced-motion: reduce) { .pt-found.rise { animation: none; } .pt-reticle { transition: none; } }
+
+/* 데스크톱 — "휴대폰에서 가리키기" 카드 (종이색 서랍 안) */
+.point-card, .ml-phone { margin-top: 4px; }
+.ml-phone { padding-left: 37px; }
+.pt-phone-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid #e8dfe2; background: #fcf6f2; }
+.pt-phone-lead, .pt-phone-note { margin: 0; font: var(--type-small); color: var(--text-secondary); word-break: keep-all; }
+.pt-phone-note { font: var(--type-caption); color: var(--text-muted); }
+.pt-phone-link { display: flex; gap: 8px; }
+.pt-phone-link input { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--border-default); background: #fff; color: var(--paper-ink); font: 400 12px var(--font-mono); }
+.pt-phone-link input:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pt-phone-card .pt-text-line { color: var(--paper-ink); font-size: 15px; }
+.pt-phone-card .pt-text-when { color: var(--text-muted); }
+.pt-phone-card .pt-dial { color: #6b4c80; }
+.seen-actions { display: flex; flex-wrap: wrap; gap: 8px; }

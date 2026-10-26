@@ -87,3 +87,19 @@ test("entryOf — 겉보기 등급이 있으면 mag로, 없으면 null", () => {
   assert.equal(entryOf({ id: "Q193", name: "토성", group: "solar_system", attrs: {} }, "2026-10-27").mag, null);
   assert.equal(entryOf({ id: "hip:1", name: "HIP 1", group: "star" }, "2026-10-27").mag, null);
 });
+
+test("cleanSeen — 실제 달력 날짜만 (2월 30일 · 13월 · 평년 2월 29일은 버리고 윤년 2월 29일은 남긴다), 연말 · 연초 순서", async () => {
+  const { isCalendarDay } = await import("../../web/js/seen.js");
+  assert.equal(isCalendarDay("2026-02-30"), false);
+  assert.equal(isCalendarDay("2026-13-01"), false);
+  assert.equal(isCalendarDay("2026-02-29"), false);
+  assert.equal(isCalendarDay("2028-02-29"), true);
+  assert.equal(isCalendarDay("2026-12-31"), true);
+  assert.deepEqual(cleanSeen([{ at: "2027-01-01" }, { at: "2026-02-30" }, { at: "2026-12-31" }, { at: "2028-02-29" }, { at: "2026-02-29" }]).map((s) => s.at),
+                   ["2026-12-31", "2027-01-01", "2028-02-29"]);
+  // 연말에 남긴 뒤 새해에 다시 — 날짜순으로 쌓인다
+  let v = markSeen(base(), "Q3427", "2026-12-31");
+  v = markSeen(v, "Q3427", "2027-01-01");
+  assert.deepEqual(v[1].seen.map((s) => s.at), ["2026-12-31", "2027-01-01"]);
+  assert.deepEqual(seenSummary(v[1]), { count: 2, last: "01.01", text: "직접 본 날 2번 · 마지막 01.01" });
+});

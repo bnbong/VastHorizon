@@ -10,6 +10,14 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 const round1 = (x) => Math.round(x * 10) / 10;
 
+// 실제 달력 날짜인가 — 형식이 맞아도 2026-02-30 · 2026-13-01 같은 값은 버린다 (윤년의 2월 29일은 남는다)
+export function isCalendarDay(day) {
+  if (typeof day !== "string" || !DAY.test(day)) return false;
+  const [y, m, d] = day.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
+
 function cleanPlace(p) {
   if (!p || typeof p !== "object") return null;
   const out = {};
@@ -18,14 +26,14 @@ function cleanPlace(p) {
   return Object.keys(out).length ? out : null;
 }
 
-// 저장된 seen 정리 — 배열이 아니면 버리고, 날짜 형식이 아닌 원소 · 같은 날짜(먼저 것을 남긴다)를 걸러, 날짜순으로 최근 50개만.
+// 저장된 seen 정리 — 배열이 아니면 버리고, 실제 달력 날짜가 아닌 원소 · 같은 날짜(먼저 것을 남긴다)를 걸러, 날짜순으로 최근 50개만.
 // 결과가 비면 null (그때는 seen 키를 아예 두지 않는다)
 export function cleanSeen(raw) {
   if (!Array.isArray(raw)) return null;
   const days = new Set();
   const out = [];
   for (const s of raw) {
-    if (!s || typeof s.at !== "string" || !DAY.test(s.at) || days.has(s.at)) continue;
+    if (!s || !isCalendarDay(s.at) || days.has(s.at)) continue;
     days.add(s.at);
     const place = cleanPlace(s.place);
     out.push(place ? { at: s.at, place } : { at: s.at });

@@ -119,3 +119,56 @@ test("자기 편각 — 서울은 −10° ~ −8° (WMM-2025), 표 밖은 null",
   assert.equal(declinationDeg(51.5, -0.1), null);
   assert.equal(declinationDeg(37.5, 150), null);
 });
+
+test("방위 보정 — 위쪽 둘레로 돌리면 방위만 더해지고 고도는 그대로", async () => {
+  const { rotateAz } = await import("../../web/js/pointer.js");
+  const b = screenBasis(deviceBasis(67.8, 131, 0), 0);
+  const p0 = enuToAltAz(b.forward), p1 = enuToAltAz(rotateAz(b, -9).forward);
+  close(p1.alt, p0.alt, 1e-9, "고도");
+  closeAz(p1.az, p0.az - 9, 1e-9, "방위");
+  assert.equal(rotateAz(b, 0), b);
+  const r = rotateAz(b, 30);
+  const dot = (p, q) => p.reduce((t, v, i) => t + v * q[i], 0);
+  close(dot(r.right, r.up), 0, 1e-12, "직교 유지");
+});
+
+test("방위 출처 — iOS 나침반 · 절대 · 상대", async () => {
+  const { compassSource } = await import("../../web/js/pointer.js");
+  assert.deepEqual(compassSource({ type: "deviceorientation", webkitCompassHeading: 292.2, webkitCompassAccuracy: 10 }),
+                   { kind: "ios", heading: 292.2, accuracy: 10 });
+  assert.equal(compassSource({ type: "deviceorientation", webkitCompassHeading: 10, webkitCompassAccuracy: -1 }).accuracy, null);
+  assert.equal(compassSource({ type: "deviceorientationabsolute", absolute: true }).kind, "absolute");
+  assert.equal(compassSource({ type: "deviceorientation", absolute: true }).kind, "absolute");
+  assert.equal(compassSource({ type: "deviceorientation", absolute: false }).kind, "relative");
+});
+
+test("iOS 경로 — 상대 α에 나침반 오프셋을 더하면 절대 방위가 된다", async () => {
+  const { rotateAz, followOffset } = await import("../../web/js/pointer.js");
+  // 실제로는 베가(292.2°)를 보고 있지만 α는 시작 기준 10°라 상대 방위는 350°
+  const raw = screenBasis(deviceBasis(10, 131, 0), 0);
+  const offset = followOffset(null, ((10 - alphaFromCompass(292.2)) % 360 + 360) % 360, 0);
+  closeAz(enuToAltAz(rotateAz(raw, offset).forward).az, 292.2, 1e-9, "보정한 방위");
+});
+
+test("글 안내 — 남서쪽(225°), 주먹 4개 높이(약 40°)", async () => {
+  const { lookText } = await import("../../web/js/pointer.js");
+  assert.equal(lookText(41, 225), "남서쪽(225°)을 바라보고, 팔을 쭉 뻗은 주먹 4개 높이(약 40°)를 올려다보세요.");
+  assert.match(lookText(-5, 90), /지평선 아래/);
+  assert.match(lookText(86.3, 3), /머리 위/);
+});
+
+test("정렬 판정 — near 동안에는 8° 안에 머문 시간만 센다 (7°→10°로 500ms는 정렬 아님)", () => {
+  let s = alignStep(null, 7, 0);
+  s = alignStep(s, 10, 300);
+  s = alignStep(s, 10, 500);
+  assert.equal(s.phase, "near");
+  s = alignStep(s, 10, 900);
+  assert.equal(s.phase, "near");                       // 8° 밖에서 900ms가 지나도 정렬되지 않는다
+  s = alignStep(s, 7, 1000);
+  s = alignStep(s, 7, 1400);
+  assert.equal(s.phase, "near");                       // 다시 들어온 1000ms부터 400ms
+  s = alignStep(s, 7, 1500);
+  assert.equal(s.phase, "aligned");
+  assert.equal(s.fired, true);
+  assert.equal(alignStep(alignStep(null, 7, 0), 13, 100).phase, "far");
+});
