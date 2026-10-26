@@ -64,3 +64,9 @@ test("점선 원 — 멀리서 보면 '나' 가까이 몰린 원은 숨고, 다�
   assert.equal(nearFade(30, oneLightDay), 1);         // 확대하면 보인다
   assert.equal(nearFade(7 * 10, 10), 0.5);            // 6배와 8배 사이는 차츰
 });
+
+test("두 눈으로 본 빛 — 두 겹 고리 클래스와 읽히는 글자, 두 번째 인자가 없으면 예전과 같은 HTML", () => {
+  assert.equal(markHtml(true, { seen: false }), markHtml(true));
+  assert.match(markHtml(true, { seen: true }), /class="known-mark eyes-seen"[^>]*>✦<\/span><span class="eyes-label">직접 봄<\/span>/);
+  assert.equal(markHtml(false, { seen: true }), markHtml(false));      // 담지 않은 빛에는 붙지 않는다
+});

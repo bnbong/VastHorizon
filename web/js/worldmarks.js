@@ -4,6 +4,7 @@
 //   알아감        : 살구색 채운 원 안의 ✦ · 약한 후광 · 어두운 남보라 이름표 · '나'와 실선
 //   아직 만나지 않음: 빈 점선 원 · 연결선 없음 · 이름은 기본으로 숨김
 //   현재 선택      : 알아간 표식 바깥의 흰 1px 고리
+//   두 눈으로 본 빛: 알아간 표식 바깥에 두 겹 금빛 고리 + 읽히는 글자 "직접 봄" (seen.js)
 
 import { distanceText, measure } from "./astro.js";
 import { todays } from "./journal.js";
@@ -14,8 +15,11 @@ export function markState(id, knownIds, selectedId = null) {
 }
 
 // 표식 HTML — 목록 · 서랍 같은 DOM 자리에 (지도 · 하늘의 3D 표식도 같은 클래스를 쓴다)
-export function markHtml(known) {
-  return known ? '<span class="known-mark" aria-hidden="true">✦</span>' : '<span class="unknown-mark" aria-hidden="true"></span>';
+// seen: 두 눈으로 본 빛 — 두 번째 인자가 없으면 예전과 같은 HTML
+export function markHtml(known, { seen = false } = {}) {
+  if (!known) return '<span class="unknown-mark" aria-hidden="true"></span>';
+  return seen ? '<span class="known-mark eyes-seen" aria-hidden="true">✦</span><span class="eyes-label">직접 봄</span>'
+    : '<span class="known-mark" aria-hidden="true">✦</span>';
 }
 
 // 오늘 새로 알아간 빛의 수 — 기록의 날짜(at, 그 사람의 현지 날짜)가 오늘인 것

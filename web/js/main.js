@@ -13,7 +13,7 @@ import { miniLogoSvg } from "./logo.js";
 import { MapMode } from "./map.js";
 import { Stage } from "./scene.js";
 import { colorWord, pickFirstLight } from "./skydata.js";
-import { EARTH_ID, heroFact, placeNote } from "./facts.js";
+import { EARTH_ID, heroFact, josa, placeNote } from "./facts.js";
 import { SkyMode } from "./sky.js";
 import { playPrologue, STORAGE_KEY as PROLOGUE_KEY } from "./prologue.js";
 import { igniteBurst } from "./dream.js";
@@ -24,6 +24,8 @@ import { analogies, growthText, knownAndUnknown, newlyInside } from "./worldscal
 import { entryOf, localDate, reachOf, recent, restoreVisited, serialize, todays, WORLD_KEY } from "./journal.js";
 import { UnfoldMode } from "./unfold.js";
 import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
+import { altAzOf, directionWord, emptyState, eveningText, hourText, laterText, MIN_ALT, targetsOf, TIER_LABEL, tonightList, whenText } from "./tonight.js";
+import { markSeen, seenCount, seenSummary, seenToday, unmarkSeen } from "./seen.js";
 import { FOLD_KEY, restoreFold, serializeFold, withFold } from "./fold.js";
 import { advance, popView } from "./drawerstack.js";
 import { classifyLayout, defaultSnap, SHEET_QUERY, SPLIT_QUERY } from "./sheet.js";
@@ -458,6 +460,7 @@ function openView(v) {
     case "letter": return showLetter(v.body);
     case "perspective": return showPerspective({ req: v.req });
     case "tonight": return showSkyGuide();
+    case "mylights": return showMyLights();
     case "letters": return showLetters();
     case "kept": return showKept(v);
     case "unfold":
@@ -1160,7 +1163,7 @@ function saveImage(s) {
 // ── 머리 · 발 ─────────────────────────────────────────────────────────────
 
 const TOOLS = [["explore", "search", "조건 탐색"], ["letter", "mail", "빛의 편지"], ["mind", "moon-star", "마음 한 줄"],
-               ["tonight", "orbit", "오늘 밤 하늘"], ["unfold", "telescope", "별자리 펼치기"]];
+               ["mylights", "eye", "오늘 밤 내 빛"], ["tonight", "orbit", "오늘 밤 하늘"], ["unfold", "telescope", "별자리 펼치기"]];
 const STOPS = [{ label: "지평선", sub: "하늘 보기", km: HORIZON_KM }, { label: "태양계", sub: "10¹² m", km: 1e9 },
                { label: "별", sub: "10¹⁷ m", km: 1e14 }, { label: "은하", sub: "10²² m", km: 1e19 },
                { label: "우주의 끝", sub: "10²⁶ m", km: 4.4e23 }];
@@ -1197,6 +1200,8 @@ function renderChrome() {
   renderHint();
   renderWorldCard();
   syncHush();                                   // 요약 카드의 자리가 정해진 뒤에 지도 이름표 숨김 구역을 다시
+  syncTonightEntry();                           // 첫 하늘 · 요약 카드의 '오늘 밤 볼 수 있는 내 빛 N개'
+  syncSeenSlot();                               // 열린 천체 서랍의 '오늘 두 눈으로 봤어요'
 }
 
 // 살구색 리본 오른쪽 문구 — 알아간 빛이 지구뿐인 사람이 밤늦게(22시~5시) 들어왔으면 마음 한 줄로 이어 준다
@@ -1223,7 +1228,10 @@ function renderWorldHeading() {
   const h = worldHeading(world.visited, headingDay);
   $("#world-kicker").textContent = h.kicker;
   $("#world-title").innerHTML = `${esc(h.lines[0])}<br><em>${esc(h.lines[1])}</em>`;
-  $("#map-legend").innerHTML = `<li>${markHtml(true)}<span>${esc(h.known)}</span></li><li>${markHtml(false)}<span>${esc(h.unknown)}</span></li>`;
+  // 두 눈으로 본 빛이 있으면 세 번째 항목 — 두 겹 금빛 고리 (seen.js)
+  const eyes = seenCount(world.visited, EARTH_ID);
+  $("#map-legend").innerHTML = `<li>${markHtml(true)}<span>${esc(h.known)}</span></li><li>${markHtml(false)}<span>${esc(h.unknown)}</span></li>`
+    + (eyes ? `<li><span class="known-mark eyes-seen" aria-hidden="true">✦</span><span>두 눈으로 본 빛 ${eyes.toLocaleString("ko-KR")}개</span></li>` : "");
 }
 
 // 자정이 지나면 '오늘 새로 알아간 빛'이 어제 것을 세지 않게 — 자정 타이머와 탭이 다시 보일 때(잠든 탭은 타이머가 늦다) 날짜를 본다
@@ -1343,6 +1351,7 @@ function renderWorldCard() {
   const facts = analogies(world.km);
   const n = (x) => x.toLocaleString("ko-KR");
   const far = farthestParts(world.km);
+  const eyes = seenCount(visited, EARTH_ID);
   const copy = visited.length
     ? `알아간 빛 ${n(visited.length)}개가 내 세계에 남아 있어요. 아직 닿지 않은 점들도 언제든 만나볼 수 있습니다.`
     : "아직 알아간 빛이 없어요. 하늘에서 빛 하나를 만나 담으면 이 지도에 살구색 표식이 켜집니다.";
@@ -1353,6 +1362,8 @@ function renderWorldCard() {
     <hr class="wc-rule">
     <p class="wc-name">${esc(world.name)}</p>
     <p class="wc-copy">${esc(copy)}</p>
+    ${eyes ? `<p class="wc-seen"><span class="known-mark eyes-seen" aria-hidden="true">✦</span>직접 본 빛 ${n(eyes)}개</p>` : ""}
+    ${metBeyondEarth() && state.mapData ? `<button type="button" class="wc-link wc-tonight" id="wc-tonight">${icon("eye", 14)}<span class="wc-tonight-text">${esc(tonightEntryText())}</span> <span aria-hidden="true">↗</span></button>` : ""}
     <button type="button" class="wc-link" id="wc-meet">${visited.length ? "다른 빛 만나러 가기" : "첫 번째 빛 만나러 가기"} <span aria-hidden="true">↗</span></button>
     <div class="wc-extra">
     <details class="wc-more" data-k="compare" ${open.has("compare") ? "open" : ""}><summary>크기 비교 더 보기</summary>
@@ -1361,8 +1372,8 @@ function renderWorldCard() {
       <div class="wc-note">앞으로 알아갈 가능성입니다</div>
       <div class="wc-src">기준 · 지구 지름 12,742km(위키백과 「지구」) · 빛의 속도 299,792km/s</div></details>
     <details class="wc-more" data-k="log" ${open.has("log") ? "open" : ""}><summary>알아간 빛 기록 (${n(visited.length)})</summary>
-      ${visited.length ? `<ol class="wc-log">${recent(visited).map((v) => `<li><button type="button" data-open="${esc(v.id)}">${markHtml(true)}${esc(v.name)}</button>
-        <span>${v.id === EARTH_ID ? "내가 있는 곳" : v.km ? esc(distanceText(v.km)) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}</span></li>`).join("")}</ol>
+      ${visited.length ? `<ol class="wc-log">${recent(visited).map((v) => `<li><button type="button" data-open="${esc(v.id)}">${markHtml(true, { seen: !!v.seen?.length })}${esc(v.name)}</button>
+        <span>${v.id === EARTH_ID ? "내가 있는 곳" : v.km ? esc(distanceText(v.km)) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}${v.seen?.length ? " · 직접 봄" : ""}</span></li>`).join("")}</ol>
         <button type="button" class="wc-reset" id="wc-reset">기록 처음부터 다시 시작</button>` : `<div class="wc-note">아직 기록이 없습니다</div>`}</details>
     <button type="button" class="wc-journey" id="wc-journey">${icon("sparkles", 14)}<span>우주 끝까지 떠나 보기</span></button></div></div>`;
   bindFold($("#wc-fold"), el, "world", () => { fitStageInset(); syncHush(); });   // 접으면 카드가 한 줄 바가 되어 '나' 들어올림 · 이름표 숨김 구역도 줄어든다
@@ -1372,6 +1383,7 @@ function renderWorldCard() {
     selectItem(b.dataset.open, { fly: false });
   }));
   $("#wc-meet").addEventListener("click", meetFirstLight);       // 하늘로 돌아가 아직 만나지 않은 밝은 빛 하나를 연다
+  $("#wc-tonight")?.addEventListener("click", showMyLights);
   fitStageInset();
   $("#wc-journey").addEventListener("click", startJourney);
   $("#wc-reset")?.addEventListener("click", (e) => {
@@ -1588,6 +1600,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
     <div class="evidence-line reveal" style="animation-delay:300ms"><span>근거 있는 이야기 · 항목 메타데이터</span>
       ${source ? `<a href="${esc(source.url)}" target="_blank" rel="noopener">${esc(source.name)} ↗</a>` : ""}</div>
     <div class="reveal" id="collect-slot" data-peek="action" style="animation-delay:420ms">${collectButtonHtml(item)}</div>
+    <div class="reveal seen-slot" id="seen-slot" style="animation-delay:450ms" hidden></div>
     <button type="button" class="ask-hint reveal" id="ask-hint" style="animation-delay:480ms">궁금한 것을 물어보세요 ${icon("arrow-up-right", 13)}</button>
     <div class="more-read reveal" style="animation-delay:540ms">
       <div class="intro-clip" id="intro-clip"><div class="stack lg intro" id="intro">${statusHtml("이 천체의 이야기를 불러오는 중…")}</div></div>
@@ -1655,6 +1668,8 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   });
   $("#clear-chat").addEventListener("click", clear);
   bindCollect($("#collect-slot"), item);
+  syncSeenSlot();
+  bindSeenSlot($("#seen-slot"), item);
   loadIntro(item, alive);
   loadPhoto(item, alive);
   loadBlackHole(item, alive);
@@ -1888,12 +1903,13 @@ async function showCatalog({ group: startGroup = "all", q: startQ = "" } = {}) {
     const q = $("#catalog-q").value.trim().toLowerCase();
     const list = state.catalog.filter((o) => (group === "all" || o.group === group)
       && (!q || o.name.toLowerCase().includes(q) || (o.name_en ?? "").toLowerCase().includes(q)));
+    const eyesIds = new Set(world.visited.filter((v) => v.seen?.length).map((v) => v.id));
     $("#catalog-list").innerHTML = list.map((o) => `<button type="button" class="catalog-row ${isObserved(o.id) ? "seen" : ""}" data-id="${esc(o.id)}">
-        ${markHtml(isObserved(o.id))}
+        ${markHtml(isObserved(o.id), { seen: eyesIds.has(o.id) })}
         <span><span class="nm">${esc(o.name)}</span><span class="ds">${esc(o.group_ko)}${o.kind ? ` · ${esc(o.kind)}` : ""}</span></span>
         <span class="dist">${o.distance_km ? esc(distanceText(o.distance_km)) : ""}</span></button>`).join("")
       || `<p class="status warn">찾는 항목이 없습니다.</p>`;
-    $("#catalog-note").textContent = `전체 ${state.catalog.length}건 중 ${list.length}건 · ✦ 표식은 내 세계에 담은 빛, 점선 원은 아직 만나지 않은 빛`;
+    $("#catalog-note").textContent = `전체 ${state.catalog.length}건 중 ${list.length}건 · ✦ 표식은 내 세계에 담은 빛, 점선 원은 아직 만나지 않은 빛${eyesIds.size ? " · 두 겹 고리는 두 눈으로 본 빛" : ""}`;
   };
   $("#catalog-q").addEventListener("input", draw);
   $("#catalog-groups").addEventListener("click", (e) => {
@@ -2190,6 +2206,292 @@ async function showSkyGuide() {
   loadList();
 }
 
+// ── 서랍: 오늘 밤 내 빛 — 담은 빛 가운데 오늘 밤 이 자리에서 볼 수 있는 것과 가장 좋은 시간대 (tonight.js) ─────────────
+//   위치는 저장하지 않는다 — 하늘 보기의 위치(state.sky.place, 기본 서울)를 그대로 쓰고 "서울 기준" · "내 위치 기준"을 늘 적는다.
+//   시각은 하늘의 시각 막대와 상관없이 지금. 계산 결과는 (위치, 1분 단위 시각, 기록, 별 등급 데이터) 열쇠로 기억해 다시 쓴다
+
+const SEOUL = { lat: 37.5665, lon: 126.978, name: "서울" };
+let tonightMemo = null;
+let starMagMap = null;
+
+// 하늘에서 누른 별(hip:)의 등급 — 하늘이 이미 불러온 밝은 별 묶음에서 찾는다 (아직 없으면 null)
+function starMagOf(hip) {
+  if (!starMagMap) {
+    const s = state.sky?.stars?.parts?.[0]?.stars;
+    if (!s) return null;
+    starMagMap = new Map();
+    for (let i = 0; i < s.count; i++) starMagMap.set(s.hip[i], s.mag[i]);
+  }
+  return starMagMap.get(hip) ?? null;
+}
+
+const tonightCtx = () => ({ earthId: EARTH_ID, starMag: starMagOf,
+  points: new Map((state.mapData?.points ?? []).map((p) => [p.id, p])),
+  figures: new Map(state.constellations.map((c) => [c.item_id, c])) });
+
+function myLights() {
+  const place = state.sky?.place ?? SEOUL;
+  const now = Date.now();
+  const key = [place.lat, place.lon, Math.floor(now / 60_000), world.visited.map((v) => v.id).join(","), !!starMagMap].join("|");
+  if (tonightMemo?.key === key) return tonightMemo.result;
+  const result = tonightList({ visited: world.visited, place, now: new Date(now), ...tonightCtx() });
+  tonightMemo = { key, result };
+  return result;
+}
+
+const placeLabel = (place) => (place?.name === "내 위치" ? "내 위치 기준" : `${place?.name ?? "서울"} 기준`);
+const tonightEntryText = () => {
+  const n = myLights().count;
+  return n ? `오늘 밤 볼 수 있는 내 빛 ${n.toLocaleString("ko-KR")}개` : "오늘 밤 내 빛 살펴보기";
+};
+
+// 진입점 — 첫 하늘의 링크 · 접힌 킥커 줄의 칩 · 요약 카드의 링크. 지구 밖의 빛을 담았을 때만 (renderChrome 끝에서)
+function syncTonightEntry() {
+  const link = $("#first-tonight"), chip = $("#first-tonight-chip");
+  if (!link || !chip) return;
+  const ready = !!state.mapData && metBeyondEarth();
+  const n = ready ? myLights().count : 0;
+  const text = ready ? tonightEntryText() : "";
+  link.hidden = !ready;
+  if (link.dataset.text !== text) {             // 그대로면 다시 그리지 않는다 (포커스가 링크에 있을 수 있다)
+    link.dataset.text = text;
+    link.innerHTML = `${icon("eye", 14)}<span>${esc(text)}</span><span aria-hidden="true">↗</span>`;
+  }
+  chip.hidden = !n;                              // 펼친 첫 하늘에서는 CSS가 숨긴다 (본문 링크가 있다)
+  chip.textContent = `내 빛 ${n}`;
+  chip.setAttribute("aria-label", `오늘 밤 볼 수 있는 내 빛 ${n}개`);
+  const wc = $("#wc-tonight .wc-tonight-text");
+  if (wc && ready) wc.textContent = text;
+}
+
+// 시간이 흐르면 N이 바뀐다 — 탭이 보일 때만 10분마다 (잠든 탭은 돌아올 때 바로)
+let tonightTimer = null;
+function scheduleTonightEntry() {
+  clearInterval(tonightTimer);
+  tonightTimer = document.hidden ? null : setInterval(syncTonightEntry, 600_000);
+}
+document.addEventListener("visibilitychange", () => {
+  scheduleTonightEntry();
+  if (!document.hidden) syncTonightEntry();
+});
+
+// 머리글 아래 한 줄 — "서울 기준 · 오늘 일몰 17시 39분 · 18시 40분부터 별이 보이기 시작해요" · "서울 기준 · 5시 50분까지 별을 볼 수 있어요"
+function myLightsWhere(r) {
+  const parts = [placeLabel(r.place)];
+  const empty = emptyState(r);
+  if (r.night.daytimeNow) {
+    const sunset = r.night.sunset ? `오늘 일몰 ${hourText(r.night.sunset)}` : null;
+    const stars = r.night.start ? `${hourText(Math.ceil(r.night.start / 600_000) * 600_000)}부터 별이 보이기 시작해요` : null;
+    parts.push(...(empty.key === "daytime" ? [empty.text] : [sunset, stars].filter(Boolean)));
+  } else if (r.night.end) parts.push(`${hourText(Math.floor(r.night.end / 600_000) * 600_000)}까지 별을 볼 수 있어요`);
+  return parts.join(" · ");
+}
+
+function myLightsTitle(r) {
+  if (r.count) return `오늘 밤 볼 수 있는<br>내 빛 ${r.count.toLocaleString("ko-KR")}개`;
+  return emptyState(r).key === "nothing" ? "담은 빛을<br>기다리고 있어요" : "오늘 밤 볼 수 있는<br>내 빛이 없어요";
+}
+
+// 오늘 두 눈으로 봤어요 칩 — 오늘 이미 남겼으면 되돌리기. 지금 지평선 아래면 한 번 묻는다 (data-below)
+function seenChipHtml(id, below) {
+  const entry = world.visited.find((v) => v.id === id);
+  if (seenToday(entry, localDate())) return `<button type="button" class="chip sm selected" data-unseen="${esc(id)}">오늘 봤어요 ✓ · 되돌리기</button>`;
+  return `<button type="button" class="chip sm" data-seen="${esc(id)}" ${below ? 'data-below="1"' : ""}>오늘 두 눈으로 봤어요</button>`;
+}
+
+function myLightRowHtml(x) {
+  const entry = world.visited.find((v) => v.id === x.id);
+  const where = x.now.up
+    ? `${esc(directionWord(x.now.az, x.now.alt))} · 고도 ${Math.round(x.now.alt)}° <span class="ml-now">지금 보여요</span>`
+    : `<span class="ml-soon">${esc(hourText(x.firstUp))}${x.now.alt >= MIN_ALT ? "부터 보여요" : "에 떠올라요"}</span> · 가장 높을 때 ${esc(directionWord(x.best.az, x.best.alt))} 고도 ${Math.round(x.best.alt)}°`;   // 이미 떠 있지만 하늘이 밝으면 '부터 보여요'
+  const notes = [eveningText(x), x.moonNote ? "달빛이 밝아 보기 어려울 수 있어요" : "",
+                 x.tier === "dark-eye" && !x.moonNote ? "도시에서는 어려울 수 있어요" : ""].filter(Boolean);
+  return `<li class="ml-row" data-id="${esc(x.id)}">
+    <button type="button" class="ml-main" data-open="${esc(x.id)}">
+      ${markHtml(true, { seen: !!entry?.seen?.length })}
+      <span class="ml-text"><span class="nm">${esc(x.name)}</span>
+        <span class="ml-pos">${where}</span>
+        <span class="ml-when">${esc(whenText(x))} · ${esc(TIER_LABEL[x.tier] ?? "")}</span>
+        ${notes.length ? `<span class="ml-note">${esc(notes.join(" · "))}</span>` : ""}</span></button>
+    <div class="ml-actions">
+      <button type="button" class="chip sm" data-find="${esc(x.id)}">${icon("sparkles", 12)}<span>하늘에서 찾기</span></button>
+      <button type="button" class="chip sm" data-point="${esc(x.id)}" hidden>하늘 가리키기</button>
+      ${seenChipHtml(x.id, !(x.now.alt >= 0))}
+    </div></li>`;
+}
+
+function myLightsBody(r) {
+  const empty = emptyState(r);
+  const out = [];
+  if (empty.key && empty.key !== "daytime") out.push(`<p class="status warn" id="ml-empty">${esc(empty.text)}</p>`);
+  if (empty.key === "nothing") out.push(`<div class="row">${btn("첫 번째 빛 만나기", { variant: "primary", ic: "sparkles", attrs: "data-meet" })}</div>`);
+  if (r.items.length) out.push(`<ol class="ml-list" id="ml-list">${r.items.map(myLightRowHtml).join("")}</ol>`);
+  if (r.later.length) {
+    out.push(`<details class="ml-more" ${empty.key === "none-tonight" ? "open" : ""}><summary>오늘 밤에는 보기 어려운 빛 ${r.later.length.toLocaleString("ko-KR")}개</summary>
+      <ul class="ml-sub">${r.later.map((x) => `<li><button type="button" class="ml-sub-name" data-open="${esc(x.id)}">${esc(x.name)}</button>
+        <span>${esc(laterText(x) || "오늘 밤에는 지평선 아래나 낮 하늘에 있어요")}</span></li>`).join("")}</ul></details>`);
+  }
+  if (r.hard.length) {
+    const never = r.hard.some((x) => x.tier === "never");
+    out.push(`<details class="ml-more" ${empty.key === "all-hard" ? "open" : ""}><summary>${never ? "망원경이 있어야 보이거나 아직 안내하지 못하는 빛" : "망원경이 있어야 보이는 빛"} ${r.hard.length.toLocaleString("ko-KR")}개</summary>
+      <ul class="ml-sub">${r.hard.map((x) => `<li><button type="button" class="ml-sub-name" data-open="${esc(x.id)}">${esc(x.name)}</button>
+        <span>${esc(x.reason ?? "망원경이 있어야 보여요")}</span></li>`).join("")}</ul></details>`);
+  }
+  return out.join("");
+}
+
+// 하늘에서 찾기 — 추천 시각으로 하늘 시각 막대를 옮긴 뒤 고개를 돌린다 (lookAt은 지평선 위의 천체만 찾는다)
+async function findInSky(id, atMs) {
+  const h = Math.max(-12, Math.min(12, Math.round(((atMs - Date.now()) / 3600_000) * 2) / 2));
+  state.skyHours = h;
+  if (sheet && sheet.snap !== "closed") sheet.open("peek");     // 시트 배치 — 하늘이 보이게 내린다
+  if (state.mode !== "sky") setMode("sky");
+  await refreshSky();                 // skyRequest 순번이 겹친 요청을 정리한다
+  if (!state.sky.lookAt(id)) toast("그 시각에도 지평선 아래에 있어 하늘에서 찾지 못했습니다");
+  else if (h) toast(`${esc(hourText(Date.now() + h * 3600_000))} 하늘로 옮겼습니다`);
+}
+
+function showMyLights() {
+  enterView({ kind: "mylights" });
+  const alive = claimPanel();
+  const r = myLights();
+  openDrawer("mylights", `
+    <div class="head"><div class="eyebrow">오늘 밤 내 빛</div><h2 class="h2" id="ml-title">${myLightsTitle(r)}</h2></div>
+    <p class="sub ml-where"><span id="ml-where">${esc(myLightsWhere(r))}</span>
+      ${btn("내 위치로", { variant: "ghost", ic: "map-pin", id: "ml-locate" })}</p>
+    <div class="stack ml-body" id="ml-body">${myLightsBody(r)}</div>
+    <p class="disclaimer">방향과 시간은 이 기기의 위치와 시계로 계산했습니다. 건물·산·불빛에 따라 실제로는 더 낮게 보이거나 가려질 수 있어요.</p>`);
+  const body = $("#ml-body");
+  // 다시 그리기 — 바뀐 곳만. 포커스가 있던 행동 칩은 같은 천체의 새 칩으로
+  const redraw = (focusId = null) => {
+    const next = myLights(), html = myLightsBody(next);
+    $("#ml-title").innerHTML = myLightsTitle(next);
+    $("#ml-where").textContent = myLightsWhere(next);
+    const had = focusId ?? (body.contains(document.activeElement) ? document.activeElement.closest("[data-seen], [data-unseen]")?.closest(".ml-row")?.dataset.id : null);
+    if (body.dataset.sig === html) return;
+    const open = [...body.querySelectorAll("details")].map((d) => d.open);
+    body.dataset.sig = html;
+    body.innerHTML = html;
+    body.querySelectorAll("details").forEach((d, i) => { if (open[i] !== undefined) d.open = open[i]; });
+    if (had) body.querySelector(`.ml-row[data-id="${CSS.escape(had)}"] [data-seen], .ml-row[data-id="${CSS.escape(had)}"] [data-unseen]`)?.focus({ preventScroll: true });
+  };
+  body.dataset.sig = body.innerHTML;
+  body.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.hasAttribute("data-meet")) { meetFirstLight(); return; }
+    if (b.dataset.find) {
+      const x = myLights().items.find((it) => it.id === b.dataset.find);
+      if (x) findInSky(x.id, x.now.up ? Date.now() : x.best.at);
+      return;
+    }
+    if (b.dataset.seen) {
+      // 지금 지평선 아래 — 막지는 않고 한 번 묻는다 (낮에 보이는 금성 · 달 같은 경우가 있다)
+      if (b.dataset.below && !b.dataset.armed) {
+        b.dataset.armed = "1";
+        b.textContent = "지금 이 위치에서는 지평선 아래에 있어요. 그래도 남길까요?";
+        return;
+      }
+      const v = world.visited.find((x) => x.id === b.dataset.seen);
+      if (v) markSeenNow(v);
+      redraw(b.dataset.seen);
+      return;
+    }
+    if (b.dataset.unseen) {
+      unmarkSeenNow(b.dataset.unseen);
+      redraw(b.dataset.unseen);
+      return;
+    }
+    if (b.dataset.open) selectItem(b.dataset.open, { fly: false });
+  });
+  $("#ml-locate").addEventListener("click", () => locate(() => alive() && showMyLights()));
+  const tick = setInterval(() => { if (alive()) redraw(); }, 60_000);   // '지금 보여요' · 고도를 1분마다
+  panelLeave = () => clearInterval(tick);
+}
+
+// ── 두 눈으로 본 빛 — 담은 빛을 실제 하늘에서 직접 본 날 (seen.js, world.visited의 seen 필드) ─────────────
+
+function afterSeenChange() {
+  saveWorld();
+  state.sky?.setObserved(world.visited);
+  state.map?.setWorld(world.km, world.visited);
+  renderChrome();
+}
+
+// 오늘 두 눈으로 봤다고 남긴다 — 하루에 한 번. 위치는 '내 위치'일 때만 소수 첫째 자리까지, 아니면 이름만
+function markSeenNow(obj) {
+  if (!obj?.id || !isObserved(obj.id)) return;
+  const place = state.sky?.place ?? SEOUL;
+  const at = place.name === "내 위치" ? { name: "내 위치", lat: place.lat, lon: place.lon } : { name: place.name };
+  const next = markSeen(world.visited, obj.id, localDate(), at);
+  if (next === world.visited) return;
+  world.visited = next;
+  afterSeenChange();
+  sound.collect();
+  toast(`오늘 ${esc(obj.name)}${josa(obj.name, "을", "를")} 두 눈으로 봤다고 남겼어요`);
+}
+
+// 실수 되돌리기 — 오늘 기록만
+function unmarkSeenNow(id) {
+  const next = unmarkSeen(world.visited, id, localDate());
+  if (next === world.visited) return;
+  world.visited = next;
+  afterSeenChange();
+  toast("오늘 남긴 기록을 되돌렸습니다");
+}
+
+// 지금 이 위치에서 지평선 아래인가 — 위치를 계산할 수 없으면 false (묻지 않는다)
+function belowHorizonNow(obj) {
+  const v = world.visited.find((x) => x.id === obj.id)
+    ?? { id: obj.id, name: obj.name, ra: obj.ra_deg ?? null, dec: obj.dec_deg ?? null, group: obj.group ?? null };
+  const [t] = targetsOf([v], tonightCtx());
+  const p = t ? altAzOf(t, new Date(), state.sky?.place ?? SEOUL) : null;
+  return !!p && p.alt < 0;
+}
+
+// 천체 서랍의 '오늘 두 눈으로 봤어요' — 담기 버튼 바로 아래. 태양 · 지구에는 두지 않는다
+function seenSlotHtml(item) {
+  if (!item?.id || item.id === EARTH_ID || bodyInfo(item.id)?.key === "sun") return "";
+  const entry = world.visited.find((v) => v.id === item.id);
+  if (!entry) return `<button type="button" class="seen-quiet" data-seen-item>${icon("eye", 14)}<span>담고, 두 눈으로 봤다고 남기기</span></button>`;
+  const sum = seenSummary(entry);
+  const line = sum.text ? `<p class="seen-sum">${esc(sum.text)}</p>` : "";
+  if (seenToday(entry, localDate())) {
+    return `<div class="seen-done">${markHtml(true, { seen: true })}<span>오늘 봤다고 남겼어요 ✓</span><span aria-hidden="true">·</span>
+      <button type="button" class="seen-undo" data-unseen-item>되돌리기</button></div>${line}`;
+  }
+  return `${btn("오늘 두 눈으로 봤어요", { ic: "eye", attrs: "data-seen-item" })}${line}`;
+}
+
+function syncSeenSlot() {
+  const slot = $("#seen-slot");
+  if (!slot || state.drawer !== "item" || !state.item) return;
+  const html = seenSlotHtml(state.item);
+  if (slot.dataset.sig === html) return;
+  const had = slot.contains(document.activeElement);
+  slot.dataset.sig = html;
+  slot.innerHTML = html;
+  slot.hidden = !html;
+  if (had) slot.querySelector("button")?.focus({ preventScroll: true });
+}
+
+function bindSeenSlot(slot, item) {
+  slot?.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.hasAttribute("data-unseen-item")) { unmarkSeenNow(item.id); return; }
+    if (!b.hasAttribute("data-seen-item")) return;
+    if (!b.dataset.armed && belowHorizonNow(item)) {
+      b.dataset.armed = "1";
+      b.querySelector("span:last-child").textContent = "지금 이 위치에서는 지평선 아래에 있어요. 그래도 남길까요?";
+      return;
+    }
+    // 담지 않은 천체 — 담기 버튼을 대신 눌러 담은 뒤(빛무리 · 기록) 남긴다
+    if (!isObserved(item.id)) drawerBody.querySelector("#collect-slot [data-collect]")?.click();
+    markSeenNow(item);
+  });
+}
+
 function showUnfoldPanel(con) {
   enterView({ kind: "unfold", id: con.item_id });
   const alive = claimPanel();
@@ -2347,6 +2649,7 @@ const TOOL_OPEN = {
   explore: showExplore,
   letter: () => showLetter(state.item?.distance_km ? { item_id: state.item.id } : null),
   mind: showPerspective,
+  mylights: showMyLights,
   tonight: showSkyGuide,
   unfold: () => setMode("unfold"),
 };
@@ -2564,6 +2867,8 @@ function bindChrome() {
   syncLetterBadges();
   $("#menu-letters").addEventListener("click", () => (state.drawer === "letters" ? closeDrawer() : showLetters()));
   $("#first-light").addEventListener("click", () => { sound.tick(); meetFirstLight(); });
+  $("#first-tonight").addEventListener("click", () => { sound.tick(); showMyLights(); });
+  $("#first-tonight-chip").addEventListener("click", () => { sound.tick(); showMyLights(); });
   bindFold($("#first-fold"), $("#first-sky"), "first", syncHush);   // 접으면 킥커 한 줄만 남고, 별자리 이름 숨김 구역도 그만큼
   $("#first-prologue").innerHTML = `${icon("play", 14)}<span>프롤로그 다시 보기</span>`;
   $("#first-prologue").addEventListener("click", () => { closeScene(); closeDrawer(); startPrologue(); });
@@ -2632,9 +2937,10 @@ async function start() {
                             map.points.filter((p) => p.group === "solar_system"));
     state.sky.setObserved(world.visited);
     syncLetterBadges();                                     // 지도의 ✉ 표식 · 메뉴 배지
+    scheduleTonightEntry();                                 // 오늘 밤 내 빛 N개 — 시간이 흐르면 바뀐다
     bindStage();
     await leaveLoading();
-    // 바로 가기 주소 — ?mode=sky · ?mode=unfold&con=Q8860 · ?item=Q48469 · ?mode=map&journey=end · ?panel=catalog|explore|letter|mind|tonight|letters (시연 · 공유용)
+    // 바로 가기 주소 — ?mode=sky · ?mode=unfold&con=Q8860 · ?item=Q48469 · ?mode=map&journey=end · ?panel=catalog|explore|letter|mind|tonight|mylights|letters (시연 · 공유용)
     // 공유 링크 — ?letter=<id> 그 편지를 서랍에 열고 보관함에도 남긴다 (프롤로그는 건너뛴다 · 주소에서는 지워 새로 고쳐도 다시 열리지 않게)
     const params = new URLSearchParams(location.search);
     const letterId = params.get("letter");
@@ -2666,7 +2972,7 @@ async function start() {
 }
 
 if (new URLSearchParams(location.search).get("debug") === "1") {
-  window.__vh = { state, world, selectItem, setMode, discover, openWorld, startJourney, resetWorld, showExplore, showPerspective, showSkyGuide, showCatalog, closeDrawer,
+  window.__vh = { state, world, selectItem, setMode, discover, openWorld, startJourney, resetWorld, showExplore, showPerspective, showSkyGuide, showMyLights, showCatalog, closeDrawer,
                   showLetter, showLetters, showKept, deliverLetter, get letters() { return letters; },
                   refreshSky, get stage() { return stage; } };
 }

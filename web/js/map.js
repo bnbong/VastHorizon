@@ -239,6 +239,7 @@ export class MapMode {
       mark.element.classList.toggle("is-selected", p.id === this.selectedId);
       mark.element.classList.toggle("has-letter", !!this.letterIds?.has(p.id));   // 빛의 편지를 받은 천체 — 작은 ✉ 표식
       mark.element.classList.toggle("unread", !!this.unreadIds?.has(p.id));        // 읽지 않은 편지가 있으면 또렷하게
+      mark.element.classList.toggle("eyes-seen", !!v.seen?.length);                 // 두 눈으로 본 빛 — 두 겹 금빛 고리 (seen.js)
       mark.position.copy(p.position);
       this.visitedTags.set(p.id, mark);
       this.visitedGroup.add(mark);

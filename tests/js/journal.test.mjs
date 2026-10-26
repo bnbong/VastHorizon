@@ -39,3 +39,13 @@ test("되살릴 때 중복 · 깨진 기록은 걸러 낸다", () => {
   assert.deepEqual(v.map((x) => [x.id, x.km, x.at]), [["a", 1, "t"], ["b", null, "t"]]);
   assert.deepEqual(restoreVisited(null, "t"), []);
 });
+
+test("두 눈으로 본 날(seen) — 예전 기록은 키 없이 그대로, 있으면 정리해 왕복 보존 · 새 기록은 겉보기 등급(mag)도", () => {
+  const old = [{ id: "a", name: "베가", km: 2.4e14, at: "2026-10-20" }];
+  const v = restoreVisited({ v: 2, visited: [...old, { id: "b", name: "토성", km: 1.3e9, at: "2026-10-21", seen: [{ at: "2026-10-27" }, { at: "x" }] }] }, "t");
+  assert.deepEqual(v[0], old[0]);
+  assert.deepEqual(v[1].seen, [{ at: "2026-10-27" }]);
+  assert.deepEqual(restoreVisited(JSON.parse(serialize(v)), "t"), v);
+  assert.equal(entryOf({ id: "Q3427", name: "베가", distance_km: 2.37e14, group: "star", attrs: { "겉보기 등급": 0.03 } }, "t").mag, 0.03);
+  assert.equal(entryOf({ id: "Q193", name: "토성", group: "solar_system" }, "t").mag, null);
+});

@@ -177,6 +177,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   --focus-ring: 0 0 0 2px #fff9f3, 0 0 0 4px #8d67a1;
   color: var(--paper-ink);
 }
+/* 두 눈으로 본 빛의 금빛 — 기존 --gold-*는 살구 · 보라 계열이라 따로 둔다. 어두운 하늘에서는 --amber-400,
+   종이색(#fff9f3) 위에서는 4.5:1 이상인 짙은 금빛(--status-warn과 같은 값). --eyes-gap은 두 겹 고리 사이의 틈(바탕색) */
+:root { --eyes-gold: var(--amber-400); --eyes-gold-soft: rgba(242,207,140,.45); --eyes-gap: var(--night); }
+.drawer, .world-card { --eyes-gold: #85520f; --eyes-gold-soft: rgba(133,82,15,.35); --eyes-gap: var(--paper-card); }
 .drawer ::selection { background: rgba(141,103,161,.22); color: var(--paper-ink); }
 .drawer .card, .drawer button.card, .drawer .chip, .drawer .badge, .drawer .btn, .drawer .composer, .drawer .search-field, .drawer .select,
 .drawer .support, .drawer .bh-card, .drawer .body-card, .drawer .photo img, .drawer .catalog-row, .drawer ol.evidence li, .drawer .bubble { border-radius: 0; }
@@ -1003,3 +1007,64 @@ html[data-text="large"] .drawer .lr-title { font-size: 19px; }
 .app[data-layout="split"].body-stage-on .world-heading, .app[data-layout="split"].body-stage-on .world-foot,
 .app[data-layout="split"].body-stage-on .stage-hint, .app[data-layout="split"].body-stage-on .chrome-bottom { visibility: hidden; }
 .app[data-layout="split"] .body-card .body-canvas, .app[data-layout="split"] .bh-card .bh-canvas { display: none; }
+
+/* ── 오늘 밤 내 빛 — 담은 빛 가운데 오늘 밤 볼 수 있는 것 (main.js showMyLights · tonight.js) ── */
+.ml-where { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.ml-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid #e8dfe2; }
+.ml-row { display: flex; flex-direction: column; gap: 8px; padding: 12px 4px 14px; border-bottom: 1px solid #e8dfe2; }
+.ml-main { all: unset; cursor: pointer; display: grid; grid-template-columns: 25px 1fr; align-items: start; gap: 12px; border-radius: var(--radius-sm); }
+.ml-main:hover .nm { color: #6b4c80; }
+.ml-main:focus-visible { box-shadow: var(--focus-ring); }
+.ml-main .known-mark { margin-top: 1px; }
+.ml-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ml-text .nm { font: 400 17px/1.4 var(--font-serif); letter-spacing: -0.02em; color: var(--paper-ink); }
+.ml-pos { font: var(--type-small); color: var(--text-secondary); }
+.ml-when { font: var(--type-small); color: var(--text-muted); }
+.ml-note { font: var(--type-caption); color: var(--status-warn); }
+.ml-now { margin-left: 4px; font: 500 12px/1 var(--font-sans); color: var(--status-ok); white-space: nowrap; }
+.ml-soon { color: var(--text-primary); }
+.ml-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 37px; }
+.ml-more { border-bottom: 1px solid #efe5e8; }
+.ml-more summary { cursor: pointer; display: flex; align-items: center; min-height: 40px; font: var(--type-small); color: var(--text-muted); list-style: none; }
+.ml-more summary::-webkit-details-marker { display: none; }
+.ml-more summary::before { content: "+"; flex: none; width: 16px; color: #8d67a1; }
+.ml-more[open] summary::before { content: "−"; }
+.ml-sub { list-style: none; margin: 0 0 12px; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 8px; }
+.ml-sub li { display: flex; flex-direction: column; gap: 1px; font: var(--type-caption); color: var(--text-muted); }
+.ml-sub-name { all: unset; cursor: pointer; align-self: flex-start; font: 400 14px/1.4 var(--font-serif); color: var(--paper-ink); }
+.ml-sub-name:hover { color: #6b4c80; text-decoration: underline; }
+.ml-sub-name:focus-visible { box-shadow: var(--focus-ring); }
+/* 접힌 첫 하늘의 킥커 줄 — "내 빛 N" (펼치면 본문 링크가 있어 숨긴다) */
+.first-tonight-chip { display: inline-flex; align-items: center; min-height: 28px; margin-left: 14px; padding: 4px 10px; border: 1px solid rgba(255,250,245,.32);
+  border-radius: var(--radius-pill); background: none; cursor: pointer; vertical-align: middle; font: 400 12px/1 var(--font-sans); letter-spacing: .04em;
+  color: rgba(255,250,245,.7); transition: color var(--dur-fast), border-color var(--dur-fast); }
+.first-tonight-chip:hover, .first-tonight-chip:focus-visible { color: rgba(255,250,245,1); border-color: rgba(255,250,245,.6); }
+.first-sky:not(.folded) .first-tonight-chip { display: none; }
+.first-sky.folded .first-tonight-chip:not([hidden]) + .fold-toggle { margin-left: 6px; }   /* 칩이 보일 때만 — 펼친 첫 하늘의 접기 단추 자리는 그대로 */
+.wc-tonight { display: flex; width: fit-content; margin-bottom: 12px; }
+
+/* ── 두 눈으로 본 빛 — 알아간 표식 바깥의 두 겹 금빛 고리 (seen.js). 모양 · 글자("직접 봄")로도 구별된다 ── */
+.known-mark.eyes-seen { box-shadow: 0 0 0 2px var(--eyes-gap), 0 0 0 3.5px var(--eyes-gold), 0 0 0 5.5px var(--eyes-gap), 0 0 0 6.5px var(--eyes-gold-soft); }
+.nm > .known-mark.eyes-seen, .wc-log button > .known-mark.eyes-seen, .map-legend .known-mark.eyes-seen {
+  box-shadow: 0 0 0 2px var(--eyes-gap), 0 0 0 3.5px var(--eyes-gold), 0 0 0 5.5px var(--eyes-gap), 0 0 0 6.5px var(--eyes-gold-soft); }
+.wc-log button > .known-mark.eyes-seen { margin-right: 12px; }
+.world-star.eyes-seen .known-mark { box-shadow: 0 0 0 2px var(--night), 0 0 0 3.5px var(--eyes-gold),
+  0 0 0 5.5px var(--night), 0 0 0 6.5px var(--eyes-gold-soft), 0 0 20px #ffe3e0; }
+.world-star.eyes-seen.is-selected .known-mark { outline-offset: 10px; }   /* 선택 고리(흰 1px, 6px 간격)와 겹치지 않게 */
+.eyes-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.wc-seen { display: flex; align-items: center; gap: 12px; margin: -8px 0 16px; font: 400 13px/1.5 var(--font-sans); color: #5f5869; }
+.wc-seen .known-mark { width: 15px; height: 15px; font-size: 0; margin-left: 4px; }
+.seen-slot { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.seen-quiet { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0; border: 0; background: none; cursor: pointer;
+  font: 400 12px/1.4 var(--font-sans); color: #5f5869; text-decoration: underline; text-underline-offset: 3px; }
+.seen-quiet:hover { color: var(--paper-ink); }
+.seen-done { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font: 400 14px/1.5 var(--font-serif); color: var(--paper-ink); }
+.seen-done .known-mark { width: 20px; height: 20px; font-size: 11px; margin: 0 4px 0 6px; }
+.seen-undo { min-height: 32px; padding: 0 2px; border: 0; background: none; cursor: pointer; font: 400 13px/1.4 var(--font-sans); color: #6b4c80;
+  text-decoration: underline; text-underline-offset: 3px; }
+.seen-undo:hover { color: #4f3766; }
+.seen-sum { margin: 0; font: var(--type-caption); color: var(--text-muted); }
+@media (max-width: 650px) {
+  .first-tonight-chip { min-height: 36px; }
+  .ml-actions .chip.sm { height: 36px; padding: 0 12px; }
+}
