@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BH_FILL, FILL, HD_LIMIT, HD_RANGE, HdSwap, NEAR, SIZE, STAR_FILL, bhFade, bhViewDistance, closeupFill, closeupNear, closeupSize, hasCloseup, insetFrame, viewDistance,
+  BH_FILL, FILL, HD_COOLDOWN, HD_INTERVAL, HD_LIMIT, HD_RANGE, HdSwap, NEAR, SIZE, STAR_FILL, bhFade, bhViewDistance, closeupFill, closeupNear, closeupSize, hasCloseup, insetFrame, viewDistance,
 } from "../../web/js/closeup.js";
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
@@ -103,7 +103,7 @@ test("데스크톱 서랍(1440×900, 시야를 552px 비킴) — 남은 888×900
   close(px(SIZE.star, s, 55, 900), 888 * STAR_FILL);
 });
 
-// 가짜 로더 — 요청을 모아 두고 시험이 ok/fail을 부른다
+// 가짜 로더 — 요청을 모아 두고 시험이 ok/fail을 부른다. 판정 간격 · 쿨다운은 기본값(HD_INTERVAL · HD_COOLDOWN)
 function fakeSwap(limit = 2) {
   const log = [], pending = new Map();
   const swap = new HdSwap({
@@ -113,22 +113,27 @@ function fakeSwap(limit = 2) {
     revert: (it) => { it.map = `${it.code}-512`; log.push(`revert ${it.code}`); },
     discard: (tex) => log.push(`discard ${tex}`),
   });
-  return { swap, log, pending };
+  // 시계 — 부를 때마다 판정 간격만큼 흐른다
+  let now = 0;
+  const tick = (want, opts) => { now += HD_INTERVAL; swap.tick(now, want, opts); };
+  const wait = (ms) => { now += ms; };
+  return { swap, log, pending, tick, wait };
 }
+const galaxies = (...codes) => codes.map((code) => ({ code, map: `${code}-512` }));
 
 test("고해상도 교체 — 받기 전에는 512, 받으면 바꾸고, 실패하면 512 그대로 다시 요청하지 않는다", () => {
-  const { swap, log, pending } = fakeSwap();
-  const a = { code: "M31", map: "M31-512" }, b = { code: "M87", map: "M87-512" };
-  swap.want(a);
-  swap.want(a);                                                   // 받는 중에는 다시 요청하지 않는다
+  const { log, pending, tick } = fakeSwap();
+  const [a, b] = galaxies("M31", "M87");
+  tick([a]);
+  tick([a]);                                                      // 받는 중에는 다시 요청하지 않는다
   assert.equal(a.hd, "loading");
   assert.equal(a.map, "M31-512");
   pending.get("M31").ok("M31-hd");
   assert.deepEqual([a.hd, a.map], ["loaded", "M31-hd"]);
-  swap.want(b);
+  tick([a, b]);
   pending.get("M87").fail();
   assert.deepEqual([b.hd, b.map], ["failed", "M87-512"]);
-  swap.want(b);
+  tick([a, b]);
   assert.deepEqual(log, ["load M31", "apply M31", "load M87"]);
   pending.get("M87").ok("late");                                  // 실패로 정한 뒤 늦게 온 텍스처는 버린다
   assert.equal(b.map, "M87-512");
@@ -136,16 +141,92 @@ test("고해상도 교체 — 받기 전에는 512, 받으면 바꾸고, 실패�
   assert.ok(HD_LIMIT >= 2);
 });
 
-test("고해상도 교체 — 상한을 넘으면 가장 오래 안 본 것을 512로 되돌리고, 다시 가까이 가면 또 받는다", () => {
-  const { swap, log, pending } = fakeSwap(2);
-  const [a, b, c] = ["M31", "M32", "M110"].map((code) => ({ code, map: `${code}-512` }));
-  for (const it of [a, b]) { swap.want(it); pending.get(it.code).ok(`${it.code}-hd`); }
-  swap.want(a);                                                   // a를 다시 봤다 — b가 가장 오래됨
-  swap.want(c);
+test("고해상도 교체 — 판정은 HD_INTERVAL마다, 요청은 한 번에 한 건 (받은 뒤 다음)", () => {
+  const { swap, log, pending, tick } = fakeSwap(8);
+  const [a, b, c] = galaxies("M31", "M32", "M110");
+  swap.tick(0, [a, b, c]);
+  pending.get("M31").ok("M31-hd");
+  swap.tick(HD_INTERVAL - 1, [a, b, c]);                          // 간격이 차지 않았다 — b를 아직 요청하지 않는다
+  assert.deepEqual(log, ["load M31", "apply M31"]);
+  swap.tick(HD_INTERVAL, [a, b, c]);
+  assert.deepEqual(log, ["load M31", "apply M31", "load M32"]);
+  tick([a, b, c]); tick([a, b, c]);
+  assert.deepEqual(log, ["load M31", "apply M31", "load M32"]);   // b를 받는 중 — 다음 요청은 기다린다
+  pending.get("M32").ok("M32-hd");
+  tick([a, b, c]);
+  assert.deepEqual(log, ["load M31", "apply M31", "load M32", "apply M32", "load M110"]);
+});
+
+test("고해상도 교체 — 상한이 차면 새로 받지 않고, 자리는 절두체 밖 · 범위 밖(keep 아님)인 것 중 가장 오래 안 쓴 것만 비운다", () => {
+  const { log, pending, tick } = fakeSwap(2);
+  const [a, b, c] = galaxies("M31", "M32", "M110");
+  for (const it of [a, b]) { tick([it]); pending.get(it.code).ok(`${it.code}-hd`); }
+  tick([a, b, c], { keep: () => true });                          // 둘 다 화면 안 — c는 512 그대로
+  assert.equal(c.hd, undefined);
+  assert.ok(!log.includes("load M110"));
+  tick([a, c], { keep: (it) => it !== b });                       // b가 화면 밖 · 범위 밖으로 — b를 비우고 c를 받는다
+  assert.deepEqual([b.map, b.hd], ["M32-512", null]);
   pending.get("M110").ok("M110-hd");
   assert.deepEqual([a.map, b.map, c.map], ["M31-hd", "M32-512", "M110-hd"]);
-  assert.equal(b.hd, null);
   assert.ok(log.includes("revert M32") && !log.includes("revert M31"));
-  swap.want(b);
-  assert.equal(b.hd, "loading");
+});
+
+test("고해상도 교체 — 상한을 넘는 후보가 여럿이어도 되돌림 → 재요청을 되풀이하지 않는다 (처녀자리 은하단)", () => {
+  const limit = 8, { log, pending, tick } = fakeSwap(limit);
+  const virgo = galaxies("M87", "M84", "M86", "M89", "M90", "M88", "M91", "M58", "M59", "M60", "M49", "M61", "M85", "M98", "M99", "M100");
+  for (let i = 0; i < 400; i++) {                                 // 100초 — 16개가 모두 화면 안 · 범위 안
+    tick(virgo, { keep: () => true, selected: virgo[0] });
+    for (const [code, { ok }] of pending) { pending.delete(code); ok(`${code}-hd`); }
+  }
+  assert.equal(log.filter((l) => l.startsWith("load")).length, limit);
+  assert.equal(log.filter((l) => l.startsWith("revert")).length, 0);
+  assert.deepEqual(virgo.slice(0, limit).map((it) => it.hd), Array(limit).fill("loaded"));   // 우선순위 순 앞의 8개
+  assert.ok(virgo.slice(limit).every((it) => !it.hd && it.map === `${it.code}-512`));
+  // 일부가 화면 밖으로 나가도 나머지 후보가 화면 안에 남아 있으면, 비운 자리는 한 번씩만 채우고 다시 비우지 않는다
+  const out = new Set(virgo.slice(0, 3));
+  for (let i = 0; i < 400; i++) {
+    tick(virgo.filter((it) => !out.has(it)), { keep: (it) => !out.has(it) });
+    for (const [code, { ok }] of pending) { pending.delete(code); ok(`${code}-hd`); }
+  }
+  assert.equal(log.filter((l) => l.startsWith("revert")).length, 3);
+  assert.equal(log.filter((l) => l.startsWith("load")).length, limit + 3);
+});
+
+test("고해상도 교체 — 되돌린 것은 쿨다운 동안 다시 요청하지 않는다", () => {
+  const { log, pending, tick, wait } = fakeSwap(1);
+  const [a, b] = galaxies("M31", "M32");
+  tick([a]); pending.get("M31").ok("M31-hd");
+  tick([b], { keep: (it) => it === b });                          // a가 화면 밖 — a를 비우고 b를 받는다
+  pending.get("M32").ok("M32-hd");
+  assert.equal(a.hd, null);
+  tick([a], { keep: (it) => it === a });                          // a가 곧바로 다시 화면 안 — b는 keep 아님이지만 a는 쿨다운
+  assert.equal(log.filter((l) => l === "load M31").length, 1);
+  assert.equal(b.hd, "loaded");
+  wait(HD_COOLDOWN);
+  tick([a], { keep: (it) => it === a });                          // 쿨다운이 지나면 다시 받는다
+  assert.equal(log.filter((l) => l === "load M31").length, 2);
+  assert.ok(HD_COOLDOWN >= 5000);
+});
+
+test("고해상도 교체 — 고른 천체가 먼저, 자리가 없으면 화면 안의 것을 비워서라도 받는다 (쿨다운도 넘는다)", () => {
+  const { log, pending, tick } = fakeSwap(2);
+  const [a, b, sel] = galaxies("M84", "M86", "M87");
+  for (const it of [a, b]) { tick([it]); pending.get(it.code).ok(`${it.code}-hd`); }
+  tick([sel, a, b], { keep: () => true, selected: sel });         // 모두 화면 안 — 우선순위가 가장 낮은 b를 비운다
+  assert.equal(sel.hd, "loading");
+  assert.deepEqual([a.hd, b.hd], ["loaded", null]);
+  pending.get("M87").ok("M87-hd");
+  for (let i = 0; i < 100; i++) tick([sel, a, b], { keep: () => true, selected: sel });   // 비운 b가 고른 천체를 밀어내지 않는다
+  assert.deepEqual([sel.hd, a.hd, b.hd], ["loaded", "loaded", null]);
+  assert.equal(log.filter((l) => l.startsWith("load")).length, 3);
+  // 우선순위 — 후보 여럿 중 고른 천체를 먼저 요청한다
+  const f = fakeSwap(8), [x, y, s2] = galaxies("M58", "M59", "M60");
+  f.tick([s2, x, y], { selected: s2 });
+  assert.deepEqual(f.log, ["load M60"]);
+  // 쿨다운 중이어도 고른 천체는 받는다
+  const g = fakeSwap(1), [p, q] = galaxies("M98", "M99");
+  g.tick([p]); g.pending.get("M98").ok("M98-hd");
+  g.tick([q]); g.pending.get("M99").ok("M99-hd");                 // p를 비웠다 (쿨다운)
+  g.tick([p, q], { keep: () => true, selected: p });
+  assert.equal(p.hd, "loading");
 });

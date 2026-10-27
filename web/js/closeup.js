@@ -61,36 +61,71 @@ export function bhFade(d, galaxyView, bhView) {
   return t * t * (3 - 2 * t);
 }
 
-// 고해상도 사진 교체 — 받은 것은 최근에 쓴 순서로 limit장까지만 두고, 넘치면 가장 오래된 것을 512로 되돌린다.
+// 고해상도 사진 교체 — 근접 모습이 몰린 곳(처녀자리 은하단의 메시에 은하 16개)에서도 받았다 되돌렸다를 되풀이하지 않게.
+//   · 판정은 interval(250ms)마다 한 번, 요청은 한 번에 한 건 (받거나 실패한 뒤 다음)
+//   · 받은 것이 limit장이면 새로 받지 않고 512 그대로 — 이미 받은 HD는 그대로 둔다
+//   · 자리를 비우는(512로 되돌리는) 것은 새로 받을 것이 있을 때만, 그것도 keep(절두체 안이거나 줌 범위 안)이 아닌 것 중 가장 오래 안 쓴 것.
+//     예외로 고른 천체(want의 첫 번째, selected)는 늘 HD — 자리가 없으면 keep인 것 중 가장 우선순위가 낮은 것을 비운다
+//   · 되돌린 것은 cooldown(10초) 동안 다시 요청하지 않는다
 // 텍스처 일은 주입한 함수로 (node로 시험): load(it, ok(tex), fail()) · apply(it, tex) · revert(it) · discard(tex).
 // it.hd: 없음 → "loading" → "loaded" | "failed" (실패한 사진은 512 그대로, 다시 요청하지 않는다)
-export const HD_LIMIT = 6;
+export const HD_LIMIT = 8;           // 1024² RGB ≈ 4MB × 8 = GPU 32MB
+export const HD_INTERVAL = 250;      // 판정 간격 (ms)
+export const HD_COOLDOWN = 10000;    // 되돌린 뒤 다시 요청하지 않는 시간 (ms)
 export class HdSwap {
-  constructor({ load, apply, revert, discard = () => {}, limit = HD_LIMIT }) {
-    Object.assign(this, { load, apply, revert, discard, limit });
-    this.order = [];                         // 받은 것 — 오래 안 쓴 것부터
+  constructor({ load, apply, revert, discard = () => {}, limit = HD_LIMIT, interval = HD_INTERVAL, cooldown = HD_COOLDOWN }) {
+    Object.assign(this, { load, apply, revert, discard, limit, interval, cooldown });
+    this.loaded = new Set();                 // 받아서 붙인 것
+    this.pending = null;                     // 받는 중인 것 (한 번에 하나)
+    this.last = -Infinity;                   // 마지막 판정 시각
   }
 
-  // 가까이서 보고 있다 — 받은 적 없으면 요청하고, 받았으면 최근으로 올린다
-  want(it) {
-    if (it.hd === "loaded") { this.touch(it); return; }
-    if (it.hd) return;                       // 받는 중 · 실패
+  // 판정할 때가 되었는가 (interval마다)
+  due(now) { return now - this.last >= this.interval; }
+
+  // now: ms. want: HD로 보고 싶은 것, 우선순위 순 (고른 천체 먼저, 그다음 카메라에 가까운 순).
+  // keep(it): 되돌리면 안 되는 것 (절두체 안이거나 줌 범위 안). selected: 고른 천체 (늘 HD)
+  tick(now, want, { keep = () => false, selected = null } = {}) {
+    if (now - this.last < this.interval) return;
+    this.last = now;
+    for (const it of want) if (it.hd === "loaded") it.hdUsed = now;   // 최근에 쓴 것 — 되돌릴 때 오래 안 쓴 것부터
+    if (this.pending) return;
+    const next = want.find((it) => !it.hd && (it === selected || !((it.hdCool ?? -Infinity) > now)));   // 고른 천체는 쿨다운도 넘는다
+    if (!next) return;
+    if (this.loaded.size >= this.limit && !this.evict(now, keep, next === selected ? want : null, selected)) return;
+    this.request(next);
+  }
+
+  // 자리 하나를 비운다 — keep이 아닌 것 중 가장 오래 안 쓴 것.
+  // 없으면 고른 천체를 받을 때만(want를 넘겼을 때) want에 없는 것 중 가장 오래 안 쓴 것, 그것도 없으면 want에서 가장 뒤의 것
+  evict(now, keep, want, selected) {
+    const oldest = (pick) => {
+      let v = null;
+      for (const it of this.loaded) if (it !== selected && pick(it) && (!v || (it.hdUsed ?? 0) < (v.hdUsed ?? 0))) v = it;
+      return v;
+    };
+    let victim = oldest((it) => !keep(it));
+    if (!victim && want) victim = oldest((it) => !want.includes(it)) ?? [...want].reverse().find((it) => it !== selected && this.loaded.has(it)) ?? null;
+    if (!victim) return false;
+    this.loaded.delete(victim);
+    this.revert(victim);
+    victim.hd = null;
+    victim.hdCool = now + this.cooldown;     // 곧바로 다시 받지 않는다
+    return true;
+  }
+
+  request(it) {
     it.hd = "loading";
+    this.pending = it;
     this.load(it, (tex) => {
+      if (this.pending === it) this.pending = null;
       if (it.hd !== "loading") { this.discard(tex); return; }
       this.apply(it, tex);
       it.hd = "loaded";
-      this.order.push(it);
-      while (this.order.length > this.limit) {
-        const old = this.order.shift();
-        this.revert(old);
-        old.hd = null;                        // 다시 가까이 가면 또 받는다
-      }
-    }, () => { if (it.hd === "loading") it.hd = "failed"; });
-  }
-
-  touch(it) {
-    const i = this.order.indexOf(it);
-    if (i >= 0 && i !== this.order.length - 1) this.order.push(...this.order.splice(i, 1));
+      this.loaded.add(it);
+    }, () => {
+      if (this.pending === it) this.pending = null;
+      if (it.hd === "loading") it.hd = "failed";
+    });
   }
 }

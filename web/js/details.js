@@ -4,7 +4,7 @@
 //   메시에    NASA 허블 메시에 목록의 실제 사진 (web/data/messier, 출처는 서랍에). 사진이 없는 성단 · 성운은 그 종류의 모습을 그린다
 //   은하 중심 블랙홀  근거(web/data/blackholes.json)가 있는 은하에만, 줌 거리보다 더 들어가면 중심에 가르강튀아 모습(상상도)
 // 크기 · 나타나는 거리 · 줌 거리는 closeup.js 한 곳에 (지도의 카메라 비행 map.js select와 같은 표).
-// 사진은 가로 512px로 시작하고, 줌 거리의 HD_RANGE배 안으로 들어오면 1024px(data/messier/hd)로 한 번 바꾼다
+// 사진은 가로 512px로 시작하고, 줌 거리의 HD_RANGE배 안으로 들어오면 1024px(data/messier/hd)로 바꾼다 — 한 번에 HD_LIMIT장까지 (closeup.js HdSwap)
 // 지도는 거리가 로그 스케일인 그림이라, 모습의 크기는 실제 크기 비율이 아니다.
 
 import { THREE, label } from "./scene.js";
@@ -122,33 +122,50 @@ export class DetailLayer {
     this.selectedId = null;                    // 지도에서 고른 천체 (map.js update) — 고해상도 사진은 고른 천체나 화면 안의 천체만
     this.frustum = new THREE.Frustum();
     this.sphere = new THREE.Sphere();
-    // 고해상도 사진 — 최근에 본 HD_LIMIT장까지만, 넘치면 가장 오래된 것을 512로 되돌린다 (closeup.js HdSwap)
+    this.projScreen = new THREE.Matrix4();
+    // 고해상도 사진 — HD_LIMIT장까지, 250ms마다 한 건씩 (closeup.js HdSwap). 다 받은 텍스처만 붙이고,
+    // 되돌릴 때는 처음 받아 둔 512 텍스처(it.lowTex)를 다시 붙인다 — 새로 받는 동안 빈(검은) 텍스처가 보이지 않게
     this.hd = new HdSwap({
       load: (it, ok, fail) => { const tex = this.photoTexture(`data/messier/hd/${it.p.code}.jpg`, () => ok(tex), () => { tex.dispose(); fail(); }); },
       apply: (it, tex) => this.swapMap(it, tex),
-      revert: (it) => this.swapMap(it, this.photoTexture(`data/messier/${it.p.code}.jpg`)),
+      revert: (it) => this.swapMap(it, it.lowTex),
       discard: (tex) => tex.dispose(),
     });
   }
 
-  // 사진 텍스처를 갈아 끼우고 앞의 것은 GPU에서 내린다
+  // 사진 텍스처를 한 프레임에 갈아 끼우고 앞의 것은 GPU에서 내린다 — visible · opacity는 건드리지 않는다.
+  // 512 텍스처(it.lowTex)는 dispose해도 이미지가 남아 있어, 되돌리면 그 프레임에 바로 다시 올라간다
   swapMap(it, tex) {
     const old = it.obj.material.map;
+    if (old === tex) return;
     it.obj.material.map = tex;
     it.obj.material.needsUpdate = true;
-    if (old !== tex) old?.dispose();
+    old?.dispose();
   }
 
-  // 고해상도 사진을 받을 만한가 — 고른 천체이거나 카메라 시야(절두체) 안에 있을 때만 (거리만 보면 이웃 은하까지 받는다)
-  hdWorthy(it, camera) {
-    if (it.p.id === this.selectedId) return true;
-    if (this.frustumFrame !== this.frameNo) {
-      this.frustumFrame = this.frameNo;
-      camera.updateMatrixWorld();
-      this.frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  // 고해상도 사진 판정 (HD_INTERVAL마다) — 줌 거리의 HD_RANGE배 안이고, 고른 천체이거나 카메라 시야(절두체) 안이면 받고 싶다
+  // (거리만 보면 이웃 은하까지 받는다). 고른 천체 먼저, 그다음 카메라에 가까운 순.
+  // 되돌려도 되는 것은 절두체 밖이고 범위 밖인 것만 — 화면 안의 사진이 512로 바뀌는 일이 없게
+  planHd(camera) {
+    const now = performance.now();
+    if (!this.hd.due(now)) return;
+    camera.updateMatrixWorld();
+    this.frustum.setFromProjectionMatrix(this.projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    const want = [], keep = new Set();
+    let selected = null;
+    for (const it of this.items) {
+      if (!it.photo || !it.obj) continue;
+      const d = camera.position.distanceTo(it.p.position);
+      const inRange = d < this.viewOf(it.size) * HD_RANGE;
+      this.sphere.set(it.p.position, it.size * 0.5);
+      const inView = this.frustum.intersectsSphere(this.sphere);
+      if (inRange || inView) keep.add(it);
+      const sel = it.p.id === this.selectedId;
+      if (sel && inRange) selected = it;
+      if (inRange && it.obj.visible && (sel || inView)) want.push({ it, d: sel ? -1 : d });
     }
-    this.sphere.set(it.p.position, it.size * 0.5);
-    return this.frustum.intersectsSphere(this.sphere);
+    want.sort((a, b) => a.d - b.d);
+    this.hd.tick(now, want.map((w) => w.it), { keep: (it) => keep.has(it), selected });
   }
 
   // 근접 모습의 크기 (closeup.js) — 근접 모습이 없거나 사진 목록을 아직 받지 못했으면 null (지도의 카메라 비행이 쓴다)
@@ -182,7 +199,8 @@ export class DetailLayer {
     if (p.group === "star") {
       it.obj = billboard(STAR_FRAG, { uColor: { value: new THREE.Color(...spectralColor(p.spectral)) } });
     } else if (photo) {
-      it.obj = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.photoTexture(`data/messier/${p.code}.jpg`), alphaMap: softDisc(),
+      it.lowTex = this.photoTexture(`data/messier/${p.code}.jpg`);   // 512 — HD를 되돌릴 때 다시 붙인다
+      it.obj = new THREE.Sprite(new THREE.SpriteMaterial({ map: it.lowTex, alphaMap: softDisc(),
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
       it.obj.renderOrder = 5;
       it.photo = true;
@@ -206,7 +224,6 @@ export class DetailLayer {
   update(t, camera, still) {
     if (!this.photos) return;
     const cam = camera.position;
-    this.frameNo = (this.frameNo ?? 0) + 1;
     for (const it of this.items) {
       const d = cam.distanceTo(it.p.position);
       const near = it.near ?? closeupNear(it.p, !!this.photos[it.p.code]);
@@ -215,11 +232,11 @@ export class DetailLayer {
         if (!it.obj) this.build(it);
         this.setFade(it, f);
         if (!it.photo) it.obj.material.uniforms.uTime.value = still ? 0 : t;
-        // 고해상도 사진 — 줌 거리의 HD_RANGE배 안, 고른 천체이거나 화면 안일 때. 다 받기 전 · 받지 못하면 512 그대로
-        else if (it.hd !== "failed" && d < this.viewOf(it.size) * HD_RANGE && this.hdWorthy(it, camera)) this.hd.want(it);
       }
       this.updateBlackHole(it, d, t, camera, still);
     }
+    // 고해상도 사진 — 다 받기 전 · 받지 못하면 · 상한이 찼으면 512 그대로
+    this.planHd(camera);
   }
 
   // 은하 중심 블랙홀 — 근거가 있는 은하에만, 줌 거리보다 더 들어가면 중심에 (이름표: 이름 · 상상도).
