@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { altAz, altAzToScene, localSiderealDeg, radecToEq } from "../../web/js/astro.js";
 import {
-  angularDeg, applyMatrix, decodeMilkyway, decodeStars, eqToHorizonMatrix, limitingMag, pickFirstLight, pickSky, pickStar, SkyGrid, transpose,
+  angularDeg, applyMatrix, decodeMilkyway, decodeStars, eqToHorizonMatrix, limitingMag, lookEq, pickFirstLight, pickSky, pickStar, SkyGrid, transpose,
 } from "../../web/js/skydata.js";
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≉ ${b}`);
@@ -172,4 +172,26 @@ test("첫 번째 빛 — 지평선 위 15도 이상 · 태양 제외 · 아직 �
   assert.equal(pickFirstLight(sky, (id) => ["jupiter", "vega", "m31"].includes(id)).id, "moon");
   assert.equal(pickFirstLight(sky, () => true), null);
   assert.equal(pickFirstLight([{ id: "x", name: "x", mag: 1, alt: -3 }]), null);              // 지평선 아래
+});
+
+// 하늘 보기 lookAt(anywhere) — 지평선 아래여도 고개를 돌릴 방향. 모르면 null이라 카메라를 그대로 둔다 (오늘 밤 내 빛 · 카탈로그에서 고르기)
+test("lookEq: 별자리는 선 별들의 중심, 카탈로그 · 담은 별 · 고른 항목의 적경 적위 순", () => {
+  const constellations = [{ item_id: "con:x", stars: [{ ra_deg: 0, dec_deg: 10 }, { ra_deg: 20, dec_deg: 10 }] }];
+  const catalog = [{ id: "star:v", eq: radecToEq(279.23, 38.78).map((x) => x * 3) }];
+  const observed = new Map([["hip:1", { ra: 100, dec: -60 }]]);
+  const ctx = { constellations, catalog, observed };
+  const center = lookEq("con:x", ctx);
+  close(Math.hypot(...center), 1);
+  const [ra, dec] = [Math.atan2(center[1], center[0]) * 180 / Math.PI, Math.asin(center[2]) * 180 / Math.PI];
+  close(ra, 10, 1e-9);
+  assert.ok(dec > 10 && dec < 10.5, `별자리 중심 적위 ${dec}`);             // 두 별 사이 대원의 가운데 (적위 10도 위로 조금)
+  lookEq("star:v", ctx).forEach((x, i) => close(x, radecToEq(279.23, 38.78)[i]));   // 단위 벡터로
+  lookEq("hip:1", ctx).forEach((x, i) => close(x, radecToEq(100, -60)[i]));          // 남쪽 하늘 아래(서울에서 지평선 아래)여도 방향은 있다
+  lookEq("item:m", { ...ctx, sel: { ra_deg: 5, dec_deg: -80 } }).forEach((x, i) => close(x, radecToEq(5, -80)[i]));
+});
+
+test("lookEq: 방향을 모르면 null — 빈 별자리 · 적경 적위 없는 항목", () => {
+  assert.equal(lookEq("con:empty", { constellations: [{ item_id: "con:empty", stars: [] }] }), null);
+  assert.equal(lookEq("item:x", { sel: { ra_deg: null, dec_deg: null } }), null);
+  assert.equal(lookEq("item:x"), null);
 });

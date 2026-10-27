@@ -201,4 +201,24 @@ export function colorWord(bv) {
   return "붉은색";
 }
 
+// 고개를 돌릴 방향 (적도 단위 벡터) — 지평선 위아래와 상관없이. 별자리는 선 별들의 중심, 그다음 카탈로그(별 · 메시에, eq)
+// → 담은 별(observed: id → { ra, dec }) → 고른 항목의 적경 · 적위(sel) 순. 모르면 null (하늘 보기 lookAt의 anywhere — 카메라를 그대로 둔다)
+// 태양 · 달 · 행성 · 왜행성처럼 그날 움직이는 천체는 sky.js가 따로 계산한다
+export function lookEq(itemId, { constellations = [], catalog = [], observed = null, sel = null } = {}) {
+  const unit = (v) => {
+    const n = Math.hypot(...v);
+    return n > 1e-9 ? v.map((x) => x / n) : null;
+  };
+  const con = constellations.find((c) => c.item_id === itemId);
+  if (con?.stars?.length) {
+    return unit(con.stars.reduce((acc, s) => radecToEq(s.ra_deg, s.dec_deg).map((x, i) => acc[i] + x), [0, 0, 0]));
+  }
+  const p = catalog.find((x) => x.id === itemId);
+  if (p?.eq) return unit(p.eq);
+  const v = observed?.get(itemId);
+  if (v?.ra != null && v?.dec != null) return radecToEq(v.ra, v.dec);
+  if (sel?.ra_deg != null && sel?.dec_deg != null) return radecToEq(sel.ra_deg, sel.dec_deg);
+  return null;
+}
+
 export { radecToEq };

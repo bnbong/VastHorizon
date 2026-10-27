@@ -12,7 +12,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
-import { TweenQueue } from "./tween.js";
+import { TweenQueue, slerpPoint } from "./tween.js";
 import { pickScore } from "./skydata.js";
 
 export { THREE, CSS2DObject };
@@ -223,13 +223,16 @@ export class Stage {
   }
 
   // 카메라 이동 — 위치 · 바라보는 점을 ms 동안 부드럽게. 새 비행(flight())이 시작되면 앞의 비행은 그 자리에서 멈춘다
-  // (두 비행이 한 카메라를 함께 움직이지 않게). 다른 연출(tweens)은 그대로 — 멈춘 비행의 done도 이어지는 흐름을 위해 부른다
-  flyTo(position, target, ms = 1600, done) {
+  // (두 비행이 한 카메라를 함께 움직이지 않게). 다른 연출(tweens)은 그대로 — 멈춘 비행의 done도 이어지는 흐름을 위해 부른다.
+  // slerp면 카메라 위치를 원점 기준 구면으로 돌린다 — 원점 가까이에서 고개만 돌리는 하늘 보기에서 반대쪽으로 돌 때 원점을 지나지 않게
+  flyTo(position, target, ms = 1600, done, { slerp = false } = {}) {
     const from = { p: this.camera.position.clone(), t: this.controls.target.clone() };
     const live = this.flight();
+    const a = from.p.toArray(), b = position.toArray();
     this.animate(ms, (k) => {
       if (!live()) return;
-      this.camera.position.lerpVectors(from.p, position, k);
+      if (slerp) this.camera.position.fromArray(slerpPoint(a, b, k));
+      else this.camera.position.lerpVectors(from.p, position, k);
       this.controls.target.lerpVectors(from.t, target, k);
     }, done);
   }

@@ -9,7 +9,7 @@
 
 import { SPACE_BG, THREE, dashedRing, knownMark, label, pointsMaterial, ring } from "./scene.js";
 import { altAzToScene, localSiderealDeg, radecToEq } from "./astro.js";
-import { applyMatrix, colorWord, eqToHorizonMatrix, limitingMag, pickSky, transpose } from "./skydata.js";
+import { applyMatrix, colorWord, eqToHorizonMatrix, limitingMag, lookEq, pickSky, transpose } from "./skydata.js";
 import { DsoLayer, loadDsos, loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
 import { SolarLayer } from "./solar.js";
 import { BODIES } from "./ephemeris.js";
@@ -523,12 +523,24 @@ export class SkyMode {
     return t && this.stage ? this.stage.screenOf(t.position) : null;
   }
 
-  // 그 천체 쪽으로 고개 돌리기
-  lookAt(itemId) {
-    const t = this.targets?.find((x) => x.data.id === itemId);
-    if (!t) return false;
-    this.stage.flyTo(t.position.clone().normalize().multiplyScalar(-0.01), new THREE.Vector3(), 1200);
+  // 그 천체 쪽으로 고개 돌리기 — 기본은 지금 하늘에서 누를 수 있는 대상(targets, 지평선 위)만.
+  // anywhere면 지평선 아래여도 그 방향으로 (directionOf · sel의 적경 · 적위). 방향을 모르면 false — 카메라는 그대로
+  lookAt(itemId, { anywhere = false, sel = null } = {}) {
+    const pos = this.targets?.find((x) => x.data.id === itemId)?.position
+      ?? (anywhere ? this.directionOf(itemId, sel) : null);
+    if (!pos || !this.stage || pos.lengthSq() === 0) return false;
+    this.stage.flyTo(pos.clone().normalize().multiplyScalar(-0.01), new THREE.Vector3(), 1200, undefined, { slerp: true });
     return true;
+  }
+
+  // 지평선 위아래와 상관없이 그 천체의 화면 방향 — 태양 · 달 · 행성 · 왜행성 등은 그날의 위치, 나머지는 skydata.lookEq. 모르면 null
+  directionOf(itemId, sel = null) {
+    const body = (this.solar.placed ?? []).find((b) => this.solarIds.get(b.name) === itemId);
+    if (body) return body.position.clone();
+    const minor = this.minorBodies.find((x) => x.id === itemId);
+    if (minor && !epochAge(minor.epoch, this.date).hidden) return this.scenePos(skyFromHeliocentric(minor.position_au, this.date).dir);
+    const eq = lookEq(itemId, { constellations: this.constellations, catalog: this.catalog, observed: this.observedAt, sel });
+    return eq ? this.scenePos(eq) : null;
   }
 
   pickables() {

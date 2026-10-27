@@ -2,7 +2,7 @@
 //     node --test "tests/js/*.test.mjs"
 import assert from "node:assert/strict";
 import test from "node:test";
-import { TweenQueue } from "../../web/js/tween.js";
+import { TweenQueue, slerpPoint } from "../../web/js/tween.js";
 
 function run(q, frames, dt = 100) {
   for (let i = 0; i < frames; i++) q.tick(dt);
@@ -72,4 +72,22 @@ test("움직임 줄이기 — 즉시 끝 모습으로, 연쇄도 즉시 완료",
   q.add(3500, (k) => seen.push(k), () => q.add(4500, (k) => seen.push(k), () => seen.push("end"), { instant: true }), { instant: true });
   assert.deepEqual(seen, [1, 1, "end"]);
   assert.equal(q.size, 0);
+});
+
+test("구면 보간 — 반대 방향이어도 중간 프레임의 길이가 0.01 근처 (하늘 보기 lookAt)", () => {
+  const len = (v) => Math.hypot(...v);
+  const south = [0, -0.01 * Math.sin(Math.PI / 7.2), 0.01 * Math.cos(Math.PI / 7.2)];   // 고도 25° 남쪽을 보는 카메라 (시선의 반대편)
+  const north = south.map((v) => -v);                                                    // 정확히 반대
+  const tilted = [0.0001, 0.004, -0.009];                                                 // 거의 반대 · 비스듬히
+  for (const to of [north, tilted.map((v) => v / len(tilted) * 0.01)]) {
+    for (let i = 0; i <= 20; i++) {
+      const p = slerpPoint(south, to, i / 20);
+      assert.ok(Math.abs(len(p) - 0.01) < 1e-9, `k=${i / 20} len=${len(p)}`);
+    }
+    assert.ok(slerpPoint(south, to, 1).every((v, i) => Math.abs(v - to[i]) < 1e-12));
+    assert.ok(slerpPoint(south, to, 0).every((v, i) => Math.abs(v - south[i]) < 1e-12));
+  }
+  // 길이가 다르면 선형으로, 같은 방향이면 직선 보간과 같다
+  assert.ok(Math.abs(len(slerpPoint([1, 0, 0], [0, 3, 0], 0.5)) - 2) < 1e-12);
+  assert.deepEqual(slerpPoint([1, 0, 0], [3, 0, 0], 0.5), [2, 0, 0]);
 });

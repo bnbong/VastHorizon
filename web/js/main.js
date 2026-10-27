@@ -1579,7 +1579,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   state.item = item;
   showSelection({ id: item.id, name: item.name, ra_deg: item.ra_deg, dec_deg: item.dec_deg });
   if (fly && state.mode === "map") state.map?.select(id);
-  if (fly && state.mode === "sky") state.sky?.lookAt(id);
+  if (fly && state.mode === "sky") state.sky?.lookAt(id, { anywhere: true, sel: item });   // 지평선 아래여도 그쪽으로, 방향을 모르면 그대로
 
   const a = item.attrs;
   const code = a["메시에 번호"] ?? a["약어"] ?? a["바이어 명칭"] ?? a["COSPAR ID"] ?? (item.attrs["별자리"] && item.id.startsWith("hip:") ? item.attrs["별자리"] : "");
@@ -2504,7 +2504,7 @@ function showMyLights() {
       redraw(b.dataset.unseen);
       return;
     }
-    if (b.dataset.open) selectItem(b.dataset.open, { fly: false });
+    if (b.dataset.open) selectItem(b.dataset.open, { fly: true });   // 카탈로그처럼 시점도 따라간다 (하늘 보기는 고개 돌리기, 지도는 날아가기)
   });
   $("#ml-locate").addEventListener("click", () => locate(() => alive() && showMyLights()));
   const tick = setInterval(() => { if (alive()) redraw(); }, 60_000);   // '지금 보여요' · 고도를 1분마다
