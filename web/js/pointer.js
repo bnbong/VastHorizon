@@ -183,3 +183,46 @@ export function fistsText(altDeg) {
 export function lightLine(km) {
   return km > 0 ? `지금 눈에 닿는 이 빛은 ${lightTime(km)} 전에 떠났습니다` : "이 빛이 떠난 때는 아직 확인되지 않았어요";
 }
+
+// ── 달의 위상 원반 (가리키기 화면의 기준점) ──
+// 화면 좌표는 캔버스 규칙: x 오른쪽 · y 아래쪽, 각도는 라디안(x축 0, 시계 방향 +)
+
+// 달에서 태양 쪽 — 화면에서 밝은 쪽이 향하는 각도.
+//   태양이 화면 앞에 있으면(sunPx) 달 화면 좌표 → 태양 화면 좌표의 2D 방향.
+//   없으면(등 뒤 · 화면 옆) 달 자리에서 태양 쪽으로 가는 대원의 접선을 화면에 투영한다 — 투영이 대원을 직선으로 옮기므로 앞의 방법과 같은 방향
+export function moonLitAngle({ moonPx = null, sunPx = null, basis, moonEnu, sunEnu }) {
+  if (moonPx && sunPx && (sunPx.x !== moonPx.x || sunPx.y !== moonPx.y)) return Math.atan2(sunPx.y - moonPx.y, sunPx.x - moonPx.x);
+  const t = sub(sunEnu, scale(moonEnu, dot(moonEnu, sunEnu)));                 // 달 자리의 접선 — 태양 쪽
+  const z = dot(moonEnu, basis.forward), tz = dot(t, basis.forward);
+  if (Math.abs(z) < 1e-9) return Math.atan2(-dot(t, basis.up), dot(t, basis.right));
+  const dx = (dot(t, basis.right) * z - dot(moonEnu, basis.right) * tz) / (z * z);
+  const dy = -(dot(t, basis.up) * z - dot(moonEnu, basis.up) * tz) / (z * z);
+  return Math.atan2(dy, dx);
+}
+
+// 밝은 부분의 모양 — 태양 쪽 반원(가장자리) + 명암 경계 타원(가로 반지름 r·|2·illum − 1| = r·|cos 위상각|).
+//   볼록(illum > 0.5)이면 경계가 어두운 쪽으로 불룩하고, 초승 · 그믐(< 0.5)이면 밝은 쪽으로 파고든다
+export function moonPhaseShape(illum) {
+  const f = Math.max(0, Math.min(1, Number(illum) || 0));
+  return { k: Math.abs(2 * f - 1), gibbous: f > 0.5 };
+}
+
+// 밝은 부분의 다각형 — 중심 (0, 0), 반지름 r, 밝은 쪽이 angle을 향한다. 꼭짓점 [x, y] 배열 (가장자리 n개 + 경계 n개)
+export function moonLitPath(illum, angle, r = 1, n = 24) {
+  const { k, gibbous } = moonPhaseShape(illum);
+  const c = Math.cos(angle), s = Math.sin(angle);
+  const put = (x, y) => [x * c - y * s, x * s + y * c];
+  const pts = [];
+  // 가장자리 — 태양 쪽 반원 (위 −90° → 0° → 아래 90°, 회전 전 기준)
+  for (let i = 0; i <= n; i++) {
+    const a = -Math.PI / 2 + (Math.PI * i) / n;
+    pts.push(put(r * Math.cos(a), r * Math.sin(a)));
+  }
+  // 경계 — 아래에서 위로. 볼록이면 x < 0 쪽으로, 초승이면 x > 0 쪽으로
+  for (let i = 1; i < n; i++) {
+    const a = Math.PI / 2 - (Math.PI * i) / n;
+    const x = k * r * Math.cos(a) * (gibbous ? -1 : 1);
+    pts.push(put(x, r * Math.sin(a)));
+  }
+  return pts;
+}

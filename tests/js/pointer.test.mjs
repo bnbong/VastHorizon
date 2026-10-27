@@ -172,3 +172,75 @@ test("정렬 판정 — near 동안에는 8° 안에 머문 시간만 센다 (7�
   assert.equal(s.fired, true);
   assert.equal(alignStep(alignStep(null, 7, 0), 13, 100).phase, "far");
 });
+
+// ── 달의 위상 원반 — 밝은 부분의 넓이는 illum, 무게 중심은 태양 쪽 ──
+const polyArea = (pts) => pts.reduce((s, [x, y], i) => { const [x2, y2] = pts[(i + 1) % pts.length]; return s + x * y2 - x2 * y; }, 0) / 2;
+const polyCentroid = (pts) => {
+  let cx = 0, cy = 0, a = 0;
+  pts.forEach(([x, y], i) => { const [x2, y2] = pts[(i + 1) % pts.length]; const c = x * y2 - x2 * y; a += c; cx += (x + x2) * c; cy += (y + y2) * c; });
+  return [cx / (3 * a), cy / (3 * a)];
+};
+// 남쪽 · 고도 0°를 바라보는 화면 — 오른쪽이 서쪽, 위가 천정
+const SOUTH = { right: [-1, 0, 0], up: [0, 0, 1], forward: [0, -1, 0] };
+// 서쪽을 바라보는 화면 — 오른쪽이 북쪽
+const WEST = { right: [0, 1, 0], up: [0, 0, 1], forward: [-1, 0, 0] };
+const litSide = (angle) => [Math.cos(angle), Math.sin(angle)];               // 캔버스 좌표 (y 아래)
+
+test("달 위상 모양 — 넓이 비율이 illum과 같고 밝은 쪽 무게 중심이 angle 쪽", async () => {
+  const { moonLitPath, moonPhaseShape } = await import("../../web/js/pointer.js");
+  assert.deepEqual(moonPhaseShape(0.5), { k: 0, gibbous: false });
+  assert.deepEqual(moonPhaseShape(1), { k: 1, gibbous: true });
+  close(moonPhaseShape(0.15).k, 0.7, 1e-12, "초승 k");
+  for (const illum of [0.05, 0.15, 0.5, 0.75, 0.93, 1]) {
+    for (const angle of [0, Math.PI / 3, Math.PI, -2]) {
+      const pts = moonLitPath(illum, angle, 10, 180);
+      close(Math.abs(polyArea(pts)) / (Math.PI * 100), illum, 0.005, `넓이 illum ${illum}`);
+      if (illum < 1) {
+        const [cx, cy] = polyCentroid(pts);
+        close(Math.atan2(cy, cx) - angle - 2 * Math.PI * Math.round((Math.atan2(cy, cx) - angle) / (2 * Math.PI)), 0, 1e-6, `무게 중심 방향 illum ${illum}`);
+      }
+    }
+  }
+});
+
+test("달의 밝은 쪽 — 초승달(저녁 서쪽) · 상현(저녁 남쪽, 오른쪽) · 하현(새벽 남쪽, 왼쪽) · 보름", async () => {
+  const { moonLitAngle, moonLitPath, project } = await import("../../web/js/pointer.js");
+  const view = { width: 390, height: 844 };
+  // 초승달 — 해가 막 진 서쪽 하늘. 태양(고도 −8°, 방위 275°)은 화면 아래(지평선 밑)지만 앞쪽이라 화면 투영으로
+  {
+    const moonEnu = altAzToEnu(15, 255), sunEnu = altAzToEnu(-8, 275);
+    const moonPx = project(WEST, moonEnu, view), sunRaw = (() => {
+      const z = sunEnu.reduce((s, v, i) => s + v * WEST.forward[i], 0), F = (view.height / 2) / Math.tan(30 * Math.PI / 180);
+      return { x: view.width / 2 + (sunEnu.reduce((s, v, i) => s + v * WEST.right[i], 0) / z) * F, y: view.height / 2 - (sunEnu[2] / z) * F };
+    })();
+    const a = moonLitAngle({ moonPx, sunPx: sunRaw, basis: WEST, moonEnu, sunEnu });
+    const [dx, dy] = litSide(a);
+    assert.ok(dx > 0 && dy > 0, `초승달은 오른쪽 아래(북서 · 지평선 쪽)가 밝다: ${dx}, ${dy}`);
+    // 화면 투영과 접선 투영은 같은 방향
+    close(moonLitAngle({ basis: WEST, moonEnu, sunEnu }), a, 1e-9, "접선 대체 방향");
+    const [cx] = polyCentroid(moonLitPath(0.1, a, 1, 90));
+    assert.ok(cx > 0, "밝은 부분이 오른쪽");
+  }
+  // 상현 — 해 질 녘 남쪽 하늘의 달, 태양은 서쪽 지평선(화면 옆 90°, 투영 불가) → 접선 대체. 오른쪽(서쪽)이 밝다
+  {
+    const a = moonLitAngle({ moonPx: { x: 195, y: 300 }, sunPx: null, basis: SOUTH, moonEnu: altAzToEnu(35, 180), sunEnu: altAzToEnu(0, 270) });
+    const [dx] = litSide(a);
+    assert.ok(dx > 0.9, `상현은 오른쪽이 밝다: ${dx}`);
+    const [cx] = polyCentroid(moonLitPath(0.5, a, 1, 90));
+    assert.ok(cx > 0.3, `밝은 반쪽이 오른쪽: ${cx}`);
+  }
+  // 하현 — 새벽 남쪽 하늘, 태양은 동쪽 지평선 → 왼쪽(동쪽)이 밝다
+  {
+    const a = moonLitAngle({ basis: SOUTH, moonEnu: altAzToEnu(35, 180), sunEnu: altAzToEnu(0, 90) });
+    const [dx] = litSide(a);
+    assert.ok(dx < -0.9, `하현은 왼쪽이 밝다: ${dx}`);
+    const [cx] = polyCentroid(moonLitPath(0.5, a, 1, 90));
+    assert.ok(cx < -0.3, `밝은 반쪽이 왼쪽: ${cx}`);
+  }
+  // 보름 — 태양이 반대편(땅 아래 북쪽)이어도 원반 전체가 밝다
+  {
+    const a = moonLitAngle({ basis: SOUTH, moonEnu: altAzToEnu(30, 180), sunEnu: altAzToEnu(-30, 0) });
+    assert.ok(Number.isFinite(a));
+    close(Math.abs(polyArea(moonLitPath(1, a, 1, 180))) / Math.PI, 1, 0.005, "보름 넓이");
+  }
+});

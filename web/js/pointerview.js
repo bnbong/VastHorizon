@@ -13,8 +13,9 @@ import { altAz, compass, localSiderealDeg } from "./astro.js";
 import { BODIES, solarSystem } from "./ephemeris.js";
 import { josa } from "./facts.js";
 import { ALIGN_DWELL_MS, ALIGN_ENTER, alignStep, alphaFromCompass, altAzToEnu, azDelta, compassSource, declinationDeg, deviceBasis, enuToAltAz,
-         followOffset, guide, guideText, lightLine, lookText, rotateAz, screenBasis, smoothBasis, VFOV } from "./pointer.js";
+         followOffset, guide, guideText, lightLine, lookText, moonLitAngle, moonLitPath, rotateAz, screenBasis, smoothBasis, VFOV } from "./pointer.js";
 import { starColor } from "./skydata.js";
+import { bodyInfo } from "./solarbodies.js";
 import { sound } from "./sound.js";
 
 const DEG = Math.PI / 180;
@@ -23,6 +24,13 @@ const COMPASS_TAU_MS = 2000;
 const SKY_REFRESH_MS = 5000;
 const TEXT_REFRESH_MS = 30_000;
 const STAR_MAG = 4.5;                      // 근처 밝은 별 — 밝은 별 묶음에서 4.5등급까지 (약 920개)
+// 기준점 — 야외에서 먼저 눈에 들어오는 달과 맨눈 행성. 천왕성 · 해왕성 · 태양은 그리지 않는다
+const LANDMARKS = ["moon", "mercury", "venus", "mars", "jupiter", "saturn"];
+const LANDMARK_MIN_ALT = -2;
+const MOON_MIN_R = 9;                      // 실제 시반지름(0.25°)은 몇 px뿐 — 지름 18px 이상으로
+const PLANET_R = 4.5;                      // 별(최대 3.5px)보다 크게, 깜빡임 없이
+const PLANET_COLOR = "#fff1dc";            // BODIES에 색이 없어 살짝 따뜻한 흰색
+const BODY_BY_NAME = new Map(Object.entries(BODIES).map(([key, b]) => [b.name, key]));
 const OFFSET_KEY = "vh-compass-offset";
 // 출처별 자기 편각 보정 — iOS webkitCompassHeading은 자북 기준. Android Chrome의 절대 α도 자기장 센서 기반이라 자북으로 본다
 // (실기기 확인 전 가정 — 진북 기준으로 확인되면 absolute를 false로)
@@ -145,7 +153,13 @@ function mountPointer(o) {
   let source = null, accuracy = null, iosOffset = null;
   let userOffset = 0, calibrated = false, calibRef = null;
   try { const v = Number(sessionStorage.getItem(OFFSET_KEY)); if (Number.isFinite(v) && sessionStorage.getItem(OFFSET_KEY) != null) { userOffset = v; calibrated = true; } } catch { /* 무시 */ }
-  let target = null, targetEnu = null, stars = [], align = null, found = false;
+  let target = null, targetEnu = null, stars = [], landmarks = [], sunEnu = null, align = null, found = false;
+  // 목표가 달 · 행성인가 — 항목 ID(위키데이터)로, 없으면 이름으로 (tonight.targetsOf와 같은 규칙). 위성(이오 등)은 해당 없음
+  const targetBody = (() => {
+    const info = bodyInfo(o.id);
+    const key = info?.planet ? info.key : BODY_BY_NAME.get(o.name);
+    return LANDMARKS.includes(key) ? key : null;
+  })();
   let raf = 0, dwellTimer = 0, textWhy = null, dirty = true, noSensorTimer = 0, skyTimer = 0, textTimer = 0, wakeLock = null, listening = false;
   let W = 0, H = 0, F = 1;
 
@@ -168,6 +182,15 @@ function mountPointer(o) {
         const [r, g, b] = starColor(s.bv[i]).map((c) => Math.round(c * 255));      // skydata는 0~1 배열 — 캔버스 색 문자열로
         stars.push({ v: altAzToEnu(p.alt, p.az), mag: s.mag[i], color: `rgb(${r},${g},${b})` });
       }
+    }
+    // 기준점 — 달(위상 · 시반지름)과 맨눈 행성. 태양은 달의 밝은 쪽을 정하는 데만
+    landmarks = [];
+    sunEnu = null;
+    for (const b of solarSystem(now)) {
+      const p = altAz(b.ra, b.dec, place.lat, lst);
+      if (b.key === "sun") { sunEnu = altAzToEnu(p.alt, p.az); continue; }
+      if (!LANDMARKS.includes(b.key) || p.alt < LANDMARK_MIN_ALT) continue;
+      landmarks.push({ key: b.key, name: b.name, v: altAzToEnu(p.alt, p.az), illum: b.illum, angR: b.angularRadiusDeg });
     }
     $(".pt-place").textContent = o.placeLabel?.(place) ?? "";
     dirty = true;
@@ -219,18 +242,65 @@ function mountPointer(o) {
       pen = true;
     }
     ctx.stroke();
-    // 목표 — 살구색 표식
-    if (targetEnu) {
-      const p = projectRaw(targetEnu);
-      if (p && p.x > -40 && p.x < W + 40 && p.y > -40 && p.y < H + 40) {
-        ctx.strokeStyle = "#f3dad5"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 13, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillStyle = "#f3dad5";
-        ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill();
-        ctx.font = "13px sans-serif"; ctx.fillStyle = "rgba(255,250,245,.75)";
-        ctx.fillText(o.name, p.x + 18, p.y + 4);
+    // 기준점 — 달 · 행성. 목표와 같은 천체는 목표 표식에서 한 번만 그린다
+    const near = (p, m) => p && p.x > -m && p.x < W + m && p.y > -m && p.y < H + m;
+    for (const b of landmarks) {
+      if (b.key === targetBody) continue;
+      const p = projectRaw(b.v);
+      if (b.key === "moon") {
+        const r = moonRadius(b);
+        if (!near(p, r * 2.5)) continue;
+        drawMoon(p, b, r);
+        ctx.font = "14px sans-serif"; ctx.fillStyle = "rgba(255,250,245,.8)";
+        ctx.fillText(b.name, p.x + r + 7, p.y + 5);
+      } else {
+        if (!near(p, 20)) continue;
+        drawPlanet(p);
+        ctx.font = "11px sans-serif"; ctx.fillStyle = "rgba(255,250,245,.6)";
+        ctx.fillText(b.name, p.x + PLANET_R + 5, p.y + 4);
       }
     }
+    // 목표 — 살구색 표식. 달이면 위상 원반을, 행성이면 행성 점을 고리가 감싼다
+    if (targetEnu) {
+      const p = projectRaw(targetEnu);
+      const body = targetBody && landmarks.find((b) => b.key === targetBody);
+      const ringR = body?.key === "moon" ? moonRadius(body) + 6 : 13;
+      if (near(p, Math.max(40, ringR * 2.5))) {
+        if (body?.key === "moon") drawMoon(p, body, ringR - 6);
+        else if (body) drawPlanet(p);
+        ctx.strokeStyle = "#f3dad5"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, ringR, 0, Math.PI * 2); ctx.stroke();
+        if (!body) {
+          ctx.fillStyle = "#f3dad5";
+          ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.font = body?.key === "moon" ? "14px sans-serif" : "13px sans-serif"; ctx.fillStyle = "rgba(255,250,245,.75)";
+        ctx.fillText(o.name, p.x + ringR + 5, p.y + 4);
+      }
+    }
+  };
+  // 달 — 시반지름을 화면 px로 (지름 18px 이상)
+  const moonRadius = (b) => Math.max(MOON_MIN_R, F * Math.tan(b.angR * DEG));
+  // 달 원반 — 빛무리 · 어두운 원 · 태양 쪽 밝은 부분 (위상은 pointer.moonLitPath)
+  const drawMoon = (p, b, r) => {
+    const halo = ctx.createRadialGradient(p.x, p.y, r * 0.8, p.x, p.y, r * 2.5);
+    halo.addColorStop(0, `rgba(244,239,226,${(0.08 + 0.14 * b.illum).toFixed(3)})`);
+    halo.addColorStop(1, "rgba(244,239,226,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#2b2d3a";
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+    if (b.illum <= 0.005) return;
+    const angle = moonLitAngle({ moonPx: p, sunPx: sunEnu ? projectRaw(sunEnu) : null, basis, moonEnu: b.v, sunEnu: sunEnu ?? b.v });
+    const pts = moonLitPath(b.illum, angle, r, 32);
+    ctx.fillStyle = "#f4efe2";
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(p.x + x, p.y + y) : ctx.moveTo(p.x + x, p.y + y)));
+    ctx.closePath(); ctx.fill();
+  };
+  const drawPlanet = (p) => {
+    ctx.fillStyle = PLANET_COLOR;
+    ctx.beginPath(); ctx.arc(p.x, p.y, PLANET_R, 0, Math.PI * 2); ctx.fill();
   };
 
   const azKnown = () => source === "ios" || source === "absolute" || calibrated;
