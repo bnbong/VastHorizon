@@ -222,13 +222,22 @@ export class Stage {
     return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
   }
 
-  // 카메라 이동 — 위치 · 바라보는 점을 ms 동안 부드럽게
+  // 카메라 이동 — 위치 · 바라보는 점을 ms 동안 부드럽게. 새 비행(flight())이 시작되면 앞의 비행은 그 자리에서 멈춘다
+  // (두 비행이 한 카메라를 함께 움직이지 않게). 다른 연출(tweens)은 그대로 — 멈춘 비행의 done도 이어지는 흐름을 위해 부른다
   flyTo(position, target, ms = 1600, done) {
     const from = { p: this.camera.position.clone(), t: this.controls.target.clone() };
+    const live = this.flight();
     this.animate(ms, (k) => {
+      if (!live()) return;
       this.camera.position.lerpVectors(from.p, position, k);
       this.controls.target.lerpVectors(from.t, target, k);
     }, done);
+  }
+
+  // 카메라 비행 세대 — 새 비행을 시작하며 부르고, 받은 함수가 false면 더 뒤의 비행이 시작된 것
+  flight() {
+    const gen = (this.flightGen = (this.flightGen ?? 0) + 1);
+    return () => gen === this.flightGen;
   }
 
   animate(ms, step, done) {

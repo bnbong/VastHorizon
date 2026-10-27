@@ -696,6 +696,7 @@ ol.evidence .excerpt { font: 400 12px/1.6 var(--font-sans); color: var(--text-mu
   border: 1px solid rgba(255,170,90,.25); }
 .bh-canvas { display: block; width: 100%; height: 190px; }
 .bh-card figcaption { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+.bh-card .bh-actions { margin-top: var(--space-2); }       /* 중심의 블랙홀 보기 · 자세히 보기(3D) (main.js loadBlackHole) */
 /* 태양계 천체를 가까이서 본 모습 (bodyview.js) — 밤하늘 남보라 바탕 위의 천체, 아래는 종이색 설명 */
 .body-card { margin: 0; overflow: hidden; border: 1px solid rgba(40,35,69,.14);
   background: radial-gradient(ellipse at 50% 42%, #2c2e66 0%, #1c1d4a 58%, #141537 100%); }
@@ -976,7 +977,7 @@ html[data-text="large"] .drawer .lr-title { font-size: 19px; }
 .app[data-layout="sheet"] .sheet-peek-kicker { margin: 4px 0 8px; }
 .app[data-layout="sheet"] .sheet-peek-line { margin: 6px 0 0; font: 400 16px/1.5 var(--font-serif); letter-spacing: -0.03em; color: var(--text-secondary); word-break: keep-all;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.app[data-layout="sheet"] .sheet-peek-actions { display: flex; margin-top: 14px; }
+.app[data-layout="sheet"] .sheet-peek-actions { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-top: 14px; }
 .app[data-layout="sheet"] .sheet-peek-actions .btn { min-height: 44px; padding: 0 18px; }
 
 /* 천체 3D 오버레이 — 무대 위, 이름표 층(1)보다 위 · 크롬(3)보다 아래. 워드마크 · 메뉴는 위에 보이고 하늘 이름표는 가려진다 (main.js openBodyStage) */

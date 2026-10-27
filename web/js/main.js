@@ -20,6 +20,7 @@ import { igniteBurst } from "./dream.js";
 import { loadBlackHoles, mountBlackHole } from "./blackhole.js";
 import { mountBodyView, stopBodyView } from "./bodyview.js";
 import { bodyInfo, sizeCaption } from "./solarbodies.js";
+import { hasCloseup } from "./closeup.js";
 import { analogies, growthText, knownAndUnknown, newlyInside } from "./worldscale.js";
 import { entryOf, localDate, reachOf, recent, restoreVisited, serialize, todays, WORLD_KEY } from "./journal.js";
 import { UnfoldMode } from "./unfold.js";
@@ -184,14 +185,15 @@ function onLayoutChange(prev, next) {
   const open = state.drawer === "item" && $("#bodyview") && state.item ? state.item : null;
   const item = open && bodyInfo(open.id) ? open : null;
   const bh = open && $("#blackhole canvas") ? blackHoles?.galaxies.find((g) => g.id === open.id) : null;
-  sheetHas3d = (!!item || !!bh) && next === "sheet";
+  const bhOverlay = bodyStage.on && bodyStage.kind === "bh";      // 블랙홀 3D를 눌러 띄워 둔 오버레이 — 새 배치에서도 그대로
+  sheetHas3d = stageWorthy(open) && next === "sheet";
   if (state.drawer) sheetHome = defaultSnap({ kind: state.drawer, has3d: sheetHas3d });
   if (sheet && state.drawer) {                   // 열린 서랍 그대로 시트 배치로 — 이 화면의 기본 높이로
     renderPeek({ relayout: false });
     sheet.open(sheetHome, { animate: false });
   }
   if (item) placeBodyView(item);
-  else if (bh) placeBlackHole(open, bh);
+  else if (bh) placeBlackHole(open, bh, { overlay: bhOverlay });
   if (state.drawer) stage?.setInset(next !== "sheet" ? $("#drawer").offsetWidth + 32 : 0);
   fitStageInset();
 }
@@ -201,8 +203,8 @@ function onLayoutChange(prev, next) {
 // 그사이 사람이 끈 높이를 덮지 않게. 뒤로 가기로 돌아온 화면은 떠날 때 남긴 높이(설명자의 _snap)로
 let sheet = null;
 let sheetHome = "half";                          // 지금 화면의 기본 높이 (손잡이를 full에서 누르면 여기로)
-let sheetHas3d = false;                          // 지금 화면이 3D 오버레이를 쓰는가 (태양계 천체)
-let viewSeq = 0, sheetSeq = -1, sheetUserAtOpen = 0;
+let sheetHas3d = false;                          // 지금 화면이 무대에 볼 것이 있는가 (stageWorthy) — 있으면 peek으로 열어 무대가 크게 보이게
+let viewSeq = 0, sheetSeq = -1;
 
 // 끄는 동안 — 3D 천체가 시트 위 영역의 가운데를 따라온다 (무대 시야는 정착할 때만)
 function onSheetMove(V) {
@@ -230,21 +232,28 @@ function renderPeek({ relayout = true } = {}) {
   if (text && sheetHas3d) {
     const line = pick("line") || (drawerBody.querySelector(".card-meta")?.textContent.replace(/\s+/g, " ").trim() ?? "");
     const collect = drawerBody.querySelector('[data-peek="action"] [data-collect]');
+    // 은하 중심 블랙홀 — 블랙홀 카드의 버튼(지도에서 더 들어가기 · 띄운 3D 닫기)을 대신 누르는 버튼 하나
+    const bhBtn = drawerBody.querySelector('.bh-card [data-bh-3d].on') ?? drawerBody.querySelector(".bh-card [data-bh-into]:not([hidden])");
     html = `${pick("kicker") ? `<p class="eyebrow sheet-peek-kicker">${esc(pick("kicker"))}</p>` : ""}
       <p class="sheet-peek-title" data-peek-title tabindex="-1">${esc(text)}</p>
       ${letterLine}
       ${line ? `<p class="sheet-peek-line">${esc(line)}</p>` : ""}
       <div class="sheet-peek-actions">${collect ? btn("이 빛을 내 세계에 담기", { variant: "primary", attrs: "data-peek-collect" })
-        : btn("설명 읽기", { variant: "secondary", icRight: "chevron-up", attrs: "data-peek-read" })}</div>`;
+        : btn("설명 읽기", { variant: "secondary", icRight: "chevron-up", attrs: "data-peek-read" })}${bhBtn
+        ? btn(bhBtn.textContent.trim(), { variant: "ghost", icRight: bhBtn.hasAttribute("data-bh-into") && !bhBtn.classList.contains("on") ? "arrow-up-right" : null,
+                                         attrs: `data-peek-bh="${bhBtn.hasAttribute("data-bh-3d") ? "3d" : "into"}"` }) : ""}</div>`;
   } else if (text) html = `<p class="sheet-peek-title" data-peek-title tabindex="-1">${esc(text)}</p>${letterLine}`;
   const hadFocus = peek.contains(document.activeElement);   // 갈아 끼우면 포커스가 문서 처음으로 빠진다 — 머리글 안에 있었으면 새 버튼으로
+  // 누른 버튼의 종류(data 속성)를 기억해 다시 그린 머리글의 같은 종류 버튼으로 (블랙홀 버튼을 누른 뒤 '설명 읽기'로 가지 않게)
+  const focusKey = hadFocus ? ["data-peek-bh", "data-peek-collect", "data-peek-read", "data-peek-letter"].find((a) => document.activeElement.hasAttribute?.(a)) : null;
   peek.hidden = !html;
   peek.innerHTML = html ? `<div class="sheet-peek-in">${html}</div>` : "";
-  if (hadFocus) (peek.querySelector("[data-peek-read], [data-peek-collect]") ?? $("#sheet-grip")).focus({ preventScroll: true });
+  if (hadFocus) ((focusKey && peek.querySelector(`[${focusKey}]`)) ?? peek.querySelector("[data-peek-read], [data-peek-collect]") ?? $("#sheet-grip")).focus({ preventScroll: true });
   // 대리 버튼 — 담기 처리(bindCollect)는 본문 버튼 하나뿐이라 기록이 두 번 남지 않는다
   peek.querySelector("[data-peek-collect]")?.addEventListener("click", () => drawerBody.querySelector('[data-peek="action"] [data-collect]')?.click());
   peek.querySelector("[data-peek-read]")?.addEventListener("click", () => sheet?.open("half"));
   peek.querySelector("[data-peek-letter]")?.addEventListener("click", () => drawerBody.querySelector('[data-peek="letter"] [data-letter-read]')?.click());
+  peek.querySelector("[data-peek-bh]")?.addEventListener("click", (e) => drawerBody.querySelector(`.bh-card [data-bh-${e.currentTarget.dataset.peekBh}]`)?.click());
   if (relayout) sheet.relayout();
 }
 
@@ -254,11 +263,13 @@ function renderPeek({ relayout = true } = {}) {
 const bodyStage = { el: $("#body-stage"), on: false, handle: null, item: null, raf: 0 };
 
 // what — 무엇을 띄울지: 기본은 태양계 천체(bodyview.js), 은하는 중심 블랙홀(blackhole.js, placeBlackHole)
-function openBodyStage(item, { label = `${item.name}을(를) 가까이서 본 모습, 상상도`, note = "가까이서 본 모습 · 상상도",
+// kind — "body"(태양계 천체) · "bh"(블랙홀, 사람이 '블랙홀 자세히 보기(3D)'를 눌렀을 때만)
+function openBodyStage(item, { label = `${item.name}을(를) 가까이서 본 모습, 상상도`, note = "가까이서 본 모습 · 상상도", kind = "body",
                                mount = (canvas) => mountBodyView(canvas, item.id, { still: reducedMotion(), fit: true, pixelBudget: 900_000, interactive: true, onTap: onBodyStageTap }) } = {}) {
   const el = bodyStage.el;
   bodyStage.on = true;
   bodyStage.item = item;
+  bodyStage.kind = kind;
   if (el.hidden) {
     el.hidden = false;
     stage?.pause();
@@ -280,6 +291,7 @@ function openBodyStage(item, { label = `${item.name}을(를) 가까이서 본 �
     const handle = mount(canvas);
     if (!handle) {                               // WebGL을 만들 수 없다 — 오버레이를 걷고 설명이 보이게
       closeBodyStage({ now: true });
+      if (kind === "bh") { syncBhActions(); return; }   // 블랙홀은 사람이 띄운 것 — 시트 높이는 그대로, 버튼만 '자세히 보기'로
       sheetHas3d = false;
       sheetHome = "half";
       renderPeek();
@@ -301,6 +313,7 @@ function closeBodyStage({ now = false } = {}) {
   if (!bodyStage.on) return;
   bodyStage.on = false;
   bodyStage.item = null;
+  bodyStage.kind = null;
   bodyStage.el.querySelector("canvas")?.remove();
   const hide = () => {
     if (bodyStage.on) return;
@@ -389,7 +402,6 @@ function openDrawer(kind, html, { has3d = false } = {}) {
     sheetSeq = viewSeq;
     sheetHome = defaultSnap({ kind, has3d });
   }
-  if (fresh || sheet?.snap === "closed") sheetUserAtOpen = sheet?.userSeq ?? 0;
   sheetHas3d = has3d;
   if (sheet) {
     renderPeek({ relayout: false });
@@ -1632,7 +1644,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
       <div class="row" id="clear-row" hidden>${btn("대화 지우기", { variant: "ghost", id: "clear-chat" })}<span id="clear-status"></span></div></div>
     <div class="spacer"></div>
     <div class="composer-wrap">${composerHtml("chat-form", { placeholder: `${item.name}에 대해 물어보세요` })}
-      <div class="composer-note">문서로 확인되지 않은 내용은 확인되지 않는다고 답합니다.</div></div>`, { has3d: layout() === "sheet" && (!!bodyInfo(item.id) || hasBlackHole(item.id)) });
+      <div class="composer-note">문서로 확인되지 않은 내용은 확인되지 않는다고 답합니다.</div></div>`, { has3d: layout() === "sheet" && stageWorthy(item) });
 
   $("#more-btn").addEventListener("click", (e) => {
     const more = $("#more");
@@ -1695,33 +1707,72 @@ async function loadBlackHole(item, alive) {
       <div class="eyebrow">중심 블랙홀${bh.black_hole ? ` · <span class="code">${esc(bh.black_hole)}</span>` : ""}</div>
       ${bh.quote ? `<blockquote>${esc(bh.quote)}</blockquote>` : `<p>Wikidata에 이 은하의 일부인 블랙홀로 기록되어 있습니다.</p>`}
       <p class="disclaimer">${esc(data.note)} 빛이 블랙홀 둘레에서 휘는 경로를 계산해, 원반 뒤쪽이 그림자 위아래로 보이는 모습(영화 「인터스텔라」의 가르강튀아와 같은 원리)을 그렸습니다. 출처 · ${src}</p>
+      <div class="row bh-actions">
+        ${btn("중심의 블랙홀 보기", { icRight: "arrow-up-right", attrs: "data-bh-into hidden" })}
+        ${btn("블랙홀 자세히 보기(3D)", { variant: "ghost", attrs: "data-bh-3d hidden" })}
+      </div>
     </figcaption></figure>`;
+  // 중심의 블랙홀 보기 — 지도에서 은하 중심으로 더 들어가 블랙홀이 떠오르게(map.js flyInto). 다시 누르면 은하로 돌아간다(flyBack)
+  box.querySelector("[data-bh-into]").addEventListener("click", () => {
+    if (state.mode !== "map" || !state.map) return;
+    if (state.bhInto === item.id) state.map.flyBack(item.id);   // 문구는 지도가 알려 줄 때 바뀐다 (onBlackHole)
+    else state.map.flyInto(item.id);
+  });
+  // 블랙홀 자세히 보기(3D) — 휴대폰 · 눕힌 휴대폰에서 누를 때만 무대 위 오버레이로 (데스크톱은 이 카드의 캔버스에 늘 그린다). 다시 누르면 닫는다
+  box.querySelector("[data-bh-3d]").addEventListener("click", () => {
+    if (bodyStage.on && bodyStage.kind === "bh") {
+      closeBodyStage({ now: true });
+      syncBhActions();
+    } else placeBlackHole(item, bh, { overlay: true });
+  });
   placeBlackHole(item, bh);
-  // 목록이 늦게 와서 half로 연 천체 — 3D가 있다고 확인됐다. 사람이 아직 높이를 바꾸지 않았으면 3D가 크게 보이게 peek으로
-  if (sheet && !sheetHas3d) {
-    sheetHas3d = true;
-    sheetHome = "peek";
-    renderPeek({ relayout: false });
-    if (sheet.userSeq === sheetUserAtOpen) sheet.open("peek");
-    else sheet.relayout();
-  }
 }
 
-// 블랙홀의 자리 — 시트 · 나란히 배치는 무대 위 오버레이(화소 예산 30만, 빛 경로 계산이 무겁다), 데스크톱은 서랍 안 카드
-function placeBlackHole(item, bh) {
+// 블랙홀 카드의 버튼 — '중심의 블랙홀 보기'는 지도에서 근접 모습이 있는 은하일 때만(하늘 보기에서는 숨김), 들어가 있으면 '은하로 돌아가기'.
+// '자세히 보기(3D)'는 오버레이를 쓰는 배치에서만, 띄워 두었으면 '3D 닫기'. 바뀌면 시트 엿보기 머리글의 대리 버튼도 다시 그린다
+function syncBhActions() {
+  const card = drawerBody.querySelector(".bh-card");
+  if (!card || !state.item) return;
+  const into = card.querySelector("[data-bh-into]"), three = card.querySelector("[data-bh-3d]");
+  const before = `${into.hidden}${into.textContent}${three.hidden}${three.textContent}`;
+  const inside = state.bhInto === state.item.id;
+  into.hidden = !(state.mode === "map" && hasCloseup(state.map?.lookup(state.item.id)));
+  into.querySelector(".label-text").textContent = inside ? "은하로 돌아가기" : "중심의 블랙홀 보기";
+  into.querySelector("svg")?.toggleAttribute("hidden", inside);
+  into.classList.toggle("on", inside);
+  const overlay = bodyStage.on && bodyStage.kind === "bh";
+  three.hidden = layout() === "desktop";
+  three.querySelector(".label-text").textContent = overlay ? "3D 닫기" : "블랙홀 자세히 보기(3D)";
+  three.classList.toggle("on", overlay);
+  if (sheet && `${into.hidden}${into.textContent}${three.hidden}${three.textContent}` !== before) renderPeek();
+}
+
+// 블랙홀의 자리 — 데스크톱은 서랍 안 카드의 캔버스에 늘. 시트 · 나란히 배치는 overlay(사람이 '자세히 보기(3D)'를 눌렀을 때)일 때만
+// 무대 위 오버레이로 (화소 예산 30만, 빛 경로 계산이 무겁다) — 서랍을 열자마자 무대를 덮지 않고, 지도의 은하 근접 모습이 먼저 보이게
+function placeBlackHole(item, bh, { overlay = false } = {}) {
   stopDrawerView();
   if (layout() !== "desktop") {
-    openBodyStage(item, { label: `${bh.black_hole ?? "중심 블랙홀"} 상상도, 블랙홀 둘레에서 휘는 빛을 계산한 그림`, note: "중심 블랙홀 · 빛의 경로를 계산한 상상도",
-      mount: (canvas) => mountBlackHole(canvas, { still: reducedMotion(), fit: true, pixelBudget: 300_000, interactive: true, onTap: onBodyStageTap }) });
+    if (overlay) {
+      openBodyStage(item, { label: `${bh.black_hole ?? "중심 블랙홀"} 상상도, 블랙홀 둘레에서 휘는 빛을 계산한 그림`, note: "중심 블랙홀 · 빛의 경로를 계산한 상상도", kind: "bh",
+        mount: (canvas) => mountBlackHole(canvas, { still: reducedMotion(), fit: true, pixelBudget: 300_000, interactive: true, onTap: onBodyStageTap }) });
+    }
+    syncBhActions();
     return;
   }
   const canvas = freshCanvas($("#blackhole canvas"));
   if (canvas) drawerView = mountBlackHole(canvas, { still: reducedMotion() });
+  syncBhActions();
 }
 
-// 블랙홀 목록 — start()에서 미리 받아 두면 천체를 열 때 3D 여부를 바로(동기로) 안다
+// 블랙홀 목록 — start()에서 미리 받아 둔다 (배치가 바뀔 때 열린 은하의 블랙홀을 바로 찾는다)
 let blackHoles = null;
-const hasBlackHole = (id) => !!blackHoles?.galaxies.some((g) => g.id === id);
+
+// 무대에 볼 것이 있는 천체 — 태양계 천체(3D 오버레이), 지도에서는 근접 모습이 있는 별 · 메시에 천체(closeup.js, 줌 거리로 날아간다).
+// 시트 배치에서 이런 천체는 peek으로 열어 무대가 크게 보이게, 하늘 보기의 별 · 메시에는 half (sheet.js defaultSnap)
+function stageWorthy(item) {
+  if (!item) return false;
+  return !!bodyInfo(item.id) || (state.mode === "map" && hasCloseup(state.map?.lookup(item.id)));
+}
 
 // 태양계 천체를 가까이서 본 모습 — 태양 쪽 빛을 받으며 천천히 돈다 (bodyview.js). 표면은 알려진 특징을 바탕으로 한 상상도
 function showBodyView(item) {
@@ -2833,6 +2884,7 @@ function setMode(mode, conId, { journey = false, keepView = false } = {}) {
     setTimeout(() => state.unfold === stage.mode && state.unfold.play(true), 900);
   }
   if (!document.querySelector(".prologue")) sound.ambient(ambientOf(mode));   // 프롤로그가 떠 있으면 끝날 때 바꾼다
+  syncBhActions();                    // '중심의 블랙홀 보기'는 지도에서만
   renderChrome();
 }
 
@@ -3080,6 +3132,11 @@ async function start() {
     state.refYear = map.ref_year ?? state.refYear;
     stage = new Stage($("#stage"));
     state.map = new MapMode(map);
+    // 고른 은하의 블랙홀 안에 들어가 있는가 — 버튼 · 손가락 확대 모두 지도가 카메라 거리로 정한다. 바뀔 때만 서랍 버튼을 맞춘다
+    state.map.onBlackHole = (id, inside) => {
+      state.bhInto = inside ? id : null;
+      syncBhActions();
+    };
     state.sky = new SkyMode(state.constellations, map.points.filter((p) => p.placement === "sky"),
                             map.points.filter((p) => p.group === "solar_system"));
     state.sky.setObserved(world.visited);

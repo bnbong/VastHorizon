@@ -6,6 +6,7 @@ import { MODELS, ModelShelf } from "./models.js";
 import { BodyShelf } from "./bodyshelf.js";
 import { DreamSphere } from "./dream.js";
 import { DetailLayer } from "./details.js";
+import { bhFade, bhViewDistance, hasCloseup, insetFrame } from "./closeup.js";
 import { distanceText, eqToScene, mapRadius, radecToEq } from "./astro.js";
 import { EQ_TO_MAP } from "./skydata.js";
 import { loadMilkyway, loadStars, MilkyWayLayer, StarLayer } from "./starfield.js";
@@ -103,6 +104,12 @@ export class MapMode {
     this.group.add(this.selectRing);
     // 가까이 가면 그 천체다운 모습 — 별 원반 · 허블 사진 · 성단 · 은하 중심 블랙홀 (details.js)
     this.details = new DetailLayer(this.points, this.group);
+    // 사진 목록(credits.json)이 늦게 와서 먼 거리로 날아간 천체 — 목록이 오면 근접 모습의 줌 거리로 한 번 더
+    this.details.onPhotos = () => {
+      const id = this.refly;
+      this.refly = null;
+      if (id && id === this.selectedId && this.stage?.mode === this) this.select(id);
+    };
     // 대표 기체의 실제 형태 (NASA 3D 모델) — 가까이 가면 내려받아 그 점 자리에 띄운다
     this.models = new ModelShelf(this.group, this.points.filter((p) => MODELS[p.name]));
     // 태양계 천체의 3D 모습 (서랍 근접 뷰와 같은 메시) — 가까이 가면 그 점 자리에 띄운다
@@ -120,6 +127,11 @@ export class MapMode {
     this.shimmer(this.clockT);               // 카메라 거리에 따라 가까운 점선 원이 나타나고 숨는다 (움직임 줄이기면 일렁임만 멈춘다)
     // 빈 점선 원의 지름 — 데스크톱 16px, 좁은 화면 13px (design-proposal .world-unknown)
     this.unknownDots.material.size = stage.container.clientWidth <= 650 ? 13 : 16;
+    // 근접 모습이 짧은 변의 45%가 되는 거리는 서랍 · 시트로 비킨 시야(남은 영역) 기준 — 블랙홀 · 고해상도 사진의 거리도 이것으로
+    this.details.frame = this.frame(stage);
+    this.details.anisotropy = stage.renderer.capabilities.getMaxAnisotropy();
+    this.details.selectedId = this.selectedId;
+    this.watchBlackHole(stage);
     this.models.update(dt, stage.camera);
     this.bodies.update(dt, stage.camera);
     this.details.update(this.clockT, stage.camera, still);
@@ -300,6 +312,7 @@ export class MapMode {
   expandTo(fromKm, toKm, crossed, done, knownId) {
     const r0 = Math.max(mapRadius(fromKm), 0.6), r1 = Math.max(mapRadius(toKm), 0.6);
     const st = this.stage;
+    const live = st.flight();                    // 진행 중이던 카메라 비행은 여기서 멈춘다 — 이 연출이 카메라를 움직인다
     const dir = st.camera.position.clone().normalize();
     if (dir.lengthSq() < 1e-6 || Math.abs(dir.y) > 0.95) dir.set(0.33, 0.42, 0.85).normalize();
     st.controls.target.set(0, 0, 0);
@@ -313,7 +326,7 @@ export class MapMode {
       const r = r0 + (r1 - r0) * k;
       this.reach.setRadius(r);
       this.worldRadius = r;
-      st.camera.position.copy(dir).multiplyScalar(dist(r));
+      if (live()) st.camera.position.copy(dir).multiplyScalar(dist(r));
       for (const m of marks) {
         if (m.shown || m.r > r) continue;
         m.shown = true;
@@ -417,9 +430,83 @@ export class MapMode {
       this.selectRing.geometry.computeBoundingSphere();
       this.selectRing.visible = true;
     }
+    this.refly = null;
     if (!fly || !this.stage) return true;
+    const size = this.details.sizeOf(p);
+    if (!size && hasCloseup(p) && !this.details.photos) this.refly = id;   // 사진 목록이 아직 — 오면 다시 (onPhotos)
+    if (size) {                                // 근접 모습이 있으면 그 모습이 화면 짧은 변의 45%를 차지하는 거리로 (closeup.js)
+      this.focusOn(p, () => this.closeView(p, size), { approach: true });
+      return true;
+    }
     const back = p.position.clone().normalize().multiplyScalar(Math.max(8, p.position.length() * 0.25));
     this.stage.flyTo(p.position.clone().add(back).add(new THREE.Vector3(0, 4, 0)), p.position.clone());
+    return true;
+  }
+
+  // 보이는 영역(서랍 · 시트로 비킨 시야)의 화각 · 비율 — closeup.js insetFrame
+  frame(stage = this.stage) {
+    const { clientWidth: width, clientHeight: height } = stage.container;
+    return insetFrame({ width, height, fov: stage.camera.fov, insetX: stage.inset ?? 0, insetY: stage.insetY ?? 0 });
+  }
+
+  // 근접 모습이 짧은 변의 45%(별은 STAR_FILL)가 되는 거리. 카메라 근평면(0.001)이 스프라이트를 가르지 않게 크기의 0.8배 · 궤도 최소 거리(1.5)보다는 멀리
+  closeView(p, size) {
+    return Math.max(this.details.viewOfPoint(p, size), size * 0.8, (this.stage?.controls.minDistance ?? 0) + 0.1);
+  }
+
+  // 그 천체를 바라보며 거리 dist()까지 — dist는 매 프레임 다시 잰다(비행 중에 서랍 · 시트가 열려 남은 영역이 바뀌어도 끝 거리가 맞게).
+  // approach: 원점('나')→천체 방향 뒤에서 조금 위(거리의 0.3)로 다가간다. 아니면 지금 바라보는 방향 그대로 거리만 바꾼다
+  // 새 비행이 시작되면(Stage.flight) 이 비행은 그 자리에서 멈춘다. intent: 블랙홀로 들어가는가(true) · 나오는가(false) — 비행 동안은 이 값이 상태
+  focusOn(p, dist, { approach = false, ms = 1600, intent = null } = {}) {
+    const st = this.stage, to = p.position.clone();
+    const live = st.flight();
+    this.bhIntent = intent === null ? null : { id: p.id, inside: intent, live };
+    const from = { p: st.camera.position.clone(), t: st.controls.target.clone() };
+    const dir = approach ? to.clone().normalize().add(new THREE.Vector3(0, 0.3, 0)) : from.p.clone().sub(to);
+    if (dir.lengthSq() < 1e-9) dir.set(0, 0.3, 1);
+    dir.normalize();
+    const end = new THREE.Vector3();
+    st.animate(ms, (k) => {
+      if (!live()) return;
+      end.copy(dir).multiplyScalar(dist()).add(to);
+      st.camera.position.lerpVectors(from.p, end, k);
+      st.controls.target.lerpVectors(from.t, to, k);
+    }, () => { if (this.bhIntent?.live === live) this.bhIntent = null; });
+  }
+
+  // 고른 은하의 블랙홀 안에 들어가 있는가 — 비행 중에는 그 비행의 의도, 아니면 카메라 거리(블랙홀이 반 넘게 떠오름, closeup.js bhFade)로.
+  // 손가락 · 휠로 들어가고 나와도 같게. 바뀔 때만 onBlackHole(id, inside)를 부른다 (main.js 서랍 버튼)
+  watchBlackHole(stage) {
+    const id = this.selectedId, p = id && this.details.bhInfo?.has(id) ? this.lookup(id) : null;
+    const size = p && this.details.sizeOf(p);
+    let inside = false;
+    if (size) {
+      const intent = this.bhIntent?.live() && this.bhIntent.id === id ? this.bhIntent : null;
+      if (intent) inside = intent.inside;
+      else {
+        const g = this.details.viewOf(size);
+        inside = bhFade(stage.camera.position.distanceTo(p.position), g, bhViewDistance(this.details.frame, g)) >= 0.5;
+      }
+    }
+    const key = inside ? id : null;
+    if (key === this.bhInside) return;
+    this.bhInside = key;
+    this.onBlackHole?.(id, inside);
+  }
+
+  // 은하 중심의 블랙홀로 더 들어간다 — 블랙홀이 짧은 변의 40%쯤 되는 거리 (closeup.js bhViewDistance). 바라보는 방향은 그대로
+  flyInto(id) {
+    const p = this.lookup(id), size = p && this.details.sizeOf(p);
+    if (!size || !this.stage) return false;
+    this.focusOn(p, () => Math.max(bhViewDistance(this.frame(), this.details.viewOf(size)), (this.stage.controls.minDistance ?? 0) + 0.1), { ms: 1800, intent: true });
+    return true;
+  }
+
+  // 은하로 돌아간다 — 처음 줌 거리로
+  flyBack(id) {
+    const p = this.lookup(id), size = p && this.details.sizeOf(p);
+    if (!size || !this.stage) return false;
+    this.focusOn(p, () => this.closeView(p, size), { ms: 1400, intent: false });
     return true;
   }
 }

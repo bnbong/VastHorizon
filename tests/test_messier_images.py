@@ -14,7 +14,7 @@ from pathlib import Path
 from PIL import Image
 
 from vasthorizon.config import PROJECT_ROOT
-from vasthorizon.data.messier_images import build, parse_page, pick_image, to_jpeg
+from vasthorizon.data.messier_images import HD_WIDTH, build, build_hd, parse_page, pick_image, to_jpeg
 
 PAGE_HTML = """<html><head><meta property="og:image" content="https://science.nasa.gov/wp-content/uploads/m1.webp?x=1" />
 </head><body><figure><img src="m1.webp"></figure><figcaption><div class="hds-credits">NASA, ESA, J. Hester &amp; A. Loll</div>
@@ -51,6 +51,10 @@ class ParseTest(unittest.TestCase):
     def test_to_jpeg_shrinks_long_side(self):
         img = Image.open(io.BytesIO(to_jpeg(png_bytes())))
         self.assertEqual((img.format, max(img.size)), ("JPEG", 512))
+
+    def test_to_jpeg_hd_width(self):
+        img = Image.open(io.BytesIO(to_jpeg(png_bytes(2000, 1400), HD_WIDTH)))
+        self.assertEqual((img.format, img.size), ("JPEG", (1024, 717)))
 
 
 BASE = "https://assets.science.nasa.gov/content/dam/science/missions/hubble/galaxies/m4/"
@@ -112,6 +116,59 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(calls, [])                    # 이미 받은 사진은 다시 받지 않는다
 
 
+class HdTest(unittest.TestCase):
+    def test_build_width_asks_and_shrinks(self):
+        urls = []
+
+        def get(url):
+            urls.append(url)
+            return Resp(text=PAGE_HTML) if "messier-1/" in url else Resp(content=png_bytes(2000, 1400), ctype="image/png")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            build(Path(tmp), get, numbers=[1], log=lambda m: None, width=HD_WIDTH)
+            self.assertTrue(urls[-1].endswith("?w=1024"))
+            self.assertEqual(max(Image.open(Path(tmp) / "M1.jpg").size), 1024)
+
+    def test_build_hd_uses_credit_image_and_skips_done(self):
+        logs, urls = [], []
+
+        def get(url):
+            urls.append(url)
+            if url.startswith("https://x/m2"):
+                raise ConnectionError("down")
+            return Resp(content=png_bytes(2000, 1400), ctype="image/png")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "credits.json").write_text(json.dumps({"M1": {"credit": "NASA", "page": "p", "image": "https://x/m1.jpg"},
+                                                          "M2": {"credit": "NASA", "page": "p", "image": "https://x/m2.jpg"}}), encoding="utf-8")
+            done = build_hd(out, get, log=logs.append)
+            self.assertEqual(list(done), ["M1"])
+            self.assertEqual(urls, ["https://x/m1.jpg?w=1024", "https://x/m2.jpg?w=1024"])   # 같은 사진 — 페이지는 다시 읽지 않는다
+            self.assertEqual(Image.open(out / "hd" / "M1.jpg").size, (1024, 717))
+            self.assertFalse((out / "M1.jpg").exists())                                       # 512 사진은 건드리지 않는다
+            self.assertTrue(any("M2: ConnectionError" in m for m in logs))
+            urls.clear()
+            build_hd(out, get, log=logs.append)
+            self.assertEqual(urls, ["https://x/m2.jpg?w=1024"])                               # 이미 받은 사진은 다시 받지 않는다
+            self.assertEqual(list((out / "hd").glob("*.tmp")), [])                           # 임시 파일은 남지 않는다
+
+    def test_build_hd_refetches_empty_or_broken_file(self):
+        urls = []
+        get = lambda url: urls.append(url) or Resp(content=png_bytes(2000, 1400), ctype="image/png")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "credits.json").write_text(json.dumps({"M1": {"credit": "NASA", "page": "p", "image": "https://x/m1.jpg"},
+                                                          "M2": {"credit": "NASA", "page": "p", "image": "https://x/m2.jpg"}}), encoding="utf-8")
+            (out / "hd").mkdir()
+            (out / "hd" / "M1.jpg").write_bytes(b"")                    # 0바이트 — 끊긴 다운로드
+            (out / "hd" / "M2.jpg").write_bytes(b"<html>")              # JPEG가 아니다
+            done = build_hd(out, get, log=lambda m: None)
+            self.assertEqual(sorted(urls), ["https://x/m1.jpg?w=1024", "https://x/m2.jpg?w=1024"])
+            self.assertEqual(sorted(done), ["M1", "M2"])
+            self.assertTrue(all((out / "hd" / f"{k}.jpg").read_bytes()[:2] == b"\xff\xd8" for k in done))
+
+
 class BuiltFilesTest(unittest.TestCase):
     def test_every_photo_has_credit(self):
         folder = PROJECT_ROOT / "web" / "data" / "messier"
@@ -120,6 +177,12 @@ class BuiltFilesTest(unittest.TestCase):
         photos = {p.stem for p in folder.glob("M*.jpg")}
         self.assertEqual(photos, set(credits))
         self.assertTrue(all(c["credit"].strip() and c["page"].startswith("https://science.nasa.gov/") for c in credits.values()))
+
+    def test_every_hd_photo_has_credit(self):
+        folder = PROJECT_ROOT / "web" / "data" / "messier"
+        credits = json.loads((folder / "credits.json").read_text(encoding="utf-8"))
+        hd = {p.stem for p in (folder / "hd").glob("M*.jpg")}
+        self.assertLessEqual(hd, set(credits))                    # 고해상도 사진도 출처 표기(credits.json)가 있는 것만
 
 
 if __name__ == "__main__":
