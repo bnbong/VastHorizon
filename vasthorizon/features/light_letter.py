@@ -12,6 +12,7 @@
 | 거리                       | 편지                                              |
 |----------------------------|---------------------------------------------------|
 | 없음 · 지표 고도(위성)     | 쓸 수 없음 — LetterUnavailableError               |
+| 우리 은하 그룹             | 쓸 수 없음 — 한 점의 빛이 아니거나(우리 은하) 눈에 닿는 빛이 없다(궁수자리 A*) |
 | 1광년 미만 (태양계 · 탐사선) | 몇 분 · 몇 시간 전에 출발한 빛 (연도 문서 없음)   |
 | 1광년 ~ 10만 광년          | 출발 연도 · 범위 + 그 해의 연도 문서              |
 | 10만 광년 이상 (은하)       | 인류 문명 이전에 출발한 빛 (연도 문서 없음)       |
@@ -79,6 +80,8 @@ class LetterResult:
 
 
 def compute_departure(item: dict, ref_year: int) -> Departure:
+    if item.get("group") == "milky_way":
+        raise LetterUnavailableError("우리 은하와 그 중심의 블랙홀은 눈에 닿는 한 점의 빛이 아니라 빛의 편지를 쓸 수 없습니다.")
     dist = item.get("distance")
     if not dist:
         raise LetterUnavailableError(f"{item['name']}은(는) 거리 정보가 없어 빛의 편지를 쓸 수 없습니다.")

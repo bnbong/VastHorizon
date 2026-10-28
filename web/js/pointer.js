@@ -184,6 +184,15 @@ export function lightLine(km) {
   return km > 0 ? `지금 눈에 닿는 이 빛은 ${lightTime(km)} 전에 떠났습니다` : "이 빛이 떠난 때는 아직 확인되지 않았어요";
 }
 
+// 천체에 맞춘 한 줄 — 우리 은하 · 궁수자리 A*는 눈에 닿는 한 점의 빛이 아니다. 그 밖은 lightLine
+//   우리 은하: 위키백과 「우리 은하」 '지구에서 보이는 형태' · 궁수자리 A*: Wikidata 전파원, 위키백과 가시광선 소광
+const MILKY_WAY = "Q321";   // facts.js MILKY_WAY_ID와 같은 값 (이 모듈은 astro.js 말고는 기대지 않는다)
+export function lightNoteFor({ id = null, group = null, km = null } = {}) {
+  if (id === MILKY_WAY) return "은하수는 많은 별의 빛이 모인 띠예요 · 은하 중심부가 있는 궁수자리 방향에서 가장 밝아요";
+  if (group === "milky_way" && km > 0) return `이 방향에서 오는 전파는 ${lightTime(km)} 전에 떠났어요 · 가시광선은 먼지에 가려 보이지 않아요`;
+  return lightLine(km);
+}
+
 // ── 달의 위상 원반 (가리키기 화면의 기준점) ──
 // 화면 좌표는 캔버스 규칙: x 오른쪽 · y 아래쪽, 각도는 라디안(x축 0, 시계 방향 +)
 

@@ -10,6 +10,7 @@
 import { altAz, compass, localSiderealDeg, radecToEq, eqToRadec } from "./astro.js";
 import { BODIES, centuriesJ2000, heliocentric, solarSystem } from "./ephemeris.js";
 import { bodyInfo, epochAge, MOON_ORBITS, skyFromHeliocentric } from "./solarbodies.js";
+import { MILKY_WAY_ID } from "./facts.js";
 
 const DEG = Math.PI / 180;
 const MIN_MS = 60_000;
@@ -30,6 +31,14 @@ const MOON_TIER = { jupiter: "binocular", saturn: "telescope" };
 // 그 밖의 위성 — 모행성 곁에 붙은 작은 점이라 위치를 계산하지 않는다
 const SMALL_MOONS = new Set(["phobos", "deimos", "enceladus", "triton", "charon"]);
 const SMALL_MOON_REASON = "모행성 곁의 작은 위성이라 큰 망원경이 있어야 보여요";
+// 궁수자리 A* — 위키백과 「궁수자리 A*」: 가시광선 대역에서 먼지와 가스에 의해 +25 등급까지 소광되어 관측할 수 없다
+const BLACK_HOLE_REASON = "가시광선은 먼지와 가스에 가려 보이지 않아요 · 전파와 적외선으로 관측해요";
+
+// 눈으로는 볼 수 없는 빛의 이유 — 우리 은하 그룹에서 우리 은하가 아닌 것(궁수자리 A*). 그 밖은 null.
+// 서랍의 '오늘 두 눈으로 봤어요'를 두지 않는 근거 (main.js seenSlotHtml)
+export function invisibleReason(v) {
+  return v?.group === "milky_way" && v.id !== MILKY_WAY_ID ? BLACK_HOLE_REASON : null;
+}
 
 // ── 태양과 밤 ────────────────────────────────────────────────────────────
 
@@ -152,6 +161,11 @@ export function targetsOf(visited, { points = new Map(), figures = new Map(), st
       t = { ...base, kind: "constellation", stars: stars.map((s) => radecToEq(s.ra_deg, s.dec_deg)),
             ra: v.ra ?? null, dec: v.dec ?? null, mag, tier: mag == null ? "eye" : tierOf({ group: "star", mag }) };
       if (!stars.length && v.ra == null) t = { ...t, kind: "none", tier: "never", reason: NO_PLACE_REASON };
+    } else if (v.group === "milky_way" && v.ra != null && v.dec != null) {
+      // 우리 은하 — 은하 중심 방향. 위키백과 「우리 은하」: 은하수는 밝은 띠로 보이고 은하 중심부가 있는 궁수자리 방향에서 가장 밝다.
+      // 등급이 없어 tierOf를 쓰지 않는다(쓰면 쌍안경). 궁수자리 A*는 가시광선으로 보이지 않는다
+      const reason = invisibleReason(v);
+      t = { ...base, kind: "fixed", ra: v.ra, dec: v.dec, mag: null, tier: reason ? "never" : "dark-eye", ...(reason ? { reason } : {}) };
     } else if (v.ra != null && v.dec != null) {
       const hip = String(v.id).startsWith("hip:") ? Number(String(v.id).slice(4)) : null;
       const mag = known(v.mag) ?? known(point?.mag) ?? (hip != null ? known(starMag(hip)) : null);
@@ -399,7 +413,12 @@ export function emptyState(result, { timeZone = result?.timeZone } = {}) {
   if (!items.length && !later.length && !hard.length) {
     return { key: "nothing", text: "아직 담은 빛이 없어요. 하늘에서 빛 하나를 담으면 오늘 밤 어디를 보면 되는지 알려 드릴게요." };
   }
-  if (!items.length && !later.length) return { key: "all-hard", text: "담은 빛이 모두 망원경이 있어야 보이는 빛이에요" };
+  if (!items.length && !later.length) {
+    // 맨눈으로는 볼 수 없는 빛(tier "never" — 궁수자리 A* 등)이 섞이면 '망원경'만으로는 틀린 말이라 둘을 함께 적는다
+    return { key: "all-hard", text: hard.some((x) => x.tier === "never")
+      ? "담은 빛이 모두 망원경이 있어야 보이거나 맨눈으로는 볼 수 없는 빛이에요"
+      : "담은 빛이 모두 망원경이 있어야 보이는 빛이에요" };
+  }
   if (!items.length) {
     return { key: "none-tonight", text: night.dawn ? "새벽이 밝아 오고 있어 이번 밤에는 담은 빛을 보기 어려워요"
       : "오늘 밤에는 담은 빛이 지평선 아래나 낮 하늘에 있어요" };

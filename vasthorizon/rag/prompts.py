@@ -129,7 +129,7 @@ EXPLORE_FILTER_SYSTEM = """너는 우주 항목 카탈로그의 검색 도우미
 - categories: 천체 · 우주선의 종류를 말하면 반드시 채운다. 아래 값 중에서만 고른 배열
   {categories}
   예: "성운" → ["성운"], "은하" → ["은하"], "사람이 만든 것" → ["탐사선", "인공위성", "우주망원경", "우주정거장"]
-- group: "solar_system"(태양계) · "human_made"(인공위성 · 탐사선 · 우주정거장) · "star"(별) · "messier"(성운 · 성단 · 은하) · "constellation"(별자리)
+- group: "solar_system"(태양계) · "human_made"(인공위성 · 탐사선 · 우주정거장) · "star"(별) · "messier"(성운 · 성단 · 은하) · "milky_way"(우리 은하와 그 중심 블랙홀) · "constellation"(별자리)
 - naked_eye: 맨눈 관측 가능 여부 (true/false)
 - korean: 한국과 관련된 항목인가 (true/false)
 - season: 저녁에 잘 보이는 계절 "봄" · "여름" · "가을" · "겨울" (별자리에만 있음)

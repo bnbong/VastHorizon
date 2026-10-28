@@ -3,7 +3,8 @@
 //
 //   크기   근접 모습 스프라이트 한 변 (지도 단위). 사진 은하 5 · 사진 기타 3.5 · 별 1.5 · 사진 없는 성단 · 성운 3.2
 //   거리   스프라이트가 화면에서 보이는 영역의 짧은 변 FILL(45%)을 차지하는 자리
-//   블랙홀 은하 중심의 가르강튀아 — 줌 직후에는 보이지 않고, 더 들어가면(flyInto · 손가락 확대) 떠오른다
+//   블랙홀 은하 중심의 가르강튀아 — 줌 직후에는 보이지 않고, 더 들어가면(flyInto · 손가락 확대) 떠오른다.
+//          블랙홀 자체인 점(궁수자리 A*)은 은하 사진 없이 블랙홀이 바로 근접 모습
 
 export const NEAR = { star: 26, photo: 70, deep: 45 };   // 이 거리 안에서 나타나기 시작한다 (지도 단위)
 export const SIZE = { star: 1.5, photo: 5, cluster: 3.2, nebula: 3.2, bh: 2.4 };
@@ -12,21 +13,26 @@ export const STAR_FILL = 0.9;      // 별은 원반이 사각형의 30%뿐이라
 export const BH_FILL = 0.5;        // 블랙홀 사각형이 짧은 변에서 차지하는 비율 (원반이 사각형의 80%쯤이라 보이는 크기는 40%쯤)
 export const HD_RANGE = 2;         // 줌 거리의 이 배 안으로 들어오면 고해상도 사진(data/messier/hd)으로 바꾼다
 
-// 근접 모습이 있는 천체인가 — 하늘에 놓인 별 · 메시에 천체 (details.js DetailLayer.items와 같은 판정)
-export const hasCloseup = (p) => !!p && (p.group === "star" || p.group === "messier") && p.placement === "sky";
+// 블랙홀 자체인 지도 점 — 은하 사진 없이 블랙홀이 곧 근접 모습 (궁수자리 A*)
+export const isBlackHolePoint = (p) => !!p && p.group === "milky_way" && p.placement === "sky" && /블랙홀/.test(p.kind ?? "");
+
+// 근접 모습이 있는 천체인가 — 하늘에 놓인 별 · 메시에 천체 · 블랙홀 (details.js DetailLayer.items와 같은 판정)
+export const hasCloseup = (p) => !!p && p.placement === "sky" && (p.group === "star" || p.group === "messier" || isBlackHolePoint(p));
 
 // 근접 모습의 크기. photo: 그 메시에 천체의 사진이 있는가 (credits.json). 근접 모습이 없으면 null
 export function closeupSize(p, photo = false) {
   if (!hasCloseup(p)) return null;
+  if (isBlackHolePoint(p)) return SIZE.bh;
   if (p.group === "star") return SIZE.star;
   if (photo) return /은하|LINER/.test(p.kind ?? "") ? SIZE.photo : SIZE.photo * 0.7;
   return SIZE.cluster;
 }
 
-// 근접 모습이 짧은 변에서 차지할 비율 — 별은 STAR_FILL, 나머지는 FILL
-export const closeupFill = (p) => (p?.group === "star" ? STAR_FILL : FILL);
+// 근접 모습이 짧은 변에서 차지할 비율 — 별은 STAR_FILL, 블랙홀 점은 BH_FILL, 나머지는 FILL
+export const closeupFill = (p) => (p?.group === "star" ? STAR_FILL : isBlackHolePoint(p) ? BH_FILL : FILL);
 
 export function closeupNear(p, photo = false) {
+  if (isBlackHolePoint(p)) return NEAR.deep;
   return p.group === "star" ? NEAR.star : photo ? NEAR.photo : NEAR.deep;
 }
 

@@ -13,7 +13,7 @@ import { miniLogoSvg } from "./logo.js";
 import { MapMode } from "./map.js";
 import { Stage } from "./scene.js";
 import { colorWord, pickFirstLight } from "./skydata.js";
-import { EARTH_ID, heroFact, josa, placeNote } from "./facts.js";
+import { EARTH_ID, MILKY_WAY_ID, distanceLabel, heroFact, josa, placeNote } from "./facts.js";
 import { SkyMode } from "./sky.js";
 import { playPrologue, STORAGE_KEY as PROLOGUE_KEY } from "./prologue.js";
 import { igniteBurst } from "./dream.js";
@@ -25,10 +25,11 @@ import { analogies, growthText, knownAndUnknown, newlyInside } from "./worldscal
 import { entryOf, localDate, reachOf, recent, restoreVisited, serialize, todays, WORLD_KEY } from "./journal.js";
 import { UnfoldMode } from "./unfold.js";
 import { farthestParts, markHtml, worldHeading } from "./worldmarks.js";
-import { altAzOf, directionWord, emptyState, eveningText, hourText, laterText, MIN_ALT, positionAt, targetsOf, TIER_LABEL, tonightList, whenText,
+import { altAzOf, directionWord, emptyState, eveningText, hourText, invisibleReason, laterText, MIN_ALT, positionAt, targetsOf, TIER_LABEL, tonightList, whenText,
          zoneOf } from "./tonight.js";
 import { markSeen, seenCount, seenSummary, seenToday, unmarkSeen } from "./seen.js";
 import { bindPhoneCard, isHandheld, phoneCardHtml, startPointer } from "./pointerview.js";
+import { lightNoteFor } from "./pointer.js";
 import { FOLD_KEY, restoreFold, serializeFold, withFold } from "./fold.js";
 import { advance, popView } from "./drawerstack.js";
 import { classifyLayout, defaultSnap, SHEET_QUERY, SPLIT_QUERY } from "./sheet.js";
@@ -48,7 +49,7 @@ const state = { mode: "sky", item: null, map: null, sky: null, unfold: null, con
                 drawer: null, scene: null, catalog: null };
 const DEFAULT_CONSTELLATION = "오리온자리";
 const LY_KM = 9460730472580.8;
-const GROUPS = [["all", "전체"], ["star", "별"], ["messier", "메시에 천체"], ["solar_system", "태양계"],
+const GROUPS = [["all", "전체"], ["star", "별"], ["messier", "메시에 천체"], ["milky_way", "우리 은하"], ["solar_system", "태양계"],
                 ["human_made", "인류의 발자취"], ["constellation", "별자리"]];
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches
   || new URLSearchParams(location.search).get("motion") === "off";
@@ -541,7 +542,7 @@ function loadWorld() {
 function syncReach() {
   const r = reachOf(world.visited, HORIZON_KM);
   world.km = r.km;
-  world.name = r.name;
+  world.name = r.id === MILKY_WAY_ID ? "우리 은하 중심" : r.name;   // 우리 은하의 거리는 은하 중심까지 — "우리 은하까지"가 되지 않게
 }
 
 function saveWorld() {
@@ -608,7 +609,7 @@ const mapPoints = () => (state.mapData?.points ?? []).filter((p) => p.placement 
 function showDiscovery(d) {
   const el = $("#growth");
   const line = d.farther
-    ? `이번에는 <em class="kw plain">${esc(distanceText(d.toKm))}</em> 너머까지 닿았습니다 · 닿은 거리 ${esc(growthText(d.fromKm, d.toKm))}`
+    ? `이번에는 <em class="kw plain">${esc(distanceLabel(d.toKm, { id: d.farther ? d.id : null }))}</em> 너머까지 닿았습니다 · 닿은 거리 ${esc(growthText(d.fromKm, d.toKm))}`
     : d.km ? `가장 먼 빛은 그대로지만, 내 세계는 빛 하나만큼 더 풍성해졌습니다`
     : d.id === EARTH_ID ? `지구는 내가 있는 곳이라, 알아간 빛 기록의 첫 자리에 남았습니다`
     : d.group === "constellation" ? `별자리는 여러 거리의 별이 모인 모양이라 지도에는 놓지 않고, 알아간 빛 기록에 남겼습니다`
@@ -646,7 +647,7 @@ function playGrowth(g) {
   if (state.mode !== "map") setMode("map");
   const crossed = pickCrossed(g.passed, 8);
   state.map.expandTo(g.fromKm, g.toKm, crossed, () => {
-    toast(`<em class="kw plain">${esc(g.name)}</em>까지 내 세계가 닿았습니다 · 닿은 거리 ${esc(growthText(g.fromKm, g.toKm))}`);
+    toast(`<em class="kw plain">${esc(g.id === MILKY_WAY_ID ? "우리 은하 중심" : g.name)}</em>까지 내 세계가 닿았습니다 · 닿은 거리 ${esc(growthText(g.fromKm, g.toKm))}`);
   }, g.id);
 }
 
@@ -662,7 +663,7 @@ const collectedHtml = (text) => `<div class="collected"><span class="known-mark"
 
 function collectButtonHtml(obj) {
   if (isObserved(obj.id)) return collectedHtml("이미 내 세계에 담은 빛입니다");
-  const note = obj.distance_km ? `담으면 내 세계 지도에 ${distanceText(obj.distance_km)} 거리로 놓입니다.`
+  const note = obj.distance_km ? `담으면 내 세계 지도에 ${distanceLabel(obj.distance_km, { id: obj.id, reference: obj.distance?.reference })} 거리로 놓입니다.`
     : obj.group === "constellation" ? "별자리는 여러 거리의 별이 모인 모양이라 지도 대신 알아간 빛 기록에 남깁니다."
     : "거리가 확인되지 않아 지도 대신 알아간 빛 기록에 남깁니다.";
   return `<div class="collect">
@@ -1387,7 +1388,7 @@ function renderWorldCard() {
       <div class="wc-src">기준 · 지구 지름 12,742km(위키백과 「지구」) · 빛의 속도 299,792km/s</div></details>
     <details class="wc-more" data-k="log" ${open.has("log") ? "open" : ""}><summary>알아간 빛 기록 (${n(visited.length)})</summary>
       ${visited.length ? `<ol class="wc-log">${recent(visited).map((v) => `<li><button type="button" data-open="${esc(v.id)}">${markHtml(true, { seen: !!v.seen?.length })}${esc(v.name)}</button>
-        <span>${v.id === EARTH_ID ? "내가 있는 곳" : v.km ? esc(distanceText(v.km)) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}${v.seen?.length ? " · 직접 봄" : ""}</span></li>`).join("")}</ol>
+        <span>${v.id === EARTH_ID ? "내가 있는 곳" : v.km ? esc(distanceLabel(v.km, { id: v.id })) : groupOf(v) === "constellation" ? "별자리" : "거리 미확인"} · ${esc(v.at.slice(5).replace("-", "."))}${v.seen?.length ? " · 직접 봄" : ""}</span></li>`).join("")}</ol>
         <button type="button" class="wc-reset" id="wc-reset">기록 처음부터 다시 시작</button>` : `<div class="wc-note">아직 기록이 없습니다</div>`}</details>
     <button type="button" class="wc-journey" id="wc-journey">${icon("sparkles", 14)}<span>우주 끝까지 떠나 보기</span></button></div></div>`;
   bindFold($("#wc-fold"), el, "world", () => { fitStageInset(); syncHush(); });   // 접으면 카드가 한 줄 바가 되어 '나' 들어올림 · 이름표 숨김 구역도 줄어든다
@@ -1596,14 +1597,16 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
   // 읽기 카드의 첫 단 — 그룹 → 이름 → 지정 번호 · 종류 · 거리 → 핵심 사실 한 문장(항목 메타데이터, facts.js) → 짧은 설명 → 출처 → 담기
   const fact = heroFact(item, { figure: isCon ? state.constellations.find((c) => c.item_id === item.id) : null, refYear: state.refYear });
   const note = placeNote(item);                // 지구에만 — 지금 서 있는 곳에서 고개를 들면 (facts.js)
-  const meta = [code, item.kind, item.distance_km ? `${surface ? "지표면 위 " : ""}${distanceText(item.distance_km)}` : null].filter(Boolean);
+  // 눈썹 — 그룹 이름이 천체 이름과 같으면(우리 은하) 종류를 보인다. 그때는 meta에서 종류를 빼 같은 글자가 두 번 보이지 않게
+  const kicker = item.group_ko === item.name && item.kind ? item.kind : item.group_ko;
+  const meta = [code, kicker === item.kind ? null : item.kind, item.distance_km ? `${surface ? "지표면 위 " : ""}${distanceLabel(item.distance_km, { id: item.id, reference: item.distance?.reference })}` : null].filter(Boolean);
   const source = item.sources?.[0];
   // 받은 편지 — 읽지 않은 편지가 있으면 제목 아래 배너, 보관함에 이 천체의 편지가 있으면 편지 카드가 '도착한 편지'로 (syncItemLetter가 이어서 맞춘다)
   itemLetter = { item, departs };
   const banner = letterBannerHtml(item.id), letterCard = letterCardHtml(item, departs);
   openDrawer("item", `
     <div class="head reveal" style="animation-delay:0ms">
-      <div class="eyebrow" data-peek="kicker">${esc(item.group_ko)}</div>
+      <div class="eyebrow" data-peek="kicker">${esc(kicker)}</div>
       <h2 class="name card-name" data-peek="title">${esc(item.name)}</h2>
       ${meta.length ? `<div class="card-meta">${meta.map((m) => `<span>${esc(m)}</span>`).join('<i aria-hidden="true">·</i>')}</div>` : ""}</div>
     <div class="reveal" id="letter-banner" data-peek="letter" data-sig="${esc(banner)}" style="animation-delay:80ms" ${banner ? "" : "hidden"}>${banner}</div>
@@ -1633,7 +1636,7 @@ async function selectItem(id, { fly = true, hint = null } = {}) {
       </div>
       <div class="row">
         ${isCon ? btn("펼쳐 보기", { ic: "telescope", id: "act-unfold" }) + btn("하늘에서 찾기", { variant: "ghost", ic: "sparkles", id: "act-find" }) : ""}
-        ${!departs && item.distance_km && !surface ? btn("빛의 편지", { ic: "mail", id: "act-letter2" }) : ""}
+        ${!departs && item.distance_km && !surface && item.group !== "milky_way" ? btn("빛의 편지", { ic: "mail", id: "act-letter2" }) : ""}
         ${item.wiki_title ? `<a class="btn btn-ghost btn-sm" href="https://ko.wikipedia.org/wiki/${encodeURIComponent(item.wiki_title)}" target="_blank" rel="noopener">위키백과${icon("arrow-up-right", 15)}</a>` : ""}
       </div></div>
     <div class="rule"></div>
@@ -1701,10 +1704,12 @@ async function loadBlackHole(item, alive) {
   if (!bh || !alive() || !box || state.item?.id !== item.id) return;
   const src = [bh.doc && `<a href="${esc(bh.doc.permalink ?? bh.doc.url)}" target="_blank" rel="noopener">위키백과 「${esc(bh.doc.title)}」</a>`,
                bh.wikidata && `<a href="${esc(bh.wikidata.url)}" target="_blank" rel="noopener">Wikidata ${esc(bh.wikidata.qid)}</a>`].filter(Boolean).join(" · ");
-  box.innerHTML = `<figure class="bh-card">
+  // bh.self: 블랙홀 자체인 항목(궁수자리 A*) — 근접 모습이 곧 블랙홀이라 '중심의 블랙홀 보기'가 없다.
+  // bh.center_id: 중심 블랙홀이 따로 항목인 은하(우리 은하) — '중심의 블랙홀 보기'가 그 항목을 연다
+  box.innerHTML = `<figure class="bh-card"${bh.center_id ? ` data-center="${esc(bh.center_id)}"` : ""}${bh.self ? " data-self" : ""}>
     <canvas class="bh-canvas" aria-label="${esc(bh.black_hole ?? "중심 블랙홀")} 상상도 — 블랙홀 둘레에서 휘는 빛을 계산한 그림"></canvas>
     <figcaption>
-      <div class="eyebrow">중심 블랙홀${bh.black_hole ? ` · <span class="code">${esc(bh.black_hole)}</span>` : ""}</div>
+      <div class="eyebrow">${bh.self ? "블랙홀" : "중심 블랙홀"}${bh.black_hole ? ` · <span class="code">${esc(bh.black_hole)}</span>` : ""}</div>
       ${bh.quote ? `<blockquote>${esc(bh.quote)}</blockquote>` : `<p>Wikidata에 이 은하의 일부인 블랙홀로 기록되어 있습니다.</p>`}
       <p class="disclaimer">${esc(data.note)} 빛이 블랙홀 둘레에서 휘는 경로를 계산해, 원반 뒤쪽이 그림자 위아래로 보이는 모습(영화 「인터스텔라」의 가르강튀아와 같은 원리)을 그렸습니다. 출처 · ${src}</p>
       <div class="row bh-actions">
@@ -1713,7 +1718,9 @@ async function loadBlackHole(item, alive) {
       </div>
     </figcaption></figure>`;
   // 중심의 블랙홀 보기 — 지도에서 은하 중심으로 더 들어가 블랙홀이 떠오르게(map.js flyInto). 다시 누르면 은하로 돌아간다(flyBack)
+  // 중심 블랙홀이 따로 항목이면(우리 은하 → 궁수자리 A*) 그 항목을 연다 — 지도가 그 블랙홀의 근접 거리로 날아간다
   box.querySelector("[data-bh-into]").addEventListener("click", () => {
+    if (bh.center_id) { selectItem(bh.center_id); return; }
     if (state.mode !== "map" || !state.map) return;
     if (state.bhInto === item.id) state.map.flyBack(item.id);   // 문구는 지도가 알려 줄 때 바뀐다 (onBlackHole)
     else state.map.flyInto(item.id);
@@ -1729,6 +1736,7 @@ async function loadBlackHole(item, alive) {
 }
 
 // 블랙홀 카드의 버튼 — '중심의 블랙홀 보기'는 지도에서 근접 모습이 있는 은하일 때만(하늘 보기에서는 숨김), 들어가 있으면 '은하로 돌아가기'.
+// 중심 블랙홀이 따로 항목인 은하(data-center)는 지도에서 늘 보이고, 블랙홀 자체인 항목(data-self)에는 두지 않는다.
 // '자세히 보기(3D)'는 오버레이를 쓰는 배치에서만, 띄워 두었으면 '3D 닫기'. 바뀌면 시트 엿보기 머리글의 대리 버튼도 다시 그린다
 function syncBhActions() {
   const card = drawerBody.querySelector(".bh-card");
@@ -1736,7 +1744,8 @@ function syncBhActions() {
   const into = card.querySelector("[data-bh-into]"), three = card.querySelector("[data-bh-3d]");
   const before = `${into.hidden}${into.textContent}${three.hidden}${three.textContent}`;
   const inside = state.bhInto === state.item.id;
-  into.hidden = !(state.mode === "map" && hasCloseup(state.map?.lookup(state.item.id)));
+  const center = card.hasAttribute("data-center"), self = card.hasAttribute("data-self");
+  into.hidden = !(state.mode === "map" && (center || (hasCloseup(state.map?.lookup(state.item.id)) && !self)));
   into.querySelector(".label-text").textContent = inside ? "은하로 돌아가기" : "중심의 블랙홀 보기";
   into.querySelector("svg")?.toggleAttribute("hidden", inside);
   into.classList.toggle("on", inside);
@@ -1954,14 +1963,15 @@ async function showCatalog({ group: startGroup = "all", q: startQ = "" } = {}) {
   $("#catalog-q").value = startQ;
   const draw = () => {
     updateView({ kind: "catalog", group, q: $("#catalog-q").value });   // 뒤로 돌아오면 같은 필터 · 검색어로
-    const q = $("#catalog-q").value.trim().toLowerCase();
+    const norm = (t) => String(t ?? "").toLowerCase().replace(/\s+/g, "");   // 띄어쓰기는 보지 않는다 — "우리은하"로도 「우리 은하」
+    const q = norm($("#catalog-q").value);
     const list = state.catalog.filter((o) => (group === "all" || o.group === group)
-      && (!q || o.name.toLowerCase().includes(q) || (o.name_en ?? "").toLowerCase().includes(q)));
+      && (!q || norm(o.name).includes(q) || norm(o.name_en).includes(q)));
     const eyesIds = new Set(world.visited.filter((v) => v.seen?.length).map((v) => v.id));
     $("#catalog-list").innerHTML = list.map((o) => `<button type="button" class="catalog-row ${isObserved(o.id) ? "seen" : ""}" data-id="${esc(o.id)}">
         ${markHtml(isObserved(o.id), { seen: eyesIds.has(o.id) })}
         <span><span class="nm">${esc(o.name)}</span><span class="ds">${esc(o.group_ko)}${o.kind ? ` · ${esc(o.kind)}` : ""}</span></span>
-        <span class="dist">${o.distance_km ? esc(distanceText(o.distance_km)) : ""}</span></button>`).join("")
+        <span class="dist">${o.distance_km ? esc(distanceLabel(o.distance_km, { id: o.id, reference: o.distance_reference })) : ""}</span></button>`).join("")
       || `<p class="status warn">찾는 항목이 없습니다.</p>`;
     $("#catalog-note").textContent = `전체 ${state.catalog.length}건 중 ${list.length}건 · ✦ 표식은 내 세계에 담은 빛, 점선 원은 아직 만나지 않은 빛${eyesIds.size ? " · 두 겹 고리는 두 눈으로 본 빛" : ""}`;
   };
@@ -2029,7 +2039,7 @@ function showExplore({ query = "" } = {}) {
               <div class="top"><span class="nm">${esc(m.name)}에게 이 질문하기</span>${icon("arrow-right", 14)}</div>
               <p class="sub">"${esc(res.query)}"</p></button>`).join("")}</div>` : "";
       const cardsHtml = res.cards.map((c) => `<button type="button" class="card explore-card" data-id="${esc(c.item_id)}">
-            <div class="top"><span class="nm">${markHtml(isObserved(c.item_id))}${esc(c.name)}</span>${dist(c.item_id) ? `<span class="badge neutral">${esc(distanceText(dist(c.item_id)))}</span>` : ""}</div>
+            <div class="top"><span class="nm">${markHtml(isObserved(c.item_id))}${esc(c.name)}</span>${dist(c.item_id) ? `<span class="badge neutral">${esc(distanceLabel(dist(c.item_id), { id: c.item_id }))}</span>` : ""}</div>
             <p class="sub">${c.kind ? `${esc(c.kind)} · ` : ""}${esc(c.reason)}</p></button>${c.source_url && /^https?:\/\//.test(c.source_url)
               ? `<p class="disclaimer" style="margin-top:-4px;text-align:right"><a href="${esc(c.source_url)}" target="_blank" rel="noopener">근거 ↗</a></p>` : ""}`).join("");
       out.innerHTML = `
@@ -2557,6 +2567,7 @@ function seenSlotHtml(item) {
   if (!item?.id || item.id === EARTH_ID || bodyInfo(item.id)?.key === "sun") return "";
   const entry = world.visited.find((v) => v.id === item.id);
   const point = pointButtonHtml(item);
+  if (invisibleReason(item)) return point;     // 궁수자리 A* — 가시광선으로 보이지 않아 '두 눈으로 봤어요'는 두지 않는다. 가리키기만
   if (!entry) return `${point}<button type="button" class="seen-quiet" data-seen-item>${icon("eye", 14)}<span>담고, 두 눈으로 봤다고 남기기</span></button>`;
   const sum = seenSummary(entry);
   const line = sum.text ? `<p class="seen-sum">${esc(sum.text)}</p>` : "";
@@ -2659,6 +2670,8 @@ function pointAt(obj, opener) {
   const cache = new Map();
   startPointer({
     id: obj.id, name: obj.name, km: obj.km ?? obj.distance_km ?? null,
+    // 우리 은하 · 궁수자리 A*는 눈에 닿는 한 점의 빛이 아니라 정렬했을 때의 한 줄을 따로 (그 밖은 pointerview가 lightLine)
+    lightNote: obj.group === "milky_way" ? lightNoteFor({ id: obj.id, group: obj.group, km: obj.km ?? obj.distance_km ?? null }) : null,
     place: state.sky?.place ?? SEOUL, placeLabel, locate: locatePlace,
     positionAt: (date, place) => {
       const p = altAzOf(t, date, place, cache);

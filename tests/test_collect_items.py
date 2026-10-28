@@ -15,9 +15,10 @@ from unittest import mock
 
 from scripts import collect_items
 from vasthorizon.data import catalog, sources
-from vasthorizon.data.items import human_made
+from vasthorizon.data.enrich import enrich_items
+from vasthorizon.data.items import human_made, milky_way
 from vasthorizon.data.items.common import (
-    AU_KM, REF_GEOCENTER, REF_SURFACE_ALTITUDE, Distance, Item,
+    AU_KM, LY_KM, REF_GALACTIC_CENTER, REF_GEOCENTER, REF_SURFACE_ALTITUDE, Distance, Item,
 )
 
 EPOCH = "2026-10-21"
@@ -26,7 +27,7 @@ MOON_POS = [0.9025, 0.4, 0.17]
 
 
 def make_items(n: int) -> list[Item]:
-    """5개 그룹에 고르게 나눈 유효한 항목 n개."""
+    """카탈로그 그룹(GROUP_KEYS)에 고르게 나눈 유효한 항목 n개."""
     groups = catalog.GROUP_KEYS
     return [
         Item(id=f"Q{i + 1}", group=groups[i % len(groups)], name=f"항목{i}", wiki_title=f"항목{i}",
@@ -113,6 +114,10 @@ class CatalogSaveTest(unittest.TestCase):
         self.assertTrue(any("적경" in e for e in errors))
         self.assertTrue(any("position_basis" in e for e in errors))
 
+
+    def test_validation_requires_milky_way_group(self):
+        items = [it.to_dict() for it in make_items(120) if it.group != "milky_way"]
+        self.assertIn("그룹 milky_way 항목 0건", catalog.validate_items(items, min_items=1))
 
 # ── [P1] 2 · 3. 실제 좌표와 근삿값을 구분한다 ──────────────────────────────
 
@@ -382,3 +387,179 @@ class ParallaxRangeTest(unittest.TestCase):
         far, near = compute_departure(star, 2026).year_range
         self.assertLess(near - far, 2)                       # 이상값(약 3.3만 광년)이 범위에 들어가지 않는다
         self.assertGreater(far, 1980)
+
+
+# ── 우리 은하 그룹 — 고정 SPARQL 행으로 (네트워크 없음) ─────────────────────
+
+def _wd(qid: str) -> str:
+    return f"http://www.wikidata.org/entity/{qid}"
+
+
+# Wikidata 실측값 (2026-10-28) 모양의 SPARQL 행 — 값 하나마다 행 하나, OPTIONAL이 비면 키가 없다
+MILKY_WAY_ROWS = [
+    {"item": _wd("Q321"), "title": "우리 은하", "en": "Milky Way", "typeLabel": "막대나선은하"},
+    {"item": _wd("Q321"), "title": "우리 은하", "en": "Milky Way", "typeLabel": "천체"},
+    {"item": _wd("Q649112"), "title": "은하중심", "ra": "266.41500889", "dec": "-29.00611111",
+     "distRec": f"8|{_wd('Q11929860')}||"},                                      # 8 킬로파섹
+    {"item": _wd("Q237284"), "title": "궁수자리 A*", "en": "Sagittarius A*", "typeLabel": "초거대질량 블랙홀",
+     "ra": "266.416816625", "dec": "-29.007824972", "conLabel": "궁수자리",
+     "distRec": f"26000|{_wd('Q531')}|24600|27400", "massRec": f"4310000|{_wd('Q180892')}"},
+    {"item": _wd("Q237284"), "title": "궁수자리 A*", "en": "Sagittarius A*", "typeLabel": "전파원",
+     "massRec": f"4020000|{_wd('Q180892')}"},
+    {"item": _wd("Q237284"), "title": "궁수자리 A*", "massRec": "1|http://www.wikidata.org/entity/Q11570"},   # 킬로그램 — 질량에서 뺀다
+    {"item": _wd("Q237284"), "title": "궁수자리 A*", "massRec": f"4100000|{_wd('Q180892')}"},
+]
+KPC_8_KM = 8000 * 3.261563777 * LY_KM
+
+
+def milky_way_items(rows: list[dict] | None = None) -> list[dict]:
+    """고정 SPARQL 행으로 모은 우리 은하 · 궁수자리 A* — 보강(enrich.json)까지 적용한 카탈로그 모양."""
+    with mock.patch.object(sources, "cached", return_value=MILKY_WAY_ROWS if rows is None else rows):
+        return enrich_items([it.to_dict() for it in milky_way.collect()])
+
+
+class MilkyWayCollectTest(unittest.TestCase):
+    def setUp(self):
+        self.galaxy, self.sgr = milky_way_items()
+
+    def test_milky_way_uses_galactic_center(self):
+        g = self.galaxy
+        self.assertEqual((g["id"], g["group"], g["name"], g["wiki_title"], g["name_en"]),
+                         ("Q321", "milky_way", "우리 은하", "우리 은하", "Milky Way"))
+        self.assertEqual(g["kind"], "막대나선은하")
+        self.assertEqual((g["ra_deg"], g["dec_deg"]), (266.41500889, -29.00611111))     # 은하 중심(Q649112) 좌표
+        d = g["distance"]
+        self.assertEqual(d["reference"], REF_GALACTIC_CENTER)
+        self.assertAlmostEqual(d["km"], (26000 * LY_KM + KPC_8_KM) / 2, delta=1e3)      # 26,000광년과 8kpc의 중앙값
+        self.assertAlmostEqual(d["km_min"], 26000 * LY_KM, delta=1e3)
+        self.assertAlmostEqual(d["km_max"], KPC_8_KM, delta=1e3)
+        self.assertEqual(d["n_values"], 2)
+        self.assertIn("Q649112", d["method"])
+        self.assertEqual({s["url"].rsplit("/", 1)[-1] for s in g["sources"] if s["name"] == "Wikidata"},
+                         {"Q321", "Q649112", "Q237284"})
+
+    def test_sgr_a_star_uses_original_value_not_normalized(self):
+        s = self.sgr
+        self.assertEqual((s["id"], s["group"], s["name"], s["kind"]), ("Q237284", "milky_way", "궁수자리 A*", "초거대질량 블랙홀"))
+        d = s["distance"]
+        self.assertAlmostEqual(d["km"], 26000 * LY_KM, delta=1e3)            # psn의 2.5e20 m(약 26,425광년)가 아니다
+        self.assertAlmostEqual(d["km_min"], 24600 * LY_KM, delta=1e3)
+        self.assertAlmostEqual(d["km_max"], 27400 * LY_KM, delta=1e3)
+        self.assertEqual(d["n_values"], 1)
+        self.assertEqual(d["method"], "Wikidata 값 · 불확도 범위 2.46만~2.74만광년")
+        self.assertEqual(s["attrs"]["별자리"], "궁수자리")
+        self.assertEqual(s["attrs"]["분류"], "초거대질량 블랙홀, 전파원")
+        self.assertEqual(s["attrs"]["질량"], "약 410만 태양질량 (Wikidata 값 3개, 402만~431만)")
+        self.assertIs(s["attrs"]["맨눈 관측"], False)
+
+    def test_enrichment_and_seoul_visibility(self):
+        self.assertEqual(self.galaxy["attrs"]["블랙홀"], "궁수자리 A*")
+        self.assertIs(self.galaxy["attrs"]["맨눈 관측"], True)
+        self.assertIs(self.galaxy["attrs"]["서울에서_관측"], True)            # 은하 중심 적위 -29° — 서울에서 떠오른다
+        self.assertTrue(any(s.get("used_for", "").startswith("블랙홀") for s in self.galaxy["sources"]))
+        self.assertNotIn("서울에서_관측", self.sgr["attrs"])                   # 눈에 보이지 않는 천체는 계산하지 않는다
+        self.assertIn("가시광선", self.sgr["attrs"]["관측"])
+        self.assertFalse([e for e in catalog.validate_items([self.galaxy, self.sgr], min_items=1) if "Q321" in e or "Q237284" in e])
+
+    def test_unknown_unit_is_dropped(self):
+        unknown = {"item": _wd("Q237284"), "title": "궁수자리 A*", "distRec": f"3|{_wd('Q828224')}||"}   # 킬로미터
+        with self.assertLogs("vasthorizon.data.items.milky_way", "WARNING") as logs:
+            galaxy, sgr = milky_way_items(MILKY_WAY_ROWS + [unknown])
+        self.assertEqual(len(logs.records), 1)
+        self.assertEqual((galaxy["distance"]["n_values"], sgr["distance"]["n_values"]), (2, 1))
+        rows = [r for r in MILKY_WAY_ROWS if "distRec" not in r] + [unknown, {"item": _wd("Q649112"), "ra": "266.4", "dec": "-29.0"}]
+        with self.assertLogs("vasthorizon.data.items.milky_way", "WARNING"), self.assertRaises(ValueError):
+            milky_way_items(rows)                                        # 알 수 없는 값만 남으면 궁수자리 A* 거리가 0건 — 수집 실패
+
+    def test_missing_sgr_distance_raises(self):
+        # 궁수자리 A* 거리 기록이 0건이면 거리 None으로 검증을 통과해 지도 점이 사라진다 — 수집을 실패시켜 기존 카탈로그를 지킨다
+        rows = [{k: v for k, v in r.items() if k != "distRec"} if r["item"] == _wd("Q237284") else r for r in MILKY_WAY_ROWS]
+        with self.assertRaisesRegex(ValueError, "Q237284"):
+            milky_way_items(rows)
+
+    def test_missing_kowiki_title_raises(self):
+        rows = [r for r in MILKY_WAY_ROWS if r["item"] != _wd("Q237284")] + [
+            {"item": _wd("Q237284"), "ra": "266.4", "dec": "-29.0"}]
+        with self.assertRaises(ValueError):
+            milky_way_items(rows)
+
+    def test_missing_center_coordinates_raises(self):
+        rows = [r for r in MILKY_WAY_ROWS if r["item"] != _wd("Q649112")]
+        with self.assertRaises(ValueError):
+            milky_way_items(rows)
+
+
+class CollectOnlyGroupTest(unittest.TestCase):
+    """--only GROUP — 그 그룹만 바꿔 끼우고 나머지 · 기준일은 그대로 둔다."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / "items.json"
+        # 실제 카탈로그처럼 그룹 순서대로 모여 있는 다른 그룹 항목
+        order = list(catalog.GROUP_KEYS)
+        others = sorted((it.to_dict() for it in make_items(150) if it.group != "milky_way"),
+                        key=lambda it: order.index(it["group"]))
+        self.others = enrich_items(others)
+        self.meta = {"collected_at": "2026-10-21", "horizons_epoch": EPOCH, "time_policy": "정책",
+                     "counts": {}, "total": len(self.others),
+                     "source_snapshots": {"messier_wikidata_v2": {"fetched_at": "2026-10-21T00:00:00+00:00"}},
+                     "licenses": catalog.LICENSES}
+        # 우리 은하 그룹이 없는 기존 카탈로그 — 지금 검증 규칙으로는 저장할 수 없어 직접 쓴다
+        self.path.write_text(json.dumps({"meta": self.meta, "items": self.others}, ensure_ascii=False), encoding="utf-8")
+        self.original = self.path.read_bytes()
+        self.patch = mock.patch.object(catalog, "items_path", return_value=self.path)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        self.tmp.cleanup()
+
+    def run_only(self, *args, **patch) -> int:
+        with mock.patch.object(collect_items, "collect_group", **patch) as group, \
+                mock.patch.object(collect_items, "collect_all") as full, redirect_stdout(io.StringIO()):
+            code = collect_items.main(["--only", "milky_way", *args])
+        full.assert_not_called()
+        self.group_calls = group.call_args_list
+        return code
+
+    def milky_way(self) -> list[Item]:
+        with mock.patch.object(sources, "cached", return_value=MILKY_WAY_ROWS):
+            return milky_way.collect()
+
+    def test_replaces_only_that_group(self):
+        self.assertEqual(self.run_only(return_value=self.milky_way()), 0)
+        self.assertEqual(self.group_calls[0].args, ("milky_way", EPOCH, False))   # 기존 카탈로그의 위치 기준일
+        data = json.loads(self.path.read_text(encoding="utf-8"))
+        items, meta = data["items"], data["meta"]
+        self.assertEqual([it for it in items if it["group"] != "milky_way"], self.others)    # 다른 그룹은 그대로
+        self.assertEqual([it["id"] for it in items if it["group"] == "milky_way"], ["Q321", "Q237284"])
+        groups = [it["group"] for it in items]                                    # 그룹 순서: 메시에 뒤, 별자리 앞
+        self.assertLess(max(i for i, g in enumerate(groups) if g == "messier"), groups.index("milky_way"))
+        self.assertLess(max(i for i, g in enumerate(groups) if g == "milky_way"), groups.index("constellation"))
+        self.assertEqual((meta["collected_at"], meta["horizons_epoch"], meta["time_policy"]), ("2026-10-21", EPOCH, "정책"))
+        self.assertEqual(meta["total"], len(self.others) + 2)
+        self.assertEqual(meta["counts"]["우리 은하"], 2)
+        self.assertIn("messier_wikidata_v2", meta["source_snapshots"])          # 기존 스냅샷 기록은 남는다
+        self.assertIn("milky_way", meta["partial_collections"])
+        self.assertIs(next(it for it in items if it["id"] == "Q321")["attrs"]["맨눈 관측"], True)   # 보강 적용
+
+    def test_duplicate_qid_keeps_existing_item(self):
+        galaxy, sgr = self.milky_way()
+        sgr.id = self.others[0]["id"]
+        self.assertEqual(self.run_only(return_value=[galaxy, sgr]), 0)
+        items = json.loads(self.path.read_text(encoding="utf-8"))["items"]
+        self.assertEqual(next(it for it in items if it["id"] == sgr.id), self.others[0])
+
+    def test_collect_failure_keeps_file(self):
+        self.assertEqual(self.run_only(side_effect=RuntimeError("boom")), 1)
+        self.assertEqual(self.path.read_bytes(), self.original)
+
+    def test_validation_failure_keeps_file(self):
+        self.assertEqual(self.run_only(return_value=[]), 1)                      # 우리 은하 0건 — 검증 실패
+        self.assertEqual(self.path.read_bytes(), self.original)
+
+    def test_other_epoch_rejected(self):
+        self.assertEqual(self.run_only("--epoch", "2026-10-28", return_value=self.milky_way()), 1)
+        self.assertEqual(self.group_calls, [])
+        self.assertEqual(self.path.read_bytes(), self.original)
+

@@ -578,6 +578,52 @@
      "used_for": "탐사 계획 (OSIRIS-APEX, 아직 방문 전)"
     }
    ]
+  },
+  "Q321": {
+   "name": "우리 은하",
+   "attrs": {
+    "블랙홀": "궁수자리 A*",
+    "블랙홀 질량": "약 410만 태양질량",
+    "맨눈 관측": true,
+    "보이는 모습": "천구를 가로지르는 밝은 띠(은하수)로 보이고, 은하 중심부가 있는 궁수자리 방향에서 가장 밝다"
+   },
+   "sources": [
+    {
+     "name": "Wikidata",
+     "url": "https://www.wikidata.org/wiki/Q237284",
+     "used_for": "블랙홀 (궁수자리 A*, 질량 — Wikidata 값 3개의 중앙값)"
+    },
+    {
+     "name": "한국어 위키백과",
+     "url": "https://ko.wikipedia.org/w/index.php?oldid=42624878",
+     "used_for": "맨눈 관측 · 보이는 모습 (「지구에서 보이는 형태」 절)"
+    }
+   ],
+   "quote": "천문학자들은 이러한 궁수자리 A*의 관측이, 태양계로부터 26,000 광년 떨어져 있는 우리 은하의 중심에 초대질량 블랙홀이 있다는 것에 대한 좋은 경험적인 증거를 제공하고 있다고 확신하고 있다.",
+   "quote_doc": {
+    "title": "궁수자리 A*",
+    "url": "https://ko.wikipedia.org/wiki/%EA%B6%81%EC%88%98%EC%9E%90%EB%A6%AC_A%2A",
+    "permalink": "https://ko.wikipedia.org/w/index.php?oldid=42571733"
+   }
+  },
+  "Q237284": {
+   "name": "궁수자리 A*",
+   "attrs": {
+    "관측": "가시광선은 지구와의 사이에 있는 먼지와 가스에 가려 보이지 않아 전파와 적외선으로 관측합니다"
+   },
+   "sources": [
+    {
+     "name": "한국어 위키백과",
+     "url": "https://ko.wikipedia.org/w/index.php?oldid=42571733",
+     "used_for": "관측 (가시광선 소광 +25등급)"
+    }
+   ],
+   "quote": "궁수자리 A* 주변을 공전하는 별들 (S2 등 약 160개 이상의 별)의 관측은 우리 은하의 중심 블랙홀의 존재를 보여주고, 그에 대한 데이터를 만드는데 이용되며, 이는 궁수자리 A*이 그 블랙홀의 위치라는 결론으로 유도된다.",
+   "quote_doc": {
+    "title": "궁수자리 A*",
+    "url": "https://ko.wikipedia.org/wiki/%EA%B6%81%EC%88%98%EC%9E%90%EB%A6%AC_A%2A",
+    "permalink": "https://ko.wikipedia.org/w/index.php?oldid=42571733"
+   }
   }
  }
 }

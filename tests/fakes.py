@@ -46,3 +46,20 @@ class FakeEmbedding(Embeddings):
 
     def embed_query(self, text: str) -> list[float]:
         return self._vec(text)
+
+
+def catalog_has(qid: str) -> bool:
+    """공용 카탈로그(data/items.json)에 그 항목이 있는가 — 실제 데이터에 기대는 테스트의 skip 조건.
+
+    우리 은하 그룹(Q321 · Q237284)은 코드보다 데이터(python -m scripts.collect_items --only milky_way)가 늦게 들어온다.
+    데이터가 들어오기 전에는 카탈로그 검증(그룹 milky_way 0건)이 실패하므로 그 테스트를 건너뛴다.
+    """
+    from vasthorizon.data.catalog import load_items
+    try:
+        return any(it.get("id") == qid for it in load_items())
+    except (FileNotFoundError, KeyError, ValueError):
+        return False
+
+
+MILKY_WAY_IN_CATALOG = catalog_has("Q321") and catalog_has("Q237284")
+SKIP_UNTIL_MILKY_WAY = "data/items.json에 우리 은하(Q321) · 궁수자리 A*(Q237284)가 아직 없다 — collect_items --only milky_way 뒤에 돈다"

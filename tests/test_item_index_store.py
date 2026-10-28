@@ -45,7 +45,7 @@ def item(qid: str, name: str, group: str = "messier", **kw) -> dict:
 
 
 def valid_items(n: int = 120) -> list[dict]:
-    """카탈로그 검증을 통과하는 항목 n개 (5개 그룹)."""
+    """카탈로그 검증을 통과하는 항목 n개 (카탈로그 그룹마다)."""
     groups = catalog.GROUP_KEYS
     return [item(f"Q{i + 1}", f"항목{i}", group=groups[i % len(groups)], distance=dist((i + 1) * LY_KM))
             for i in range(n)]

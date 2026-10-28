@@ -14,7 +14,8 @@ from unittest import mock
 import chromadb
 from fastapi.testclient import TestClient
 
-from tests.fakes import FakeChat, FakeEmbedding
+from tests.fakes import MILKY_WAY_IN_CATALOG, SKIP_UNTIL_MILKY_WAY, FakeChat, FakeEmbedding
+from tests.test_collect_items import milky_way_items
 from tests.test_api import ITEMS as API_ITEMS, FakeAsk, healthy
 from vasthorizon.api.app import create_app
 from vasthorizon.api.services import Services
@@ -106,7 +107,7 @@ class CategoryAndFilterTest(unittest.TestCase):
 
     def test_parse_filters_rejects_bad_values(self):
         for bad in ({"group": "planet"}, {"season": "장마"}, {"naked_eye": "yes"}, {"categories": "은하"},
-                    {"categories": ["블랙홀"]}, {"distance_ly_min": 10, "distance_ly_max": 1},
+                    {"categories": ["퀘이사"]}, {"distance_ly_min": 10, "distance_ly_max": 1},
                     {"departure_year_min": True}):
             with self.assertRaises(JsonReplyError, msg=bad):
                 parse_filters(bad, "q")
@@ -198,6 +199,12 @@ class DepartureTest(unittest.TestCase):
         sat["distance"]["km"] = 639
         with self.assertRaises(LetterUnavailableError):
             compute_departure(sat, REF_YEAR)
+
+    def test_milky_way_group_has_no_letter(self):
+        """우리 은하는 한 점의 빛이 아니고, 궁수자리 A*는 눈에 닿는 빛이 없다 — 거리가 있어도 편지를 쓰지 않는다."""
+        for it in milky_way_items():
+            with self.assertRaises(LetterUnavailableError, msg=it["name"]):
+                compute_departure(it, REF_YEAR)
 
     def test_star_for_age(self):
         star, gap = star_for_age(CATALOG, 9)
@@ -731,6 +738,64 @@ class ExploreRulePathTest(unittest.TestCase):
         self.assertEqual((result.status, len(llm.received)), ("ask", 1))
 
 
+class MilkyWayExploreTest(unittest.TestCase):
+    """우리 은하 · 궁수자리 A* — 범주 '블랙홀', "우리은하 중심 블랙홀" 규칙, 거리 정렬에서 빠지는 우리 은하."""
+
+    def setUp(self):
+        self.catalog = RULE_CATALOG + milky_way_items()
+        self.db = chromadb.EphemeralClient()
+        self.emb = FakeEmbedding()
+        sync_items(self.catalog, chroma.open_collection(ITEMS_NAME, self.emb, self.db), self.emb, REF_YEAR)
+
+    def tearDown(self):
+        chroma.drop_collection(ITEMS_NAME, self.db)
+
+    def run_explore(self, query, *replies):
+        llm = FakeChat(*[json.dumps(r, ensure_ascii=False) for r in replies])
+        return explore(query, llm=llm, embedding=self.emb, db=self.db, items=self.catalog), llm
+
+    def test_item_category(self):
+        galaxy, sgr = milky_way_items()
+        self.assertEqual((item_category(galaxy), item_category(sgr)), ("은하", "블랙홀"))
+
+    def test_rule_parse(self):
+        for query in ("우리은하 중심 블랙홀", "우리 은하 중심의 블랙홀", "은하수 중심 블랙홀", "우리 은하 중심에 있는 블랙홀"):
+            parsed = parse_rules(query)
+            self.assertTrue(parsed.complete, (query, parsed.leftover))
+            self.assertEqual(parsed.data, {"categories": ["블랙홀"], "has_black_hole": True}, query)
+            parse_filters(parsed.data, query)
+        self.assertEqual(parse_rules("블랙홀이 있는 은하").data, {"has_black_hole": True, "categories": ["은하"]})
+
+    def test_center_black_hole_without_llm(self):
+        from vasthorizon.features.explore import uses_llm
+        self.assertFalse(uses_llm("우리은하 중심 블랙홀", self.catalog))
+        result, llm = self.run_explore("우리은하 중심 블랙홀")
+        self.assertEqual(llm.received, [])
+        self.assertEqual([c.item_id for c in result.cards], ["Q237284", "Q321"])   # 조건 카드 → 이름 카드
+        self.assertTrue(result.cards[0].reason.startswith("초대질량 블랙홀 천체(질량 약 410만 태양질량)"), result.cards[0].reason)
+        self.assertNotIn("Wikidata 값", result.cards[0].reason)                   # 질량 글의 괄호 설명을 떼어 괄호가 겹치지 않는다
+        self.assertNotIn("중심에", result.cards[0].reason)
+        self.assertEqual(result.status, "ok")
+
+    def test_name_outside_rule_still_uses_llm(self):
+        from vasthorizon.features.explore import uses_llm
+        self.assertTrue(uses_llm("안드로메다 은하보다 가까운 은하", self.catalog))
+
+    def test_black_hole_query_includes_both(self):
+        result, llm = self.run_explore("블랙홀이 발견된 천체")
+        self.assertEqual(llm.received, [])
+        cards = {c.item_id: c for c in result.cards}
+        self.assertTrue({"Q2469", "Q14041", "Q321", "Q237284"} <= set(cards))
+        self.assertIn("중심에 궁수자리 A* 블랙홀", cards["Q321"].reason)
+        self.assertTrue(cards["Q237284"].reason.startswith("초대질량 블랙홀 천체"))
+
+    def test_nearest_galaxy_is_not_milky_way(self):
+        result, llm = self.run_explore("가장 가까운 은하")
+        self.assertEqual(llm.received, [])
+        self.assertNotIn("Q321", [c.item_id for c in result.cards])
+        self.assertEqual(result.cards[0].item_id, "Q2469")
+
+
 class EnrichmentDataTest(unittest.TestCase):
     """공용 카탈로그(data/items.json)와 보강 표 — 블랙홀 · 고리 · 탐사선 방문 · 서울 관측."""
 
@@ -772,10 +837,28 @@ class EnrichmentDataTest(unittest.TestCase):
         self.assertIs(self.by_id["Q2469"]["attrs"]["서울에서_관측"], True)
         self.assertIs(self.by_id["Q8860"]["attrs"]["서울에서_관측"], True)      # 오리온자리 '전체 관측 가능'
 
-    def test_enrichment_is_idempotent_and_valid(self):
-        from vasthorizon.data.catalog import validate_items
+    def test_enrichment_is_idempotent(self):
         self.assertEqual(enrich_items(self.items), self.items)
+
+    @unittest.skipUnless(MILKY_WAY_IN_CATALOG, SKIP_UNTIL_MILKY_WAY)
+    def test_enriched_catalog_is_valid(self):
+        from vasthorizon.data.catalog import validate_items
         self.assertEqual(validate_items(self.items), [])                  # 새 출처도 이용 조건이 기록돼 있다
+
+    @unittest.skipUnless(MILKY_WAY_IN_CATALOG, SKIP_UNTIL_MILKY_WAY)
+    def test_milky_way_catalog(self):
+        galaxy, sgr = self.by_id["Q321"], self.by_id["Q237284"]
+        self.assertEqual((galaxy["group"], sgr["group"]), ("milky_way", "milky_way"))
+        self.assertEqual((galaxy["name"], galaxy["wiki_title"]), ("우리 은하", "우리 은하"))
+        self.assertEqual(galaxy["distance"]["reference"], "지구에서 우리 은하 중심까지")
+        self.assertEqual(galaxy["attrs"]["블랙홀"], "궁수자리 A*")
+        self.assertIs(galaxy["attrs"]["서울에서_관측"], True)
+        self.assertTrue(galaxy["attrs"].get("보이는 모습"))
+        self.assertIn("블랙홀", sgr["kind"])
+        self.assertIs(sgr["attrs"]["맨눈 관측"], False)
+        self.assertNotIn("서울에서_관측", sgr["attrs"])
+        self.assertTrue(sgr["attrs"].get("관측"))
+        self.assertEqual((item_category(galaxy), item_category(sgr)), ("은하", "블랙홀"))
 
     def test_catalog_file_already_enriched(self):
         """data/items.json에 보강이 반영돼 있다 (화면의 항목 상세와 색인이 같은 속성을 본다)."""

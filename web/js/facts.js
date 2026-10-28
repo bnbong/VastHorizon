@@ -3,6 +3,8 @@
 //   { before, em, after, detail }  — 문장은 before + em(핵심 숫자, 보라) + after. detail은 그 숫자의 근거를 풀어 쓴 두 문장
 //   만들 근거가 없으면 null (화면은 그 줄을 생략한다)
 //
+//   우리 은하                  우리는 이 은하 안에 있어요. 은하 중심까지는 [약 2.6만 광년]이에요.   지구에서 은하 중심까지의 거리
+//   궁수자리 A* (블랙홀)       지금 지구에 닿은 전파는 [약 2.6만 년]을 건너왔어요.     거리(광년) → 전파가 걸린 시간 (가시광선으로는 보이지 않는다)
 //   별 · 메시에 (1광년 이상)   지금 눈에 닿은 빛은 [약 25년]을 건너왔어요.            거리(광년) → 빛이 걸린 시간
 //   태양계 천체                이 빛은 [약 1.3초] 전에 달을 떠났어요.                 거리(km) ÷ 광속
 //   지구 궤도 위성             지금 [약 420 km] 높이에서 지구를 돌고 있어요.          지표면 위 궤도 고도
@@ -22,6 +24,17 @@ export function josa(word, withFinal, without) {
   const code = ch.charCodeAt(0) - 0xac00;
   if (code < 0 || code > 11171) return `${withFinal}(${without})`;
   return code % 28 ? withFinal : without;
+}
+
+// 우리 은하 — 우리는 그 안에 있어 '우리 은하까지의 거리'는 없다. 방향 · 거리는 은하 중심의 것이고 거리 기준(reference)으로 밝힌다
+//   (서버 vasthorizon/data/items/common.py REF_GALACTIC_CENTER와 같은 글자)
+export const MILKY_WAY_ID = "Q321";
+export const CENTER_REF = "지구에서 우리 은하 중심까지";
+
+// 목록 · 담기 안내 · 지도 툴팁의 거리 글. id나 거리 기준이 은하 중심이면 "은하 중심까지 약 2.6만 광년", 아니면 distanceText(km)
+export function distanceLabel(km, { id = null, reference = null } = {}) {
+  const center = id === MILKY_WAY_ID || reference === CENTER_REF;
+  return center && km ? `은하 중심까지 ${distanceText(km)}` : distanceText(km);
 }
 
 const year = (d) => (/^\d{4}/.test(String(d ?? "")) ? Number(String(d).slice(0, 4)) : null);
@@ -54,6 +67,17 @@ export function heroFact(item, { figure = null, refYear = new Date().getFullYear
     return { before: "지금 ", em: distanceText(km), after: " 높이에서 지구를 돌고 있어요.",
              detail: period > 0 ? `한 바퀴 도는 데 약 ${Math.round(period)}분이 걸려, 하루에 지구를 약 ${Math.round(1440 / period)}바퀴 돕니다.${year(attrs["발사일"]) ? ` ${year(attrs["발사일"])}년에 발사되었습니다.` : ""}`
                : year(attrs["발사일"]) ? `${year(attrs["발사일"])}년에 발사되었습니다.` : "" };
+  }
+
+  if (km > 0 && item.distance?.reference === CENTER_REF) {
+    const em = distanceText(km);
+    return { before: "우리는 이 은하 안에 있어요. 은하 중심까지는 ", em, after: `${josa(em, "이에요", "예요")}.`,
+             detail: attrs["보이는 모습"] ? `밤하늘의 은하수가 이 은하를 안에서 본 모습입니다. ${attrs["보이는 모습"]}.` : "" };
+  }
+
+  if (km > 0 && item.group === "milky_way") {
+    return { before: "지금 지구에 닿은 전파는 ", em: lightTime(km), after: "을 건너왔어요.",
+             detail: `이 블랙홀까지의 거리가 ${distanceText(km)}이기 때문입니다.${attrs["관측"] ? ` ${attrs["관측"]}.` : ""}` };
   }
 
   if (km > 0 && (item.group === "star" || item.group === "messier") && km / LY_KM >= 1) {

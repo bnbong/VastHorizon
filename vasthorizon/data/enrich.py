@@ -42,6 +42,9 @@ def seoul_visible(item: dict) -> bool | None:
         return SEOUL_TEXT.get(attrs.get("서울에서 관측") or "")
     if item["group"] in ("star", "messier") and item.get("dec_deg") is not None:
         return rises_over_seoul(float(item["dec_deg"]))
+    # 우리 은하 — 맨눈으로 보이는 항목(은하수)만 은하 중심 적위로 계산한다. 궁수자리 A*는 눈에 보이지 않아 계산하지 않는다
+    if item["group"] == "milky_way" and attrs.get("맨눈 관측") is True and item.get("dec_deg") is not None:
+        return rises_over_seoul(float(item["dec_deg"]))
     return None
 
 
@@ -57,12 +60,14 @@ def enrich_item(item: dict, table: dict[str, dict] | None = None) -> dict:
                 attrs.pop(key, None)
             else:
                 attrs[key] = value
+        # 같은 출처라도 쓰임(used_for)이 다르면 따로 남긴다 — 우리 은하는 궁수자리 A* 항목을 거리와 블랙홀 두 곳에 쓴다
         sources = out.setdefault("sources", [])
-        have = {(s.get("name"), s.get("url")) for s in sources}
+        have = {(s.get("name"), s.get("url"), s.get("used_for")) for s in sources}
         for src in extra.get("sources", []):
-            if (src["name"], src["url"]) not in have:
+            key = (src["name"], src["url"], src.get("used_for"))
+            if key not in have:
                 sources.append(dict(src))
-                have.add((src["name"], src["url"]))
+                have.add(key)
     visible = seoul_visible(out)
     if visible is None:
         attrs.pop(SEOUL_KEY, None)

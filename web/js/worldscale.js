@@ -11,7 +11,7 @@ const LY_KM = 9460730472580.8;
 const MOON_KM = 384400;
 const SUN_KM = 149597870.7;
 
-const GROUP_WORD = { solar_system: "태양계 천체", human_made: "탐사선 · 위성", star: "별", messier: "성운 · 성단 · 은하" };
+const GROUP_WORD = { solar_system: "태양계 천체", human_made: "탐사선 · 위성", star: "별", messier: "성운 · 성단 · 은하", milky_way: "우리 은하" };
 
 // 내 세계 안의 천체 — 거리가 있는 지도 점 중 km ≤ 반지름. 가까운 순
 export function insideWorld(points, worldKm) {

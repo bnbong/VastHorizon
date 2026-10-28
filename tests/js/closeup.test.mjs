@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BH_FILL, FILL, HD_COOLDOWN, HD_INTERVAL, HD_LIMIT, HD_RANGE, HdSwap, NEAR, SIZE, STAR_FILL, bhFade, bhViewDistance, closeupFill, closeupNear, closeupSize, hasCloseup, insetFrame, viewDistance,
+  BH_FILL, FILL, HD_COOLDOWN, HD_INTERVAL, HD_LIMIT, HD_RANGE, HdSwap, NEAR, SIZE, STAR_FILL, bhFade, bhViewDistance, closeupFill, closeupNear, closeupSize, hasCloseup, insetFrame,
+  isBlackHolePoint, viewDistance,
 } from "../../web/js/closeup.js";
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
@@ -229,4 +230,22 @@ test("고해상도 교체 — 고른 천체가 먼저, 자리가 없으면 화�
   g.tick([q]); g.pending.get("M99").ok("M99-hd");                 // p를 비웠다 (쿨다운)
   g.tick([p, q], { keep: () => true, selected: p });
   assert.equal(p.hd, "loading");
+});
+
+test("블랙홀 자체인 점(궁수자리 A*) — 은하 사진 없이 블랙홀이 곧 근접 모습, 은하 중심 자리의 우리 은하는 근접 모습 없음", () => {
+  const sgr = { id: "Q237284", group: "milky_way", placement: "sky", kind: "초거대질량 블랙홀", code: null };
+  const mw = { id: "Q321", group: "milky_way", placement: "center", kind: "막대나선은하", code: null };
+  assert.ok(isBlackHolePoint(sgr));
+  assert.ok(hasCloseup(sgr));
+  assert.equal(closeupSize(sgr), SIZE.bh);
+  assert.equal(closeupSize(sgr, true), SIZE.bh);          // 사진 여부와 관계없이
+  assert.equal(closeupFill(sgr), BH_FILL);
+  assert.equal(closeupNear(sgr), NEAR.deep);
+  assert.ok(!isBlackHolePoint(mw) && !hasCloseup(mw));
+  assert.equal(closeupSize(mw), null);
+  assert.ok(!hasCloseup({ ...mw, placement: "sky" }));    // 블랙홀이 아닌 우리 은하 그룹 점
+  assert.ok(!isBlackHolePoint({ ...sgr, placement: "illustrative" }));
+  assert.ok(!isBlackHolePoint({ group: "messier", placement: "sky", kind: "블랙홀" }));   // 메시에 은하는 은하 사진이 근접 모습
+  assert.ok(!isBlackHolePoint(null));
+  assert.equal(closeupFill(M31), FILL);                    // 기존 판정은 그대로
 });

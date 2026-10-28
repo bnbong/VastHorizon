@@ -66,3 +66,8 @@ test("화면 문구 — 아직 모른다는 것을 천체가 '확률' · '정해
     assert.doesNotMatch(ui, /확률로 남은|정해지지 않은 가능성|label probable/, f);
   }
 });
+
+test("우리 은하 그룹 — 세상 안 천체 줄에 '우리 은하'", () => {
+  assert.equal(groupLine({ milky_way: 2 }), "우리 은하 2");
+  assert.equal(groupLine({ star: 1, milky_way: 1 }), "별 1 · 우리 은하 1");
+});

@@ -16,13 +16,14 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
+from tests.fakes import MILKY_WAY_IN_CATALOG, SKIP_UNTIL_MILKY_WAY
 from tests.test_api import FakeAsk, healthy
 from tests.test_features import dist, item
 from tests.test_sky_constellation import FIGURE
 from vasthorizon.api.app import create_app
 from vasthorizon.api.services import Services
 from vasthorizon.data.items.common import REF_SURFACE_ALTITUDE
-from vasthorizon.features.space_map import illustrative_direction, map_points
+from vasthorizon.features.space_map import direction_from_radec, illustrative_direction, map_points
 
 
 def solar(qid, name, pos, ly=None):
@@ -87,6 +88,39 @@ class MapPointsTest(unittest.TestCase):
         self.assertEqual(kms, sorted(kms))
         self.assertTrue(self.rings[-1].get("edge"))                              # 마지막은 관측 가능한 우주의 끝
         self.assertAlmostEqual(self.rings[-1]["km"] / (9_460_730_472_580.8 * 1e9), 46.5)
+
+
+class MilkyWayMapTest(unittest.TestCase):
+    """우리 은하 — 은하 중심 자리에 누를 수 없는 이름표(center), 그 자리의 점은 궁수자리 A*(sky)."""
+
+    def setUp(self):
+        from tests.test_collect_items import milky_way_items
+        self.galaxy, self.sgr = milky_way_items()
+        points = {p["id"]: p for p in map_points([EARTH, self.galaxy, self.sgr])["points"]}
+        self.center, self.hole = points["Q321"], points["Q237284"]
+
+    def test_center_label_point(self):
+        self.assertEqual(self.center["placement"], "center")
+        self.assertEqual(self.center["label"], "우리 은하 중심")
+        self.assertEqual((self.center["group"], self.center["kind"]), ("milky_way", "막대나선은하"))
+        self.assertEqual(self.center["dir"], [round(c, 6) for c in direction_from_radec(266.41500889, -29.00611111)])
+        self.assertAlmostEqual(self.center["km"], self.galaxy["distance"]["km"])
+        self.assertIs(self.center["naked_eye"], True)
+        self.assertIsNone(self.center["code"])
+        self.assertIsNone(self.center["mag"])
+
+    def test_sgr_a_star_is_sky_point(self):
+        self.assertEqual(self.hole["placement"], "sky")
+        self.assertNotIn("label", self.hole)
+        self.assertEqual((self.hole["kind"], self.hole["naked_eye"], self.hole["code"]), ("초거대질량 블랙홀", False, None))
+        self.assertLess(math.dist(self.hole["dir"], self.center["dir"]), 1e-3)      # 두 점은 거의 같은 방향
+
+    @unittest.skipUnless(MILKY_WAY_IN_CATALOG, SKIP_UNTIL_MILKY_WAY)
+    def test_real_catalog_map(self):
+        items = json.loads((Path(__file__).resolve().parents[1] / "data" / "items.json").read_text(encoding="utf-8"))["items"]
+        points = {p["id"]: p for p in map_points(items)["points"]}
+        self.assertEqual((points["Q321"]["placement"], points["Q321"]["label"]), ("center", "우리 은하 중심"))
+        self.assertEqual(points["Q237284"]["placement"], "sky")
 
 
 class WebApiTest(unittest.TestCase):

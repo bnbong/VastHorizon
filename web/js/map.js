@@ -16,6 +16,9 @@ const LINK_COLOR = 0xffe1dd;        // '나'와 알아간 빛을 잇는 실선 (
 const UNKNOWN_ALPHA = 0.12;         // 아직 만나지 않은 빛 — 기본 지도에서는 흐리게 (시안의 인상은 "빈 점 몇 개")
 const FAR_TURN = -0.5;              // 가장 먼 알아간 빛을 화면 바로 위에서 이만큼(라디안) 돌려 놓는다
 
+// 지도 위 이름 — 은하 중심 자리에 놓인 우리 은하(placement "center")는 "우리 은하 중심" (서버 label). 그 밖은 이름 그대로
+const nameOf = (p) => p.label ?? p.name;
+
 export class MapMode {
   constructor(data) {
     this.group = new THREE.Group();
@@ -110,6 +113,8 @@ export class MapMode {
       this.refly = null;
       if (id && id === this.selectedId && this.stage?.mode === this) this.select(id);
     };
+    // 블랙홀 근거(blackholes.json)가 늦게 오면 — 이미 만든 표식의 이름표만 다시 정한다 (우리 은하 · 궁수자리 A* 겹침, hushed)
+    this.details.onBhInfo = () => this.relabel();
     // 대표 기체의 실제 형태 (NASA 3D 모델) — 가까이 가면 내려받아 그 점 자리에 띄운다
     this.models = new ModelShelf(this.group, this.points.filter((p) => MODELS[p.name]));
     // 태양계 천체의 3D 모습 (서랍 근접 뷰와 같은 메시) — 가까이 가면 그 점 자리에 띄운다
@@ -246,8 +251,8 @@ export class MapMode {
     for (const v of visited) {
       const p = this.lookup(v.id);
       if (!p) continue;
-      const mark = knownMark(p.name, { fresh: p.id === fresh });
-      mark.element.classList.toggle("quiet", !named.has(p.id));   // 많아지면 이름표는 최근 것과 고른 것만
+      const mark = knownMark(nameOf(p), { fresh: p.id === fresh });
+      mark.element.classList.toggle("quiet", !named.has(p.id) || this.hushed(p.id));   // 많아지면 이름표는 최근 것과 고른 것만
       mark.element.classList.toggle("is-selected", p.id === this.selectedId);
       mark.element.classList.toggle("has-letter", !!this.letterIds?.has(p.id));   // 빛의 편지를 받은 천체 — 작은 ✉ 표식
       mark.element.classList.toggle("unread", !!this.unreadIds?.has(p.id));        // 읽지 않은 편지가 있으면 또렷하게
@@ -295,10 +300,12 @@ export class MapMode {
 
   // 아직 만나지 않은 빛 — 담지 않은 천체는 거리와 관계없이 흐린 점선 원으로 천천히 일렁인다. 알아간 천체는 이 층에서 숨긴다(살구색 표식이 대신)
   // 카메라가 멀면 '나' 가까이(반지름이 작은) 몰린 원은 숨긴다 — 확대하면 나타난다 (nearFade)
+  // 은하 중심 자리의 우리 은하(center)는 그리지 않는다 — 그 자리의 원은 궁수자리 A* 것 하나뿐
   shimmer(t) {
     const col = this.pointGeom.attributes.color;
     const known = this.knownIds ?? new Set(), dist = this.camDist ?? 0;
     this.points.forEach((p, i) => {
+      if (p.placement === "center") { col.setW(i, 0); return; }
       const base = p.placement === "illustrative" ? UNKNOWN_ALPHA * 0.6 : UNKNOWN_ALPHA;
       const near = nearFade(dist, p.position.length());
       col.setW(i, known.has(p.id) || !near ? 0 : base * near * (0.8 + 0.2 * Math.sin(t * (0.8 + (i % 7) * 0.13) + i)));
@@ -330,20 +337,20 @@ export class MapMode {
       for (const m of marks) {
         if (m.shown || m.r > r) continue;
         m.shown = true;
-        const tag = label(m.p.name, "label passing");
+        const tag = label(nameOf(m.p), "label passing");
         tag.position.copy(m.p.position);
         this.crossedGroup.add(tag);
       }
     }, () => {
       const known = knownId && this.lookup(knownId);
       if (known) {                                 // 새로 알게 된 천체 — 이름이 또렷하게
-        const tag = label(`+ ${known.name}`, "label crossed");
+        const tag = label(`+ ${nameOf(known)}`, "label crossed");
         tag.position.copy(known.position);
         this.crossedGroup.add(tag);
       }
       this.reach.setRadius(r1);
       this.worldRadius = r1;
-      if (instant) for (const m of marks) if (!m.shown) { m.shown = true; const tag = label(m.p.name, "label passing"); tag.position.copy(m.p.position); this.crossedGroup.add(tag); }
+      if (instant) for (const m of marks) if (!m.shown) { m.shown = true; const tag = label(nameOf(m.p), "label passing"); tag.position.copy(m.p.position); this.crossedGroup.add(tag); }
       done?.();
       setTimeout(() => {                           // 이름은 잠시 뒤 사라진다
         this.crossedGroup.traverse((o) => { if (o.isCSS2DObject) o.element.remove(); });
@@ -376,14 +383,33 @@ export class MapMode {
     });
   }
 
-  // 카탈로그 점과, 카탈로그 밖에서 알아간 천체(하늘의 아무 별)도 누를 수 있게
+  // 카탈로그 점과, 카탈로그 밖에서 알아간 천체(하늘의 아무 별)도 누를 수 있게.
+  // 은하 중심 자리의 우리 은하(center)는 빼서 그 자리를 누르면 궁수자리 A*가 잡힌다
   pickables() {
-    return [...this.points, ...(this.extra?.values() ?? [])].map((p) => ({ position: p.position, data: p }));
+    return [...this.points.filter((p) => p.placement !== "center"), ...(this.extra?.values() ?? [])].map((p) => ({ position: p.position, data: p }));
   }
 
   describe(p) {
+    if (p.placement === "center") return `${nameOf(p)} — ${distanceText(p.km)}`;
     const note = { illustrative: " · 방향은 예시", proxy: " · 위치는 근삿값" }[p.placement] ?? "";
     return `${p.name} — ${distanceText(p.km)}${note}`;
+  }
+
+  // 같은 자리에 겹치는 두 표식 — 우리 은하(center)와 그 중심 블랙홀(blackholes.json center_id)을 모두 담았으면
+  // 우리 은하 표식의 이름표는 숨긴다(이름표는 궁수자리 A* 하나만). 우리 은하를 고르면 그때는 보인다
+  hushed(id) {
+    if (id === this.selectedId || this.lookup(id)?.placement !== "center") return false;
+    const partner = this.details?.bhInfo?.get(id)?.center_id;
+    return !!partner && !!this.knownIds?.has(partner);
+  }
+
+  // 알아간 빛 표식의 선택 · 이름표 상태만 다시 — 고른 천체가 바뀌거나 블랙홀 근거가 늦게 왔을 때
+  relabel() {
+    const named = labelledIds(this.visitedList ?? [], this.selectedId);
+    for (const [tagId, tag] of this.visitedTags ?? []) {
+      tag.element.classList.toggle("is-selected", tagId === this.selectedId);
+      tag.element.classList.toggle("quiet", !named.has(tagId) || this.hushed(tagId));
+    }
   }
 
   // 빛의 편지를 받은 천체 ID(letters.js letterItemIds) — 알아간 빛의 이름표에 작은 ✉ 표식 (.world-star.has-letter)
@@ -404,11 +430,7 @@ export class MapMode {
     const earth = !!id && id === this.earth?.id;
     const p = id && !earth ? this.lookup(id) : null;
     this.selectedId = p || earth ? id : null;
-    const named = labelledIds(this.visitedList ?? [], this.selectedId);
-    for (const [tagId, tag] of this.visitedTags ?? []) {
-      tag.element.classList.toggle("is-selected", tagId === this.selectedId);
-      tag.element.classList.toggle("quiet", !named.has(tagId));
-    }
+    this.relabel();
     if (earth) {
       this.selectedTag.visible = false;
       this.selectRing.visible = false;
@@ -422,7 +444,7 @@ export class MapMode {
       this.selectRing.visible = false;
       if (!p) return false;
     } else {
-      this.selectedTag.element.textContent = p.name;
+      this.selectedTag.element.textContent = nameOf(p);
       this.selectedTag.position.copy(p.position);
       this.selectedTag.visible = true;
       this.selectRing.geometry.attributes.position.setXYZ(0, p.position.x, p.position.y, p.position.z);
@@ -476,8 +498,10 @@ export class MapMode {
 
   // 고른 은하의 블랙홀 안에 들어가 있는가 — 비행 중에는 그 비행의 의도, 아니면 카메라 거리(블랙홀이 반 넘게 떠오름, closeup.js bhFade)로.
   // 손가락 · 휠로 들어가고 나와도 같게. 바뀔 때만 onBlackHole(id, inside)를 부른다 (main.js 서랍 버튼)
+  // 블랙홀 자체인 항목(info.self, 궁수자리 A*)은 들어가 있음 · 나옴이 없다 — 근접 모습이 곧 블랙홀
   watchBlackHole(stage) {
-    const id = this.selectedId, p = id && this.details.bhInfo?.has(id) ? this.lookup(id) : null;
+    const id = this.selectedId, info = id ? this.details.bhInfo?.get(id) : null;
+    const p = info && !info.self ? this.lookup(id) : null;
     const size = p && this.details.sizeOf(p);
     let inside = false;
     if (size) {

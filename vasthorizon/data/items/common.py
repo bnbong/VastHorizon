@@ -15,6 +15,7 @@ GROUPS = {
     "human_made": "인류의 발자취",
     "star": "별",
     "messier": "메시에 천체",
+    "milky_way": "우리 은하",
     "constellation": "별자리",
 }
 
@@ -23,6 +24,8 @@ GROUPS = {
 REF_FROM_EARTH = "지구에서 천체까지"
 REF_GEOCENTER = "지구 중심에서 천체 중심까지"
 REF_SURFACE_ALTITUDE = "지표면 위 궤도 고도"
+# 우리 은하 — 우리는 은하 안에 있어 '은하까지의 거리'가 없다. 은하 중심까지의 거리를 쓰고 기준을 밝힌다
+REF_GALACTIC_CENTER = "지구에서 우리 은하 중심까지"
 
 
 @dataclass

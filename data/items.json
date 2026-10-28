@@ -7,9 +7,10 @@
    "인류의 발자취": 100,
    "별": 94,
    "메시에 천체": 110,
+   "우리 은하": 2,
    "별자리": 88
   },
-  "total": 424,
+  "total": 426,
   "source_snapshots": {
    "constellation_area": {
     "fetched_at": "2026-10-21T05:39:08+00:00",
@@ -271,6 +272,10 @@
     "fetched_at": "2026-10-22T00:56:19+00:00",
     "estimated": false
    },
+   "milky_way_wikidata_v1": {
+    "fetched_at": "2026-10-28T07:31:46+00:00",
+    "estimated": false
+   },
    "satcat": {
     "fetched_at": "2026-10-21T05:38:37+00:00",
     "estimated": false
@@ -301,6 +306,9 @@
    }
   },
   "time_policy": "Horizons 위치는 horizons_epoch 기준으로 계산한다. SATCAT 운용 상태 · 고도 · 재진입은 내려받은 스냅샷 시점의 값이며 과거 기준일로 재구성하지 않는다. 기준일보다 늦게 재진입한 위성은 '기준일 상태 미상'으로 표시한다.",
+  "partial_collections": {
+   "milky_way": "2026-10-28"
+  },
   "licenses": {
    "Wikidata": "CC0 1.0",
    "한국어 위키백과": "CC BY-SA 4.0",
@@ -15719,6 +15727,106 @@
     {
      "name": "Wikidata",
      "url": "https://www.wikidata.org/wiki/Q4662"
+    }
+   ]
+  },
+  {
+   "id": "Q321",
+   "group": "milky_way",
+   "name": "우리 은하",
+   "wiki_title": "우리 은하",
+   "name_en": "Milky Way",
+   "kind": "막대나선은하",
+   "distance": {
+    "km": 2.4641659939686893e+17,
+    "basis": "wikidata",
+    "reference": "지구에서 우리 은하 중심까지",
+    "approximate": false,
+    "method": "Wikidata 은하중심(Q649112) · 궁수자리 A*(Q237284) 거리 2개 값의 중앙값",
+    "km_min": 2.4597899228710083e+17,
+    "km_max": 2.4685420650663706e+17,
+    "n_values": 2,
+    "ly": 26046.255107999998
+   },
+   "ra_deg": 266.41500889,
+   "dec_deg": -29.00611111,
+   "position_au": null,
+   "position_basis": null,
+   "position_proxy": null,
+   "attrs": {
+    "분류": "막대나선은하",
+    "블랙홀": "궁수자리 A*",
+    "블랙홀 질량": "약 410만 태양질량",
+    "맨눈 관측": true,
+    "보이는 모습": "천구를 가로지르는 밝은 띠(은하수)로 보이고, 은하 중심부가 있는 궁수자리 방향에서 가장 밝다",
+    "서울에서_관측": true
+   },
+   "sources": [
+    {
+     "name": "Wikidata",
+     "url": "https://www.wikidata.org/wiki/Q321"
+    },
+    {
+     "name": "Wikidata",
+     "url": "https://www.wikidata.org/wiki/Q649112",
+     "used_for": "은하 중심 방향 · 거리"
+    },
+    {
+     "name": "Wikidata",
+     "url": "https://www.wikidata.org/wiki/Q237284",
+     "used_for": "은하 중심 거리"
+    },
+    {
+     "name": "Wikidata",
+     "url": "https://www.wikidata.org/wiki/Q237284",
+     "used_for": "블랙홀 (궁수자리 A*, 질량 — Wikidata 값 3개의 중앙값)"
+    },
+    {
+     "name": "한국어 위키백과",
+     "url": "https://ko.wikipedia.org/w/index.php?oldid=42624878",
+     "used_for": "맨눈 관측 · 보이는 모습 (「지구에서 보이는 형태」 절)"
+    }
+   ]
+  },
+  {
+   "id": "Q237284",
+   "group": "milky_way",
+   "name": "궁수자리 A*",
+   "wiki_title": "궁수자리 A*",
+   "name_en": "Sagittarius A*",
+   "kind": "초거대질량 블랙홀",
+   "distance": {
+    "km": 2.4597899228710083e+17,
+    "basis": "wikidata",
+    "reference": "지구에서 천체까지",
+    "approximate": false,
+    "method": "Wikidata 값 · 불확도 범위 2.46만~2.74만광년",
+    "km_min": 2.327339696254877e+17,
+    "km_max": 2.5922401494871395e+17,
+    "n_values": 1,
+    "ly": 26000.0
+   },
+   "ra_deg": 266.416816625,
+   "dec_deg": -29.007824972,
+   "position_au": null,
+   "position_basis": null,
+   "position_proxy": null,
+   "attrs": {
+    "별자리": "궁수자리",
+    "분류": "초거대질량 블랙홀, 전파원",
+    "질량": "약 410만 태양질량 (Wikidata 값 3개, 402만~431만)",
+    "맨눈 관측": false,
+    "관측": "가시광선은 지구와의 사이에 있는 먼지와 가스에 가려 보이지 않아 전파와 적외선으로 관측합니다"
+   },
+   "sources": [
+    {
+     "name": "Wikidata",
+     "url": "https://www.wikidata.org/wiki/Q237284"
+    },
+    {
+     "name": "한국어 위키백과",
+     "url": "https://ko.wikipedia.org/w/index.php?oldid=42571733",
+     "used_for": "관측 (가시광선 소광 +25등급)"
     }
    ]
   },

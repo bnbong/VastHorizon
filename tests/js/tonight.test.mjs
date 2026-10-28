@@ -7,7 +7,7 @@ import test from "node:test";
 
 import { solarSystem } from "../../web/js/ephemeris.js";
 import { altAz, localSiderealDeg } from "../../web/js/astro.js";
-import { COUNTED_TIERS, crossing, directionWord, emptyState, eveningMonth, eveningText, hourText, itemLine, laterText, nightWindow,
+import { COUNTED_TIERS, crossing, directionWord, emptyState, eveningMonth, eveningText, hourText, invisibleReason, itemLine, laterText, nightWindow,
          plan, rangeText, SUN_LIMIT, sunAltDeg, sunLimitOf, targetsOf, tierOf, tonightList, whenText } from "../../web/js/tonight.js";
 
 const TZ = "Asia/Seoul";
@@ -257,4 +257,41 @@ test("희미한 행성 — 천왕성 · 해왕성은 등급대로 어두운 하�
   assert.equal(neptune.sunLimit, "faint");
   assert.equal(mars.sunLimit, "bright");
   assert.equal(io.sunLimit, "faint");
+});
+
+test("우리 은하 · 궁수자리 A* — 은하 중심 방향, 은하수는 불빛이 적은 곳에서 맨눈 · 블랙홀은 가시광선으로 보이지 않는다", () => {
+  const LY = 9460730472580.8;
+  const mw = { id: "Q321", name: "우리 은하", km: 26046 * LY, ra: 266.415, dec: -29.006, group: "milky_way", mag: null, at: "2026-10-24" };
+  const sgr = { id: "Q237284", name: "궁수자리 A*", km: 26000 * LY, ra: 266.4168, dec: -29.0078, group: "milky_way", mag: null, at: "2026-10-24" };
+  const [a, b] = targetsOf([mw, sgr]);
+  assert.equal(a.kind, "fixed");
+  assert.equal(a.tier, "dark-eye");                 // 등급이 없어도 쌍안경(tierOf 기본값)이 아니다
+  assert.equal(a.sunLimit, "faint");
+  assert.equal(a.reason, undefined);
+  assert.deepEqual([a.ra, a.dec], [266.415, -29.006]);
+  assert.equal(b.kind, "fixed");                    // 하늘 가리키기는 된다 — 방향은 있다
+  assert.equal(b.tier, "never");
+  assert.match(b.reason, /가시광선/);
+  assert.equal(invisibleReason(sgr), b.reason);
+  assert.equal(invisibleReason(mw), null);
+  assert.equal(invisibleReason(V.vega), null);
+  assert.equal(invisibleReason({ id: "Q237284", group: "milky_way" }), b.reason);   // 서랍의 항목(api.item)도 같은 판정
+  const r = list([V.earth, mw, sgr]);
+  assert.deepEqual(r.hard.map((x) => x.id), ["Q237284"]);
+  assert.match(r.hard[0].reason, /가시광선/);
+  assert.ok(![...r.items, ...r.hard].some((x) => x.id === "Q321" && r.hard.includes(x)), "우리 은하는 hard가 아니다");
+  assert.ok([...r.items, ...r.later].some((x) => x.id === "Q321"), "우리 은하는 오늘 밤 · 다시 만날 달 목록 중 하나에");
+});
+
+test("빈 상태 all-hard — 맨눈으로는 볼 수 없는 빛(never)이 섞이면 '망원경'만으로 적지 않는다", () => {
+  const TELESCOPE = "담은 빛이 모두 망원경이 있어야 보이는 빛이에요";
+  const BOTH = "담은 빛이 모두 망원경이 있어야 보이거나 맨눈으로는 볼 수 없는 빛이에요";
+  const hard = (...tiers) => ({ items: [], later: [], hard: tiers.map((tier, i) => ({ id: `Q${i}`, tier })), night: {} });
+  assert.deepEqual(emptyState(hard("telescope")), { key: "all-hard", text: TELESCOPE });
+  assert.deepEqual(emptyState(hard("telescope", "telescope")), { key: "all-hard", text: TELESCOPE });
+  assert.deepEqual(emptyState(hard("never")), { key: "all-hard", text: BOTH });
+  assert.deepEqual(emptyState(hard("telescope", "never")), { key: "all-hard", text: BOTH });
+  // 궁수자리 A*만 담았으면 — 가시광선으로 볼 수 없는 빛이므로 '망원경'만으로 적지 않는다
+  const sgr = { id: "Q237284", name: "궁수자리 A*", km: 2.46e17, ra: 266.4168, dec: -29.0078, group: "milky_way", mag: null, at: "2026-10-24" };
+  assert.equal(emptyState(list([V.earth, sgr])).text, BOTH);
 });

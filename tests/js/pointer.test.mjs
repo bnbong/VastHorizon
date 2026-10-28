@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { alignStep, alphaFromCompass, altAzToEnu, azDelta, declinationDeg, deviceBasis, enuToAltAz, fistsText, followOffset, guide,
-         guideText, lightLine, project, screenBasis, smoothBasis } from "../../web/js/pointer.js";
+         guideText, lightLine, lightNoteFor, project, screenBasis, smoothBasis } from "../../web/js/pointer.js";
 
 const LY = 9460730472580.8;
 const close = (got, want, tol, label) => assert.ok(Math.abs(got - want) <= tol, `${label}: ${got} (기대 ${want} ± ${tol})`);
@@ -243,4 +243,15 @@ test("달의 밝은 쪽 — 초승달(저녁 서쪽) · 상현(저녁 남쪽, �
     assert.ok(Number.isFinite(a));
     close(Math.abs(polyArea(moonLitPath(1, a, 1, 180))) / Math.PI, 1, 0.005, "보름 넓이");
   }
+});
+
+test("정렬했을 때의 한 줄 — 우리 은하는 은하수, 궁수자리 A*는 전파, 그 밖은 lightLine", () => {
+  const mw = lightNoteFor({ id: "Q321", group: "milky_way", km: 26046 * LY });
+  assert.equal(mw, "은하수는 많은 별의 빛이 모인 띠예요 · 은하 중심부가 있는 궁수자리 방향에서 가장 밝아요");
+  assert.doesNotMatch(mw, /떠났/);
+  const sgr = lightNoteFor({ id: "Q237284", group: "milky_way", km: 26000 * LY });
+  assert.equal(sgr, "이 방향에서 오는 전파는 약 2.6만 년 전에 떠났어요 · 가시광선은 먼지에 가려 보이지 않아요");
+  assert.equal(lightNoteFor({ id: "Q3427", group: "star", km: 25 * LY }), lightLine(25 * LY));
+  assert.equal(lightNoteFor({ id: "hip:1", group: "star", km: null }), lightLine(null));
+  assert.equal(lightNoteFor(), lightLine(null));
 });

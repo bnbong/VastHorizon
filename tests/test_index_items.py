@@ -117,6 +117,60 @@ class ItemTextTest(unittest.TestCase):
             self.assertEqual(item_text.korean_number(value), expected, value)
 
 
+class MilkyWayTextTest(unittest.TestCase):
+    """우리 은하 — '우리 은하까지 n광년' · '지금 보는 빛이 출발한 때'가 새어 나오지 않는다."""
+
+    def setUp(self):
+        from tests.test_collect_items import milky_way_items
+        self.galaxy, self.sgr = milky_way_items()
+
+    def test_distance_text_is_to_galactic_center(self):
+        self.assertTrue(item_text.distance_text(self.galaxy["distance"]).startswith("지구에서 우리 은하 중심까지 약 2.6만광년"))
+
+    def test_summary_sentences(self):
+        galaxy = item_text.summary_sentence(self.galaxy)
+        self.assertTrue(galaxy.startswith("우리 은하는 막대나선은하다. 지구에서 은하 중심까지 약 2.6만광년이다."), galaxy)
+        self.assertNotIn("우리 은하까지", galaxy)
+        self.assertNotIn("떨어져 있다", galaxy)
+        self.assertEqual(item_text.summary_sentence(self.sgr),
+                         "궁수자리 A*는 궁수자리에 있는 초거대질량 블랙홀로, 지구에서 약 2.6만광년 떨어져 있다.")
+
+    def test_item_text_has_no_light_departure(self):
+        galaxy = item_text.build_item_text(self.galaxy, REF_YEAR)
+        self.assertIn("[우리 은하] 우리 은하 (Milky Way)", galaxy)
+        self.assertNotIn("빛이 걸리는 시간", galaxy)                   # 한 점에서 출발한 빛이 아니다
+        self.assertNotIn("지금 보는 빛이 출발한 때", galaxy)
+        sgr = item_text.build_item_text(self.sgr, REF_YEAR)
+        self.assertIn("빛이 걸리는 시간: 약 2.6만년", sgr)
+        self.assertNotIn("지금 보는 빛이 출발한 때", sgr)              # 눈으로 보지 못하는 천체
+        self.assertIn("(Wikidata 값 · 불확도 범위 2.46만~2.74만광년)", sgr)
+
+    def test_light_lines_departure_flag(self):
+        dist_ = dist(439 * LY_KM)
+        self.assertEqual(len(item_text.light_lines(dist_, REF_YEAR)), 2)
+        self.assertEqual(item_text.light_lines(dist_, REF_YEAR, departure=False), ["빛이 걸리는 시간: 약 439년"])
+
+    def test_metadata(self):
+        galaxy = item_text.build_item_metadata(self.galaxy, REF_YEAR, "t")
+        for key in ("distance_km", "distance_ly", "light_departure_year"):
+            self.assertNotIn(key, galaxy)                              # '가장 가까운 은하' · 거리 조건에 걸리지 않는다
+        self.assertEqual(galaxy["distance_reference"], "지구에서 우리 은하 중심까지")
+        self.assertEqual((galaxy["group"], galaxy["group_ko"], galaxy["category"]), ("milky_way", "우리 은하", "은하"))
+        self.assertIs(galaxy["black_hole"], True)
+        self.assertEqual(galaxy["black_hole_name"], "궁수자리 A*")
+        self.assertIs(galaxy["seoul_visible"], True)
+        sgr = item_text.build_item_metadata(self.sgr, REF_YEAR, "t")
+        self.assertAlmostEqual(sgr["distance_ly"], 26000)
+        self.assertNotIn("light_departure_year", sgr)
+        self.assertEqual(sgr["category"], "블랙홀")
+        self.assertIs(sgr["black_hole"], True)                         # 블랙홀 자체 — '블랙홀' 조건에 걸린다
+        self.assertEqual(sgr["black_hole_name"], "궁수자리 A*")
+        self.assertEqual(sgr["black_hole_mass"], "약 410만 태양질량 (Wikidata 값 3개, 402만~431만)")
+        self.assertEqual(sgr["black_hole_source"], "Wikidata https://www.wikidata.org/wiki/Q237284")
+        self.assertNotIn("seoul_visible", sgr)
+        self.assertNotIn("중심에", item_text.fact_sentences(self.sgr))     # '중심에 … 블랙홀이 있다'는 은하에만
+
+
 if __name__ == "__main__":
     unittest.main()
 

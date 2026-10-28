@@ -1,6 +1,7 @@
 """조건 탐색 규칙 해석 — 동의어 표로 질의를 필터로 먼저 바꾼다 (LLM 없음).
 
     "블랙홀이 발견된 천체"   → has_black_hole=True
+    "우리은하 중심 블랙홀"   → categories=["블랙홀"], has_black_hole=True (궁수자리 A*)
     "고리가 있는 행성"       → categories=["행성"], has_rings=True
     "가장 가까운 별"         → categories=["별"], sort_by="distance", order="asc"
     "한국에서 보이는 별자리" → categories=["별자리"], visible_from_korea=True
@@ -40,6 +41,9 @@ SUPERLATIVE_LIMIT = 5        # "가장 가까운 별" — 1위와 그다음 몇 
 _RULES: list[tuple[str, dict]] = [
     # 블랙홀 (부정형 먼저)
     (r"블랙\s*홀\s*(?:이|가|은|는)?\s*(?:없는|없어|없을|발견되지\s*않은|있지\s*않은)", {"has_black_hole": False}),
+    # 우리 은하 중심의 블랙홀 — 블랙홀 자체인 항목 (궁수자리 A*). 이름 "우리 은하"도 이 말의 일부로 소비한다
+    (r"(?:우리\s*은하|은하수)\s*(?:의\s*)?(?:중심|한가운데|가운데)(?:에\s*있는|의)?\s*블랙\s*홀",
+     {"categories": ["블랙홀"], "has_black_hole": True}),
     (r"블랙\s*홀", {"has_black_hole": True}),
     # 고리
     (r"고리\s*(?:가|를|이)?\s*(?:없는|없어|없을|있지\s*않은)", {"has_rings": False}),
@@ -115,6 +119,7 @@ class RuleParse:
     data: dict = field(default_factory=dict)
     complete: bool = False
     leftover: list[str] = field(default_factory=list)   # 표로 소비하지 못한 낱말
+    spans: list[tuple[int, int]] = field(default_factory=list)   # 조건으로 해석한 자리 (질의 글자 위치)
 
 
 def _strip_josa(word: str) -> str:
@@ -158,6 +163,7 @@ def parse_rules(query: str) -> RuleParse:
     taken = [False] * len(query)
     conditions = 0
     negated: list[str] = []
+    spans: list[tuple[int, int]] = []
     for pattern, fields in _COMPILED:
         for m in pattern.finditer(query):
             a, b = m.span()
@@ -178,6 +184,7 @@ def parse_rules(query: str) -> RuleParse:
             _merge(data, fields, m)
             for i in range(a, b):
                 taken[i] = True
+            spans.append((a, b))
             conditions += 1
     rest = "".join(" " if t else ch for ch, t in zip(query, taken))
     leftover = negated + [w for w in re.findall(rf"[{_WORD}]+", rest) if not _consumable(w)]
@@ -189,7 +196,8 @@ def parse_rules(query: str) -> RuleParse:
     if data.get("limit") and not data.get("sort_by"):
         data.pop("limit")                 # "3개"만으로는 순서를 정할 수 없다
     meaningful = {k for k in data if k not in ("limit",)}
-    return RuleParse(data=data, complete=bool(meaningful) and conditions > 0 and not leftover, leftover=leftover)
+    return RuleParse(data=data, complete=bool(meaningful) and conditions > 0 and not leftover, leftover=leftover,
+                     spans=sorted(spans))
 
 
 def _negated_after(query: str, end: int) -> bool:

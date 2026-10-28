@@ -13,7 +13,7 @@ import hashlib
 import math
 import re
 
-from vasthorizon.data.items.common import GROUPS, LY_KM, REF_SURFACE_ALTITUDE
+from vasthorizon.data.items.common import GROUPS, LY_KM, REF_GALACTIC_CENTER, REF_SURFACE_ALTITUDE
 
 SOURCE_TYPE = "항목 메타데이터"
 LIGHT_KM_S = 299_792.458
@@ -107,6 +107,8 @@ def distance_text(dist: dict) -> str:
     km, ly = dist["km"], dist["ly"]
     if dist["reference"] == REF_SURFACE_ALTITUDE:
         text = f"지표면 위 고도 약 {korean_number(km)}km"
+    elif dist["reference"] == REF_GALACTIC_CENTER:
+        text = f"지구에서 우리 은하 중심까지 약 {korean_number(ly)}광년"
     elif ly >= 0.1:
         text = f"지구로부터 약 {korean_number(ly)}광년"
     else:
@@ -126,13 +128,17 @@ def distance_text(dist: dict) -> str:
     return text + (f" ({' · '.join(notes)})" if notes else "")
 
 
-def light_lines(dist: dict, ref_year: int) -> list[str]:
-    """빛이 걸리는 시간과 출발 시점. 지표 고도처럼 지구 중심 거리가 아니면 만들지 않는다."""
-    if dist["reference"] == REF_SURFACE_ALTITUDE:
+def light_lines(dist: dict, ref_year: int, departure: bool = True) -> list[str]:
+    """빛이 걸리는 시간과 출발 시점. 지표 고도처럼 지구 중심 거리가 아니면 만들지 않는다.
+
+    우리 은하(거리 기준이 은하 중심)는 한 점에서 출발한 빛이 아니라 만들지 않는다.
+    departure=False면 출발 시점을 빼고 걸리는 시간만 — 눈으로 보지 못하는 천체 (궁수자리 A*).
+    """
+    if dist["reference"] in (REF_SURFACE_ALTITUDE, REF_GALACTIC_CENTER):
         return []
     lines = [f"빛이 걸리는 시간: {light_time_text(dist['km'])}"]
     ly = dist["ly"]
-    if ly >= 1:
+    if departure and ly >= 1:
         if ly < 100_000:
             year = departure_year(ly, ref_year)
             lines.append(f"지금 보는 빛이 출발한 때: {year_text(year)} 무렵 ({korean_era(year)})")
@@ -198,7 +204,7 @@ def summary_sentence(item: dict) -> str:
     name, kind = display_name(item["name"]), item.get("kind") or GROUPS[group]
     dist = item.get("distance")
     far = ""
-    if dist and dist["reference"] != REF_SURFACE_ALTITUDE:
+    if dist and dist["reference"] not in (REF_SURFACE_ALTITUDE, REF_GALACTIC_CENTER):
         far = (f"지구에서 약 {korean_number(dist['ly'])}광년" if dist["ly"] >= 0.1
                else f"지구에서 약 {korean_number(dist['km'])}km")
 
@@ -228,6 +234,8 @@ def summary_sentence(item: dict) -> str:
     color = f"{attrs['색']} " if attrs.get("색") else ""
     noun = f"{where}{color}{kind}"
     text = f"{josa(name, '은는')} " + (f"{euro(noun)}, {far} 떨어져 있다." if far else f"{copula(noun)}.")
+    if dist and dist["reference"] == REF_GALACTIC_CENTER:      # 우리 은하 — 은하까지가 아니라 은하 중심까지
+        text += f" 지구에서 은하 중심까지 약 {korean_number(dist['ly'])}광년이다."
     if attrs.get("맨눈 관측"):
         text += " 맨눈으로 볼 수 있다."
     return text
@@ -272,7 +280,7 @@ def _attr_value(value) -> str:
 # "은하" · "성운" · "탐사선" 같은 말로 거를 수 있게 범주 하나로 모은다.
 
 CATEGORIES = ("은하", "성운", "성단", "별", "별자리", "행성", "왜행성", "위성", "소천체",
-              "탐사선", "인공위성", "우주망원경", "우주정거장", "기타")
+              "탐사선", "인공위성", "우주망원경", "우주정거장", "블랙홀", "기타")
 _GALAXY = ("은하", "LINER")
 _NEBULA = ("성운", "전리수소영역", "초신성잔해")
 _PROBE = ("탐사선", "궤도선", "착륙선", "샘플 리턴")
@@ -295,6 +303,8 @@ def item_category(item: dict) -> str:
                 or _deep_sky_category(item["name"]) or "기타")
     if group == "star":
         return "별"
+    if group == "milky_way":    # 우리 은하 · 그 중심 블랙홀 (궁수자리 A*)
+        return "블랙홀" if "블랙홀" in kind else "은하"
     if group == "constellation":
         return "별자리"
     if group == "solar_system":
@@ -335,7 +345,8 @@ def build_item_text(item: dict, ref_year: int) -> str:
         # Horizons로 계산한 거리는 그날의 값이다 — 기준일을 밝혀 '현재'로 오해하지 않게 (9번 작업 피드백)
         epoch = item.get("attrs", {}).get("Horizons 위치 기준일") if dist.get("basis") == "horizons" else None
         lines.append(f"거리: {distance_text(dist)}" + (f" ({epoch} 기준, JPL Horizons 계산)" if epoch else ""))
-        lines.extend(light_lines(dist, ref_year))
+        # 우리 은하 그룹은 지금 눈에 닿은 빛의 출발 시점을 말하지 않는다 (궁수자리 A*는 눈으로 보지 못한다)
+        lines.extend(light_lines(dist, ref_year, departure=item["group"] != "milky_way"))
 
     # 화면 표시용 근삿값에만 쓴 출처는 텍스트 내용의 근거가 아니므로 뺀다
     used = sorted({s["name"] for s in item.get("sources", [])
@@ -370,12 +381,15 @@ def build_item_metadata(item: dict, ref_year: int, text: str) -> dict:
         "text_hash": hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
     }
     meta.update(_fact_metadata(item))
-    if dist:
+    if dist and dist["reference"] == REF_GALACTIC_CENTER:
+        # 우리 은하 — 은하 중심까지의 거리라 거리 정렬 · 범위 조건에 넣지 않는다 ('가장 가까운 은하'가 되지 않게)
+        meta["distance_reference"] = dist["reference"]
+    elif dist:
         meta["distance_km"] = float(dist["km"])
         meta["distance_ly"] = float(dist["ly"])
         meta["distance_approx"] = bool(dist.get("approximate"))
         meta["distance_reference"] = dist["reference"]
-        if dist["reference"] != REF_SURFACE_ALTITUDE and dist["ly"] >= 1:
+        if dist["reference"] != REF_SURFACE_ALTITUDE and dist["ly"] >= 1 and item["group"] != "milky_way":
             meta["light_departure_year"] = departure_year(dist["ly"], ref_year)
     for key in ("ra_deg", "dec_deg"):
         if item.get(key) is not None and math.isfinite(item[key]):
@@ -397,6 +411,12 @@ def _fact_metadata(item: dict) -> dict:
         meta["black_hole_name"] = attrs["블랙홀"]
         meta["black_hole_mass"] = attrs.get("블랙홀 질량") or ""
         meta["black_hole_source"] = _source_for(item, "블랙홀")
+    elif item_category(item) == "블랙홀":       # 블랙홀 자체인 항목 (궁수자리 A*) — "블랙홀" 조건에 걸린다
+        wikidata = next((s["url"] for s in item.get("sources", []) if s["name"] == "Wikidata"), "")
+        meta["black_hole"] = True
+        meta["black_hole_name"] = item["name"]
+        meta["black_hole_mass"] = attrs.get("질량") or ""
+        meta["black_hole_source"] = _source_for(item, "질량") or (f"Wikidata {wikidata}" if wikidata else "")
     meta["rings"] = attrs.get("고리") is True
     if isinstance(attrs.get("고리"), bool) or isinstance(attrs.get("위성 수"), int):
         meta["rings_source"] = _source_for(item, "고리")

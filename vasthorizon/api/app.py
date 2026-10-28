@@ -169,7 +169,8 @@ def summary(item: dict) -> ItemSummary:
     dist = item.get("distance") or {}
     return ItemSummary(id=item["id"], name=item["name"], name_en=item.get("name_en"), group=item["group"],
                        group_ko=GROUPS[item["group"]], kind=item.get("kind"), distance_ly=dist.get("ly"),
-                       distance_km=dist.get("km"), ra_deg=item.get("ra_deg"), dec_deg=item.get("dec_deg"))
+                       distance_km=dist.get("km"), distance_reference=dist.get("reference"),
+                       ra_deg=item.get("ra_deg"), dec_deg=item.get("dec_deg"))
 
 
 def detail(item: dict) -> ItemDetail:

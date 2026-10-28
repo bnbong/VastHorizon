@@ -88,6 +88,20 @@ class ItemsApiTest(ApiTestBase):
         r = c.get("/api/items/Q404")
         self.assertEqual((r.status_code, r.json()["code"]), (404, "item_not_found"))
 
+    def test_milky_way_group_and_distance_reference(self):
+        from tests.test_collect_items import milky_way_items
+        app = create_app(Services(items=ITEMS + milky_way_items(), ask=FakeAsk(), health=healthy), web_dir=None)
+        c = TestClient(app, raise_server_exceptions=False)
+        listed = c.get("/api/items", params={"group": "milky_way"}).json()
+        self.assertEqual([i["id"] for i in listed], ["Q321", "Q237284"])
+        self.assertEqual({i["group_ko"] for i in listed}, {"우리 은하"})
+        self.assertEqual([i["distance_reference"] for i in listed], ["지구에서 우리 은하 중심까지", "지구에서 천체까지"])
+        body = c.get("/api/items/Q321").json()
+        self.assertEqual((body["group_ko"], body["distance"]["reference"]), ("우리 은하", "지구에서 우리 은하 중심까지"))
+        self.assertTrue(body["attrs"]["보이는 모습"])
+        self.assertTrue(c.get("/api/items/Q237284").json()["attrs"]["관측"])
+        self.assertIsNone(c.get("/api/items", params={"group": "constellation"}).json()[0]["distance_reference"])
+
 
 class AskApiTest(ApiTestBase):
     def test_answer_shape(self):

@@ -5,11 +5,13 @@
 | placement     | 방향의 근거                                       | 해당 항목                      |
 |---------------|---------------------------------------------------|--------------------------------|
 | origin        | 지구 — 화면의 중심 '나'                            | 지구                           |
-| sky           | 적경 · 적위 (적도 좌표)                            | 별 · 메시에 천체               |
+| sky           | 적경 · 적위 (적도 좌표)                            | 별 · 메시에 천체 · 궁수자리 A* |
+| center        | 은하 중심 방향 · 은하 중심까지의 거리              | 우리 은하                      |
 | computed      | Horizons 위치(태양 중심) − 지구 위치               | 태양계 천체 · 심우주 탐사선    |
 | proxy         | 모천체 위치로 대신한 근삿값 (예: 달 궤도선 → 달)   | 궤도력이 없는 탐사선           |
 | illustrative  | 궤도 정보가 없어 항목 ID로 정한 고정 방향 (예시)   | 지구 궤도 위성 (지표 고도)     |
 
+center 점은 누르는 점이 아니라 이름표("우리 은하 중심")다 — 같은 자리의 점은 궁수자리 A*가 맡는다. label에 이름표 글을 둔다.
 배치하지 못한 항목(거리 · 위치 모름, 대기권 재진입 등)은 unplaced로 따로 돌려준다.
 좌표계: 적도 좌표(ICRF) — x는 춘분점(적경 0), z는 천구 북극. 화면 좌표 변환은 프론트가 한다.
 """
@@ -19,7 +21,10 @@ from __future__ import annotations
 import hashlib
 import math
 
-from vasthorizon.data.items.common import AU_KM, LY_KM, REF_SURFACE_ALTITUDE, vector_norm, vector_sub
+from vasthorizon.data.item_text import display_name
+from vasthorizon.data.items.common import (
+    AU_KM, LY_KM, REF_GALACTIC_CENTER, REF_SURFACE_ALTITUDE, vector_norm, vector_sub,
+)
 
 # 거리 고리 — 거리 사다리
 RINGS = [
@@ -87,6 +92,11 @@ def map_points(items: list[dict]) -> dict:
         km = dist.get("km")
         if it["group"] == "solar_system" and it["name"] == "지구":
             points.append(_point(it, None, 0.0, "origin"))
+        elif dist.get("reference") == REF_GALACTIC_CENTER and it.get("ra_deg") is not None \
+                and it.get("dec_deg") is not None and km:
+            # 우리 은하 — 은하 중심 방향 · 거리에 이름표만 둔다
+            points.append({**_point(it, direction_from_radec(it["ra_deg"], it["dec_deg"]), km, "center"),
+                           "label": f"{display_name(it['name'])} 중심"})
         elif it.get("ra_deg") is not None and it.get("dec_deg") is not None and km:
             points.append(_point(it, direction_from_radec(it["ra_deg"], it["dec_deg"]), km, "sky"))
         elif km and dist.get("reference") == REF_SURFACE_ALTITUDE:

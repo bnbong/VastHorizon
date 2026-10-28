@@ -32,6 +32,8 @@
   일부만 해석되면 LLM 필터 결과에 표의 해석을 합친다 (LLM이 비운 필드만 채운다).
 - 표로 완전히 해석된 질의는 데이터만으로 결과가 정해진다 (블랙홀 유무 · 가장 가까운 별 · 맨눈 은하 …).
   이때는 선별 LLM도 부르지 않고, 필터에 맞는 항목을 카탈로그 전체에서 모아 정렬한 뒤 카드 설명을 메타데이터로 만든다.
+- 이름이 규칙으로 해석한 말 안에만 있으면 ("우리은하 중심 블랙홀"의 「우리 은하」) 그 이름은 조건의 일부다.
+  결정적 경로로 찾고, 그 천체의 이름 카드를 조건 카드 뒤에 붙인다 (LLM 0회).
 - 정렬(sort_by)은 의미 검색 상위 후보가 아니라 필터에 맞는 카탈로그 전체에서 한다 ("가장 가까운 별"의 정답이 후보 밖에 있던 문제).
   "별"에는 태양도 들어간다 — 태양이 1위이면 2위 카드에 "태양 다음으로 가까운 별"이라고 적는다.
 
@@ -306,7 +308,19 @@ def uses_llm(query: str, items: list[dict]) -> bool:
     """
     if names_only(query, items):
         return False
-    return not (parse_rules(query).complete and not mentioned_items(query, items))
+    rule = parse_rules(query)
+    return not (rule.complete and (not mentioned_items(query, items) or rule_mentions(query, items, rule) is not None))
+
+
+def rule_mentions(query: str, items: list[dict], rule: RuleParse) -> list[dict] | None:
+    """질문에 나온 이름이 모두 규칙이 해석한 자리 안에 있으면 그 천체들, 아니면 None.
+    "우리은하 중심 블랙홀"의 「우리 은하」처럼 이름이 조건을 이루는 말의 일부인 경우다."""
+    found = _find_names(query, items)[:3]
+    if not found or not rule.spans:
+        return None
+    if all(any(a <= s and e <= b for a, b in rule.spans) for (s, e), _ in found):
+        return _dedupe([t for _, targets in found for t in targets])
+    return None
 
 
 def names_only(query: str, items: list[dict]) -> bool:
@@ -453,7 +467,11 @@ def fact_reason(meta: dict, filters: Filters, rank: int = 0, ranked: list | None
     parts = []
     if filters.sort_by:
         parts.append(_rank_phrase(filters, rank, ranked or []))
-    if filters.has_black_hole:
+    if filters.has_black_hole and meta.get("category") == "블랙홀":      # 블랙홀 자체인 항목 (궁수자리 A*)
+        # 질량 글의 바깥 괄호 설명(" (Wikidata 값 3개, …)")은 떼어 괄호가 겹치지 않게 — "(질량 약 410만 태양질량)"
+        mass = (meta.get("black_hole_mass") or "").split(" (", 1)[0]
+        parts.append("초대질량 블랙홀 천체" + (f"(질량 {mass})" if mass else ""))
+    elif filters.has_black_hole:
         name, mass = meta.get("black_hole_name", ""), meta.get("black_hole_mass")
         what = "초대질량 블랙홀" if name in ("", "초대질량 블랙홀") else f"{name} 블랙홀"
         parts.append(f"중심에 {what}" + (f"(질량 {mass})" if mass else ""))
@@ -544,7 +562,8 @@ def explore(query: str, llm: BaseChatModel | None = None, embedding: Embeddings 
     # 0-2. 규칙 해석 — 질의 전체가 표로 해석되면 결과가 데이터만으로 정해진다 (LLM 0회).
     #      이름이 나온 질의는 사실 질문인지 LLM이 판단해야 하므로 결정적 경로로 보내지 않는다
     rule = parse_rules(query) if rules else RuleParse()
-    if rule.complete and not mentioned:
+    inner = rule_mentions(query, items, rule) if mentioned else None
+    if rule.complete and (not mentioned or inner is not None):
         filters = parse_filters(rule.data, query)
         with chroma.LOCK:
             rows = _catalog_rows(name, db, filters.where())
@@ -554,6 +573,9 @@ def explore(query: str, llm: BaseChatModel | None = None, embedding: Embeddings 
         cards = [_meta_card(cid, meta, fact_reason(meta, filters, i, ranked),
                             next((url for _, url in fact_sources(meta, filters) if url), None))
                  for i, (cid, _, meta) in enumerate(ranked[:limit])]
+        # 조건을 이루는 말 안에 나온 이름 (「우리 은하」) — 조건 카드 뒤에 이름 카드로
+        shown = {c.item_id for c in cards}
+        cards += [c for c in _name_cards(inner or [], []) if c.item_id not in shown]
         if len(ranked) > limit and not filters.sort_by:
             warnings.append(f"조건에 맞는 항목 {len(ranked)}건 가운데 {limit}건을 보여 줍니다. 조건을 더하면 좁힐 수 있습니다.")
         return ExploreResult(query=query, applied=filters.describe(), cards=cards, candidates=len(ranked),

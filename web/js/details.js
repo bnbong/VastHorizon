@@ -3,6 +3,7 @@
 //   별        분광형 색의 빛나는 원반 (가장자리 어두워짐 · 쌀알 무늬 · 코로나 · 빛살)
 //   메시에    NASA 허블 메시에 목록의 실제 사진 (web/data/messier, 출처는 서랍에). 사진이 없는 성단 · 성운은 그 종류의 모습을 그린다
 //   은하 중심 블랙홀  근거(web/data/blackholes.json)가 있는 은하에만, 줌 거리보다 더 들어가면 중심에 가르강튀아 모습(상상도)
+//   블랙홀 자체인 점  궁수자리 A* — 은하 사진 없이 가르강튀아 모습(상상도)이 곧 근접 모습 (closeup.js isBlackHolePoint)
 // 크기 · 나타나는 거리 · 줌 거리는 closeup.js 한 곳에 (지도의 카메라 비행 map.js select와 같은 표).
 // 사진은 가로 512px로 시작하고, 줌 거리의 HD_RANGE배 안으로 들어오면 1024px(data/messier/hd)로 바꾼다 — 한 번에 HD_LIMIT장까지 (closeup.js HdSwap)
 // 지도는 거리가 로그 스케일인 그림이라, 모습의 크기는 실제 크기 비율이 아니다.
@@ -10,7 +11,7 @@
 import { THREE, label } from "./scene.js";
 import { BILLBOARD_VERT, BlackHoleSprite, loadBlackHoles } from "./blackhole.js";
 import { spectralColor } from "./skydata.js";
-import { FILL, HD_RANGE, HdSwap, SIZE, bhFade, bhViewDistance, closeupFill, closeupNear, closeupSize, hasCloseup, viewDistance } from "./closeup.js";
+import { FILL, HD_RANGE, HdSwap, SIZE, bhFade, bhViewDistance, closeupFill, closeupNear, closeupSize, hasCloseup, isBlackHolePoint, viewDistance } from "./closeup.js";
 
 const STAR_FRAG = /* glsl */ `
   uniform vec3 uColor;
@@ -105,6 +106,15 @@ function billboard(fragmentShader, uniforms) {
   return mesh;
 }
 
+// 블랙홀 이름표 — 사각형 중심에서 화면 아래쪽으로 사각형 한 변의 BH_TAG_DROP배 (원반 · 고리 바로 아래).
+// 장면의 -Y로 내리면 보는 각도에 따라 화면 거리가 달라져(은하 중심 공개 0.43배 · 궁수자리 A* 0.57배) 카메라 위쪽 축 기준으로 매 프레임 놓는다
+const BH_TAG_DROP = 0.43;
+const camUp = new THREE.Vector3();
+function placeBhTag(tag, center, size, camera) {
+  camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+  tag.position.copy(center).addScaledVector(camUp, -size * BH_TAG_DROP);
+}
+
 const DEEP_KIND = (kind) => (/행성상/.test(kind) ? 1 : /이중성/.test(kind) ? 2 : /성군/.test(kind) ? 3 : 0);
 
 export class DetailLayer {
@@ -116,7 +126,7 @@ export class DetailLayer {
     this.blackHoles = new Map();               // 은하 ID → { info, sprite, tag }
     fetch("data/messier/credits.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
       .then((c) => { this.photos = c; this.onPhotos?.(); });   // 목록이 늦게 오면 지도가 고른 천체로 다시 날아간다 (map.js)
-    loadBlackHoles().then((d) => { this.bhInfo = new Map(d.galaxies.map((g) => [g.id, g])); });
+    loadBlackHoles().then((d) => { this.bhInfo = new Map(d.galaxies.map((g) => [g.id, g])); this.onBhInfo?.(); });   // 늦게 오면 지도가 겹치는 이름표를 다시 정한다 (map.js)
     this.frame = { fov: 55, aspect: 1 };       // 보이는 영역의 화각 · 비율 (map.js update가 매 프레임 closeup.js insetFrame으로)
     this.anisotropy = 1;                       // 렌더러 최대치 (map.js update)
     this.selectedId = null;                    // 지도에서 고른 천체 (map.js update) — 고해상도 사진은 고른 천체나 화면 안의 천체만
@@ -196,7 +206,15 @@ export class DetailLayer {
   build(it) {
     const { p } = it;
     const photo = !!this.photos?.[p.code];
-    if (p.group === "star") {
+    if (isBlackHolePoint(p)) {
+      const s = new BlackHoleSprite(new THREE.Vector3(0.3, 1, 0.2));
+      it.obj = s.mesh;
+      it.bh = s;
+      const info = this.bhInfo?.get(p.id);
+      it.tag = label(`${info?.black_hole ?? p.name} · 계산한 상상도`, "label blackhole");   // 자리는 매 프레임 (placeBhTag)
+      it.tag.visible = false;
+      this.group.add(it.tag);
+    } else if (p.group === "star") {
       it.obj = billboard(STAR_FRAG, { uColor: { value: new THREE.Color(...spectralColor(p.spectral)) } });
     } else if (photo) {
       it.lowTex = this.photoTexture(`data/messier/${p.code}.jpg`);   // 512 — HD를 되돌릴 때 다시 붙인다
@@ -209,7 +227,7 @@ export class DetailLayer {
     }
     it.size = closeupSize(p, photo);
     it.near = closeupNear(p, photo);
-    it.obj.material.uniforms && (it.obj.material.uniforms.uSeed.value = it.seed);
+    if (it.obj.material.uniforms?.uSeed) it.obj.material.uniforms.uSeed.value = it.seed;
     it.obj.position.copy(p.position);
     it.obj.scale.setScalar(it.size);
     this.group.add(it.obj);
@@ -217,6 +235,7 @@ export class DetailLayer {
 
   setFade(it, f) {
     if (it.photo) it.obj.material.opacity = f * 0.95;
+    else if (it.bh) it.bh.material.uniforms.uFade.value = f;
     else it.obj.material.uniforms.uFade.value = f;
     it.obj.visible = f > 0.001;
   }
@@ -228,10 +247,14 @@ export class DetailLayer {
       const d = cam.distanceTo(it.p.position);
       const near = it.near ?? closeupNear(it.p, !!this.photos[it.p.code]);
       const f = THREE.MathUtils.smoothstep(near - d, 0, near * 0.4);
-      if (f <= 0) { if (it.obj) it.obj.visible = false; } else {
+      if (f <= 0) { if (it.obj) it.obj.visible = false; if (it.tag) it.tag.visible = false; } else {
         if (!it.obj) this.build(it);
         this.setFade(it, f);
-        if (!it.photo) it.obj.material.uniforms.uTime.value = still ? 0 : t;
+        if (it.bh) {
+          it.bh.update(still ? 2 : t, camera);
+          it.tag.visible = f > 0.5;
+          placeBhTag(it.tag, it.p.position, it.size, camera);
+        } else if (!it.photo) it.obj.material.uniforms.uTime.value = still ? 0 : t;
       }
       this.updateBlackHole(it, d, t, camera, still);
     }
@@ -241,9 +264,10 @@ export class DetailLayer {
 
   // 은하 중심 블랙홀 — 근거가 있는 은하에만, 줌 거리보다 더 들어가면 중심에 (이름표: 이름 · 상상도).
   // 줌 거리(viewOf)에서는 보이지 않고 블랙홀 거리(closeup.js bhViewDistance)까지 들어가면 또렷하다 — 화면 비율에 따라 두 거리가 함께 바뀐다
+  // 블랙홀 자체인 항목(info.self, 궁수자리 A*)은 근접 모습이 곧 블랙홀이라 두 단계 공개를 하지 않는다
   updateBlackHole(it, d, t, camera, still) {
     const info = this.bhInfo?.get(it.p.id);
-    if (!info) return;
+    if (!info || info.self || it.bh) return;
     let bh = this.blackHoles.get(it.p.id);
     const galaxyView = this.viewOf(it.size ?? this.sizeOf(it.p) ?? SIZE.photo);
     const f = bhFade(d, galaxyView, bhViewDistance(this.frame, galaxyView));
@@ -253,14 +277,14 @@ export class DetailLayer {
       const sprite = new BlackHoleSprite(new THREE.Vector3(Math.sin(h), 3, Math.cos(h * 1.7)));   // 원반 기울기는 은하마다 다르게
       sprite.mesh.position.copy(it.p.position);
       sprite.mesh.scale.setScalar(SIZE.bh);
-      const tag = label(`${info.black_hole ?? "중심 블랙홀"} · 계산한 상상도`, "label blackhole");
-      tag.position.copy(it.p.position).add(new THREE.Vector3(0, -SIZE.bh * 0.55, 0));
+      const tag = label(`${info.black_hole ?? "중심 블랙홀"} · 계산한 상상도`, "label blackhole");   // 자리는 매 프레임 (placeBhTag)
       this.group.add(sprite.mesh, tag);
       bh = { info, sprite, tag };
       this.blackHoles.set(it.p.id, bh);
     }
     bh.sprite.mesh.visible = true;
     bh.tag.visible = f > 0.5;
+    placeBhTag(bh.tag, it.p.position, SIZE.bh, camera);
     bh.sprite.material.uniforms.uFade.value = f;
     bh.sprite.update(still ? 2 : t, camera);
     if (it.photo) it.obj.material.opacity = Math.min(it.obj.material.opacity, 0.95 - 0.5 * f);   // 사진은 조금 옅게 — 중심이 보이게

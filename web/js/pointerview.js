@@ -94,7 +94,8 @@ export function bindPhoneCard(el, link, onCopied) {
 
 // 가리키기 시작 — 클릭 핸들러에서 곧바로 부른다 (권한 요청이 이 함수의 첫 비동기 호출)
 //   o: { id, name, positionAt(date, place) → { alt, az, distanceKm? } | null, km, place, placeLabel(place), locate() → Promise<place|null>,
-//        observed(), stars({ count, hip, ra, dec, mag, bv } | null), when, seenToday(), onSeen(), onOther(), onOpen(), onClose(), opener, reducedMotion }
+//        observed(), stars({ count, hip, ra, dec, mag, bv } | null), when, seenToday(), onSeen(), onOther(), onOpen(), onClose(), opener, reducedMotion,
+//        lightNote(정렬했을 때의 한 줄, 없으면 lightLine(km)) }
 export function startPointer(o) {
   const permission = requestOrientation();
   const view = mountPointer(o);
@@ -369,7 +370,7 @@ function mountPointer(o) {
   }
   function onAligned() {
     const km = target?.distanceKm ?? o.km;
-    $(".pt-found-line").textContent = lightLine(km);
+    $(".pt-found-line").textContent = o.lightNote ?? lightLine(km);   // 우리 은하 · 궁수자리 A*는 main.js가 넘긴 문구 (pointer.js lightNoteFor)
     drawSeen();
     const sec = $(".pt-found");
     sec.hidden = !!calibRef;                       // 나침반 맞추기 중이면 끝난 뒤에 보인다

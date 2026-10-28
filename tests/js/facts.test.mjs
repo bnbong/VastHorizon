@@ -2,7 +2,7 @@
 //     node --test "tests/js/*.test.mjs"
 import assert from "node:assert/strict";
 import test from "node:test";
-import { heroFact, josa, placeNote } from "../../web/js/facts.js";
+import { CENTER_REF, MILKY_WAY_ID, distanceLabel, heroFact, josa, placeNote } from "../../web/js/facts.js";
 
 const LY = 9460730472580.8;
 const text = (f) => f && `${f.before}${f.em}${f.after}`;
@@ -74,4 +74,42 @@ test("지구 — 핵심 사실 아래에 지구에만 붙는 문단과 근거", 
   assert.equal(note.source.url, "https://ko.wikipedia.org/wiki/창백한_푸른_점");
   assert.equal(placeNote({ id: "Q405", name: "달", group: "solar_system" }), null);
   assert.equal(placeNote(null), null);
+});
+
+// /api/items/{id}의 모양 (서버 계약: distance.reference "지구에서 우리 은하 중심까지", attrs "보이는 모습" · "관측")
+const MILKY_WAY = { id: "Q321", name: "우리 은하", group: "milky_way", group_ko: "우리 은하", kind: "막대나선은하", distance_km: 26046 * LY,
+  distance: { km: 26046 * LY, reference: "지구에서 우리 은하 중심까지" },
+  attrs: { "보이는 모습": "천구를 가로지르는 밝은 띠(은하수)로 보이고, 은하 중심부가 있는 궁수자리 방향에서 가장 밝다" } };
+const SGR_A = { id: "Q237284", name: "궁수자리 A*", group: "milky_way", group_ko: "우리 은하", kind: "초거대질량 블랙홀", distance_km: 26000 * LY,
+  distance: { km: 26000 * LY }, attrs: { "관측": "가시광선은 지구와의 사이에 있는 먼지와 가스에 가려 보이지 않아 전파와 적외선으로 관측합니다" } };
+
+test("우리 은하 — 은하 중심까지의 거리, 빛이 건너왔다는 말은 하지 않는다", () => {
+  assert.equal(MILKY_WAY_ID, "Q321");
+  assert.equal(CENTER_REF, "지구에서 우리 은하 중심까지");
+  const f = heroFact(MILKY_WAY, { refYear: 2026 });
+  assert.equal(text(f), "우리는 이 은하 안에 있어요. 은하 중심까지는 약 2.6만 광년이에요.");
+  assert.equal(f.em, "약 2.6만 광년");
+  assert.equal(f.detail, "밤하늘의 은하수가 이 은하를 안에서 본 모습입니다. 천구를 가로지르는 밝은 띠(은하수)로 보이고, 은하 중심부가 있는 궁수자리 방향에서 가장 밝다.");
+  for (const s of [text(f), f.detail]) {
+    assert.doesNotMatch(s, /건너왔어요/);
+    assert.doesNotMatch(s, /우리 은하까지/);
+    assert.doesNotMatch(s, /출발한 빛/);
+  }
+  assert.equal(heroFact({ ...MILKY_WAY, attrs: {} }).detail, "");   // 근거(보이는 모습)가 없으면 덧붙이지 않는다
+});
+
+test("궁수자리 A* — 지구에 닿은 전파가 건너온 시간과 관측 방법", () => {
+  const f = heroFact(SGR_A, { refYear: 2026 });
+  assert.equal(text(f), "지금 지구에 닿은 전파는 약 2.6만 년을 건너왔어요.");
+  assert.match(f.detail, /^이 블랙홀까지의 거리가 약 2\.6만 광년이기 때문입니다\. 가시광선은 .*관측합니다\.$/);
+  assert.doesNotMatch(text(f), /눈에 닿은 빛/);
+  assert.equal(heroFact({ ...SGR_A, attrs: {} }).detail, "이 블랙홀까지의 거리가 약 2.6만 광년이기 때문입니다.");
+});
+
+test("거리 글 — 우리 은하는 '은하 중심까지', 그 밖은 distanceText 그대로", () => {
+  assert.equal(distanceLabel(26046 * LY, { id: "Q321" }), "은하 중심까지 약 2.6만 광년");
+  assert.equal(distanceLabel(26046 * LY, { reference: "지구에서 우리 은하 중심까지" }), "은하 중심까지 약 2.6만 광년");
+  assert.equal(distanceLabel(26000 * LY, { id: "Q237284" }), "약 2.6만 광년");      // 궁수자리 A*는 그 천체까지의 거리
+  assert.equal(distanceLabel(25.02 * LY), "약 25 광년");
+  assert.equal(distanceLabel(null, { id: "Q321" }), "지구");                       // 거리가 없으면 distanceText와 같다
 });

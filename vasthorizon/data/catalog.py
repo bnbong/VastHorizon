@@ -15,7 +15,7 @@ from vasthorizon.config import get_settings
 from vasthorizon.data.atomic import atomic_write_text
 
 MIN_ITEMS = 100
-GROUP_KEYS = ("solar_system", "human_made", "star", "messier", "constellation")
+GROUP_KEYS = ("solar_system", "human_made", "star", "messier", "milky_way", "constellation")
 REQUIRED_FIELDS = ("id", "group", "name", "wiki_title")
 
 LICENSES = {

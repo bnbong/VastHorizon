@@ -59,6 +59,42 @@
     "license": "CC BY-SA 4.0 — 한국어 위키백과 기여자"
    },
    "wikidata": null
+  },
+  {
+   "id": "Q321",
+   "name": "우리 은하",
+   "code": null,
+   "black_hole": "궁수자리 A*",
+   "quote": "천문학자들은 이러한 궁수자리 A*의 관측이, 태양계로부터 26,000 광년 떨어져 있는 우리 은하의 중심에 초대질량 블랙홀이 있다는 것에 대한 좋은 경험적인 증거를 제공하고 있다고 확신하고 있다.",
+   "doc": {
+    "title": "궁수자리 A*",
+    "url": "https://ko.wikipedia.org/wiki/%EA%B6%81%EC%88%98%EC%9E%90%EB%A6%AC_A%2A",
+    "permalink": "https://ko.wikipedia.org/w/index.php?oldid=42571733",
+    "license": "CC BY-SA 4.0 — 한국어 위키백과 기여자"
+   },
+   "wikidata": {
+    "qid": "Q237284",
+    "url": "https://www.wikidata.org/wiki/Q237284"
+   },
+   "center_id": "Q237284"
+  },
+  {
+   "id": "Q237284",
+   "name": "궁수자리 A*",
+   "code": null,
+   "black_hole": "궁수자리 A*",
+   "quote": "궁수자리 A* 주변을 공전하는 별들 (S2 등 약 160개 이상의 별)의 관측은 우리 은하의 중심 블랙홀의 존재를 보여주고, 그에 대한 데이터를 만드는데 이용되며, 이는 궁수자리 A*이 그 블랙홀의 위치라는 결론으로 유도된다.",
+   "doc": {
+    "title": "궁수자리 A*",
+    "url": "https://ko.wikipedia.org/wiki/%EA%B6%81%EC%88%98%EC%9E%90%EB%A6%AC_A%2A",
+    "permalink": "https://ko.wikipedia.org/w/index.php?oldid=42571733",
+    "license": "CC BY-SA 4.0 — 한국어 위키백과 기여자"
+   },
+   "wikidata": {
+    "qid": "Q237284",
+    "url": "https://www.wikidata.org/wiki/Q237284"
+   },
+   "self": true
   }
  ]
 }

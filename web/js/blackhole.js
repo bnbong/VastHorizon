@@ -268,9 +268,10 @@ export function mountBlackHole(canvas, { still = false, fit = false, pixelBudget
 }
 
 let listPromise;
-// web/data/blackholes.json — 근거(위키 문서 문장 · Wikidata)가 있는 은하 중심 블랙홀
+// web/data/blackholes.json — 근거(위키 문서 문장 · Wikidata)가 있는 은하 중심 블랙홀.
+// 주소의 ?v= 판 번호 — data/는 7일 캐시라 파일이 바뀌면 올린다 (2: 우리 은하 · 궁수자리 A* 추가)
 export function loadBlackHoles() {
-  listPromise ??= fetch("data/blackholes.json").then((r) => (r.ok ? r.json() : { galaxies: [] }))
+  listPromise ??= fetch("data/blackholes.json?v=2").then((r) => (r.ok ? r.json() : { galaxies: [] }))
     .catch(() => ({ galaxies: [] }));
   return listPromise;
 }

@@ -70,6 +70,8 @@ class ItemSummary(BaseModel):
     kind: str | None = None
     distance_ly: float | None = None
     distance_km: float | None = None
+    # 거리 기준 — "지구에서 우리 은하 중심까지"처럼 지구에서 천체까지가 아닌 거리를 화면 목록이 구분한다
+    distance_reference: str | None = None
     ra_deg: float | None = None
     dec_deg: float | None = None
 

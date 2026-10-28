@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--item", help="항목 이름 (일부만 써도 된다)")
     parser.add_argument("--question", help="질문")
     parser.add_argument("--own", action="store_true", help="모든 항목의 자체 문서를 미리 받는다 (LLM 없음)")
-    parser.add_argument("--group", help="--own 대상 그룹 (solar_system · human_made · star · messier · constellation)")
+    parser.add_argument("--group", help="--own 대상 그룹 (solar_system · human_made · star · messier · milky_way · constellation)")
     parser.add_argument("--limit", type=int, help="--own 대상 수 제한")
     parser.add_argument("--repair-cache", action="store_true",
                         help="예전 형식 기록 · 빈 본문 · 확인 안 된 빈 검색 결과를 정리한다")
